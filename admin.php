@@ -9533,3 +9533,4 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     }
     sendmessage($from_id, $bt_home, keyboard_list_text($bt_lang), 'HTML');
 }
+
