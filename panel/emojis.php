@@ -1,15 +1,15 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
-$__mirzaStyleLib = __DIR__ . '/../mirza_style.php';
-if (is_file($__mirzaStyleLib)) {
-    require_once $__mirzaStyleLib;
+$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
+if (is_file($__nexoraStyleLib)) {
+    require_once $__nexoraStyleLib;
 }
 require_auth();
-if (!function_exists('mirza_ensure_emoji_table') || !function_exists('mirza_emoji_list')) {
-    die('mirza_style.php is missing — reinstall the Style update.');
+if (!function_exists('nexora_ensure_emoji_table') || !function_exists('nexora_emoji_list')) {
+    die('nexora_style.php is missing — reinstall the Style update.');
 }
-mirza_ensure_emoji_table();
+nexora_ensure_emoji_table();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check_post();
     $action = $_POST['action'] ?? '';
@@ -18,14 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cid = trim((string) ($_POST['custom_emoji_id'] ?? ''));
         if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $cid, $m)) $cid = $m[1];
         $utf8 = trim((string) ($_POST['emoji_utf8'] ?? ''));
-        $res = mirza_emoji_save($name, $cid, $utf8, $_SESSION['admin_user'] ?? null);
+        $res = nexora_emoji_save($name, $cid, $utf8, $_SESSION['admin_user'] ?? null);
         flash($res['ok'] ? 'success' : 'error', $res['ok'] ? 'ایموجی ذخیره شد: {emoji:' . $res['slug'] . '}' : ($res['error'] ?? 'خطا'));
         header('Location: emojis.php');
         exit;
     }
     if ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
-        $done = ($id > 0) && mirza_emoji_delete($id);
+        $done = ($id > 0) && nexora_emoji_delete($id);
         flash($done ? 'success' : 'error', $done ? 'ایموجی حذف شد.' : 'حذف انجام نشد.');
         header('Location: emojis.php');
         exit;
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'rename') {
         $id = (int) ($_POST['id'] ?? 0);
         $name = trim((string) ($_POST['emoji_name'] ?? ''));
-        flash(mirza_emoji_rename($id, $name) ? 'success' : 'error', mirza_emoji_rename($id, $name) ? 'نام به‌روز شد.' : 'تغییر نام انجام نشد.');
+        flash(nexora_emoji_rename($id, $name) ? 'success' : 'error', nexora_emoji_rename($id, $name) ? 'نام به‌روز شد.' : 'تغییر نام انجام نشد.');
         header('Location: emojis.php');
         exit;
     }
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $saved = 0;
         if (is_array($names)) {
             foreach ($names as $id => $name) {
-                if (mirza_emoji_rename((int) $id, trim((string) $name))) $saved++;
+                if (nexora_emoji_rename((int) $id, trim((string) $name))) $saved++;
             }
         }
         flash('success', $saved > 0 ? "نام {$saved} ایموجی ذخیره شد." : 'تغییری ذخیره نشد.');
@@ -50,14 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
-$emojiLibrary = mirza_emoji_list();
+$emojiLibrary = nexora_emoji_list();
 $pageTitle = 'کتابخانه ایموجی پرمیوم';
 $pageLede = 'ذخیره، نام‌گذاری و کپی کد برای دکمه‌های ربات';
 $activeNav = 'emojis';
 $msEmojiRows = [];
-if (function_exists('mirza_emoji_placeholder')) {
+if (function_exists('nexora_emoji_placeholder')) {
     foreach ($emojiLibrary as $er) {
-        $msEmojiRows[] = ['placeholder' => mirza_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
+        $msEmojiRows[] = ['placeholder' => nexora_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
     }
 }
 include __DIR__ . '/inc/layout_head.php';
@@ -117,7 +117,7 @@ $flashErr = get_flash('error'); ?>
           <thead><tr><th>نام نمایشی</th><th>slug</th><th>پیش‌نمایش</th><th>کد در دکمه</th><th>شناسه تلگرام</th><th></th></tr></thead>
           <tbody>
             <?php foreach ($emojiLibrary as $row):
-              $placeholder = mirza_emoji_placeholder($row);
+              $placeholder = nexora_emoji_placeholder($row);
               ?>
               <tr>
                 <td><input type="text" name="names[<?= (int) $row['id'] ?>]" class="input input-sm" style="max-width:150px" value="<?= htmlspecialchars($row['emoji_name']) ?>" required></td>

@@ -14,14 +14,14 @@ try {
     header('Location: panels.php');
     exit;
 }
-function mirza_panels_clean_style($v): string { $v = trim((string) $v); return in_array($v, ['primary', 'success', 'danger'], true) ? $v : ''; }
-function mirza_panels_clean_emoji($v): string {
+function nexora_panels_clean_style($v): string { $v = trim((string) $v); return in_array($v, ['primary', 'success', 'danger'], true) ? $v : ''; }
+function nexora_panels_clean_emoji($v): string {
     $v = trim((string) $v);
     if ($v === '') return '';
     if (preg_match('/^\d{1,32}$/', $v)) return $v;
     if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $v, $m)) return $m[1];
-    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v, $m) && function_exists('mirza_emoji_lookup')) {
-        $row = mirza_emoji_lookup(trim($m[1]));
+    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v, $m) && function_exists('nexora_emoji_lookup')) {
+        $row = nexora_emoji_lookup(trim($m[1]));
         if ($row && !empty($row['custom_emoji_id'])) return (string) $row['custom_emoji_id'];
     }
     return '';
@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
         try {
             db_query($pdo, "UPDATE `marzban_panel` SET status=?, agent=?, limit_panel=?, btn_style=?, btn_emoji_id=? WHERE `id`=?", [
                 $status, mb_substr($agent, 0, 200), mb_substr($limit, 0, 100),
-                (mirza_panels_clean_style($_POST['btn_style'] ?? '') ?: null),
-                (mirza_panels_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null),
+                (nexora_panels_clean_style($_POST['btn_style'] ?? '') ?: null),
+                (nexora_panels_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null),
                 $id,
             ]);
             flash('success', 'ذخیره شد.');
@@ -52,11 +52,11 @@ $panels = db_fetchAll($pdo, "SELECT id, name_panel, type, status, agent, limit_p
 $pageTitle = 'پنل‌های VPN';
 $pageLede = 'ویرایش پنل‌ها: وضعیت، دسترسی، محدودیت، رنگ و ایموجی دکمه در ربات.';
 $activeNav = 'panels';
-$emojiLibrary = function_exists('mirza_emoji_list') ? mirza_emoji_list() : [];
+$emojiLibrary = function_exists('nexora_emoji_list') ? nexora_emoji_list() : [];
 $msEmojiRows = [];
-if (function_exists('mirza_emoji_placeholder')) {
+if (function_exists('nexora_emoji_placeholder')) {
     foreach ($emojiLibrary as $er) {
-        $msEmojiRows[] = ['placeholder' => mirza_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
+        $msEmojiRows[] = ['placeholder' => nexora_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
     }
 }
 include __DIR__ . '/inc/layout_head.php';

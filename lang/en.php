@@ -1806,7 +1806,7 @@ Current value: %s Toman',
                         'on' => 'Turned on',
                         'intro' => '📌 From the list below you can manage the gateways.
 
-⚠️ The Mirza team gives no guarantee for the gateways, and all use and responsibility is on you',
+⚠️ The nexora team gives no guarantee for the gateways, and all use and responsibility is on you',
                         'askPlisioApi' => '⚙️ Please send your Plisio API Key.
 
 🔑 To get your API key, visit the following site:
@@ -2401,13 +2401,13 @@ Current amount: %s',
                         'aboutBot' => '💎 | Version Bot: %s
 📌 | Version Mini App: 0.1.1
 
-<blockquote>🔹 | This bot is completely free and is developed by the Mirza team</blockquote>
+<blockquote>🔹 | This bot is completely free and is developed by the nexora team</blockquote>
 
 <blockquote>🔹 | Any sale or charging of money for this bot is considered a violation.</blockquote>
 
 <blockquote>🔹 | If you see any sale or charging of money, please track and reclaim your money.</blockquote>
 
-<blockquote>🐞 | To report a problem, message the <a href="https://t.me/mirzapanel?direct">Mirza channel direct</a>.</blockquote>',
+<blockquote>🐞 | To report a problem, message the <a href="https://t.me/nexorapanel?direct">nexora channel direct</a>.</blockquote>',
                         'gatewayRow' => '
 📌 Gateway name: <code>%s</code>
  - Number of successful payments: <code>%s</code>
@@ -4180,7 +4180,7 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'setEducationVariza' => 'Variza tutorial',
                 'zeroBalance' => '0️⃣ Reset balance to zero',
                 'panelSetting' => '🎛 Panel Settings',
-                'mirzaAgentPanel' => 'Mirza Agent',
+                'nexoraAgentPanel' => 'nexora Agent',
                 'setGroupName' => '🎛 Set group name',
                 'subLinkDomain' => '🔗 Subscription link domain',
                 'panelTypeSanaei' => 'Sanaei single port',
@@ -4328,10 +4328,10 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'jsSidebarCollapsed' => 'Collapsed menu enabled',
                 'jsSidebarExpanded' => 'Open menu enabled',
                 'jsThemeActivated' => 'Theme «{name}» enabled',
-                'keyboardManageTitle' => 'Mirza Bot Admin Panel',
+                'keyboardManageTitle' => 'nexora Bot Admin Panel',
                 'keyboardSaveBtn' => 'Back to default mode',
                 'keyboardSortHint' => 'Back to user panel',
-                'layoutBrandName' => 'Mirza Bot Admin Panel',
+                'layoutBrandName' => 'nexora Bot Admin Panel',
                 'layoutDefaultAdminName' => 'Admin',
                 'layoutFooterCopyright' => 'Dashboard',
                 'layoutFooterLinkDocs' => 'Settings',
@@ -4348,7 +4348,7 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'layoutNavLogout' => 'Management',
                 'layoutNavOrders' => 'Yes, continue',
                 'layoutNavPayments' => '· Panel',
-                'layoutNavProducts' => 'Mirza',
+                'layoutNavProducts' => 'nexora',
                 'layoutNavServices' => 'Cancel',
                 'layoutNavSettings' => 'Dashboard',
                 'layoutNavUsers' => 'Are you sure? This operation is irreversible.',
@@ -4361,7 +4361,7 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'layoutPageTitleProduct' => 'Products',
                 'layoutPageTitleService' => 'Services',
                 'layoutPageTitleSettings' => 'Settings',
-                'layoutPageTitleSuffix' => 'Mirza',
+                'layoutPageTitleSuffix' => 'nexora',
                 'layoutPageTitleUsers' => 'Users',
                 'layoutProfileMenuLabel' => 'Settings',
                 'layoutSearchBoxPlaceholder' => 'Transactions',
@@ -4371,11 +4371,11 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'loginEnterCredentials' => 'Enter your username and password.',
                 'loginErrorTitle' => 'Password',
                 'loginFooter' => 'Username',
-                'loginHeading' => 'Mirza Admin Panel',
+                'loginHeading' => 'nexora Admin Panel',
                 'loginHidePassword' => 'Access to this panel is only allowed for authorized administrators.',
-                'loginPanelTitle' => 'Login — Mirza Admin Panel',
-                'loginPasswordLabel' => 'Mirza Admin Panel',
-                'loginPasswordPlaceholder' => '· Version 1.0 Mirza',
+                'loginPanelTitle' => 'Login — nexora Admin Panel',
+                'loginPasswordLabel' => 'nexora Admin Panel',
+                'loginPasswordPlaceholder' => '· Version 1.0 nexora',
                 'loginRememberMe' => 'To manage the bot, enter your account information.',
                 'loginShowPassword' => 'Login to panel',
                 'loginSubtitle' => 'To support, please ',
@@ -4545,10 +4545,10 @@ We hope you had a good experience with the ease and speed of your service. If yo
                 'settingsPasswordStrengthLabel' => 'Change password',
                 'settingsPhpMemory' => 'PHP memory',
                 'settingsReportIssue' => 'Report a problem',
-                'settingsReportIssueLink' => 'Mirza channel direct',
+                'settingsReportIssueLink' => 'nexora channel direct',
                 'settingsDonate' => 'Support',
                 'settingsDonateLink' => 'Donate',
-                'donatePopupTitle' => '💖 Support Mirza',
+                'donatePopupTitle' => '💖 Support nexora',
                 'donatePopupText' => 'This bot and panel are developed for free. If you find them useful, a small donation helps keep development and support going.',
                 'donatePopupLater' => 'Later',
                 'settingsSaveBtn' => 'Current password',
@@ -4837,7 +4837,7 @@ Minimum required: <code>%s</code>
 
 The bot is disabled for all users until PHP is upgraded.
 
-🖥 <b>Server (VPS):</b> run <code>mirza update-php</code> or choose "Update PHP" in the <code>mirza</code> menu.
+🖥 <b>Server (VPS):</b> run <code>nexora update-php</code> or choose "Update PHP" in the <code>nexora</code> menu.
 🌐 <b>Shared hosting:</b> in the hosting control panel open Select PHP Version (or MultiPHP Manager / PHP Version) and choose PHP 8.5 for the bot domain. If the host does not offer %2$s or newer, ask the hosting support to upgrade PHP.',
         ],
 ];

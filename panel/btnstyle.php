@@ -1,9 +1,9 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
-$__mirzaStyleLib = __DIR__ . '/../mirza_style.php';
-if (is_file($__mirzaStyleLib)) {
-    require_once $__mirzaStyleLib;
+$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
+if (is_file($__nexoraStyleLib)) {
+    require_once $__nexoraStyleLib;
 }
 require_auth();
 $STYLE_LABELS = ['' => 'پیش‌فرض', 'primary' => 'آبی', 'success' => 'سبز', 'danger' => 'قرمز'];
@@ -23,19 +23,19 @@ try {
     header('Location: btnstyle.php');
     exit;
 }
-function mirza_btnstyle_clean_style($v): string
+function nexora_btnstyle_clean_style($v): string
 {
     $v = trim((string) $v);
     return in_array($v, ['primary', 'success', 'danger'], true) ? $v : '';
 }
-function mirza_btnstyle_clean_emoji($v): string
+function nexora_btnstyle_clean_emoji($v): string
 {
     $v = trim((string) $v);
     if ($v === '') return '';
     if (preg_match('/^\d{1,32}$/', $v)) return $v;
     if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $v, $m)) return $m[1];
-    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v, $m) && function_exists('mirza_emoji_lookup')) {
-        $row = mirza_emoji_lookup(trim($m[1]));
+    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v, $m) && function_exists('nexora_emoji_lookup')) {
+        $row = nexora_emoji_lookup(trim($m[1]));
         if ($row && !empty($row['custom_emoji_id'])) return (string) $row['custom_emoji_id'];
     }
     return '';
@@ -46,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     $map = ['product' => ['table' => 'product', 'idcol' => 'id'], 'category' => ['table' => 'category', 'idcol' => 'id'], 'panel' => ['table' => 'marzban_panel', 'idcol' => 'id']];
     if (isset($map[$action])) {
         $id = (int) ($_POST['edit_id'] ?? 0);
-        $style = mirza_btnstyle_clean_style($_POST['btn_style'] ?? '');
-        $emoji = mirza_btnstyle_clean_emoji($_POST['btn_emoji_id'] ?? '');
+        $style = nexora_btnstyle_clean_style($_POST['btn_style'] ?? '');
+        $emoji = nexora_btnstyle_clean_emoji($_POST['btn_emoji_id'] ?? '');
         if ($id > 0) {
             try {
                 db_query($pdo, "UPDATE `{$map[$action]['table']}` SET btn_style=?, btn_emoji_id=? WHERE `{$map[$action]['idcol']}`=?", [$style !== '' ? $style : null, $emoji !== '' ? $emoji : null, $id]);
@@ -66,16 +66,16 @@ $panels = db_fetchAll($pdo, "SELECT id, name_panel, btn_style, btn_emoji_id FROM
 $pageTitle = 'رنگ و ایموجی دکمه‌ها';
 $pageLede = 'رنگ و ایموجی پرمیوم دکمه‌های محصول، دسته و پنل در ربات.';
 $activeNav = 'btnstyle';
-$emojiLibrary = function_exists('mirza_emoji_list') ? mirza_emoji_list() : [];
+$emojiLibrary = function_exists('nexora_emoji_list') ? nexora_emoji_list() : [];
 $msEmojiRows = [];
-if (function_exists('mirza_emoji_placeholder')) {
+if (function_exists('nexora_emoji_placeholder')) {
     foreach ($emojiLibrary as $er) {
-        $msEmojiRows[] = ['placeholder' => mirza_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
+        $msEmojiRows[] = ['placeholder' => nexora_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
     }
 }
 include __DIR__ . '/inc/layout_head.php';
 
-function mirza_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
+function nexora_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
 {
     $bg = $STYLE_COLORS[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($STYLE_COLORS[$style])) ? '#fff' : 'inherit';
@@ -83,7 +83,7 @@ function mirza_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
     return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
 }
 
-function mirza_btnstyle_style_select($selected): string
+function nexora_btnstyle_style_select($selected): string
 {
     $opts = ['' => 'پیش‌فرض', 'primary' => 'آبی', 'success' => 'سبز', 'danger' => 'قرمز'];
     $h = '<select name="btn_style" class="select" style="min-width:90px">';
@@ -114,9 +114,9 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
           <input type="hidden" name="action" value="product">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
-          <td><?= mirza_btnstyle_preview($p['name_product'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
+          <td><?= nexora_btnstyle_preview($p['name_product'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
           <td class="cs"><?= htmlspecialchars($p['name_product'] ?? '') ?></td>
-          <td><?= mirza_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
+          <td><?= nexora_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($p['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>
         </form>
@@ -137,9 +137,9 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
           <input type="hidden" name="action" value="category">
           <input type="hidden" name="edit_id" value="<?= (int) $c['id'] ?>">
-          <td><?= mirza_btnstyle_preview($c['remark'] ?? '', (string) ($c['btn_style'] ?? ''), (string) ($c['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
+          <td><?= nexora_btnstyle_preview($c['remark'] ?? '', (string) ($c['btn_style'] ?? ''), (string) ($c['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
           <td class="cs"><?= htmlspecialchars($c['remark'] ?? '') ?></td>
-          <td><?= mirza_btnstyle_style_select($c['btn_style'] ?? '') ?></td>
+          <td><?= nexora_btnstyle_style_select($c['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($c['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>
         </form>
@@ -160,9 +160,9 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
           <input type="hidden" name="action" value="panel">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
-          <td><?= mirza_btnstyle_preview($p['name_panel'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
+          <td><?= nexora_btnstyle_preview($p['name_panel'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
           <td class="cs"><?= htmlspecialchars($p['name_panel'] ?? '') ?></td>
-          <td><?= mirza_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
+          <td><?= nexora_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($p['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>
         </form>

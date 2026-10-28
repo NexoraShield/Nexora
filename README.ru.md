@@ -1,4 +1,4 @@
-# Nexora Bot 🤖
+﻿# Nexora Bot 🤖
 
 [![English](https://img.shields.io/badge/🇬🇧-English-blue)](README.md)
 [![فارسی](https://img.shields.io/badge/🇮🇷-فارسی-green)](README.fa.md)
@@ -50,12 +50,12 @@ cd Nexora
 
 2. Загрузить на сервер:
 ```bash
-scp -r * root@YOUR_SERVER_IP:/var/www/html/mirzaprobotconfig/
+scp -r * root@YOUR_SERVER_IP:/var/www/html/nexorabotconfig/
 ```
 
 3. Запустить установщик:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -129,6 +129,7 @@ TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
 
 ## 🙏 Благодарности
 
-- Оригинальный Mirzabot от [mahdiMGF2](https://github.com/mahdiMGF2/mirzabot)
-- Функции ViraNaut перенесены в Nexora
+- Nexora Bot разработан [NexoraShield](https://github.com/NexoraShield)
+- На основе открытой технологии VPN-бота
 - Интеграция платёжного шлюза FrenzyEx
+- Поддержка премиум-эмодзи и glass-темы

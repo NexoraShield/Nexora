@@ -11,11 +11,11 @@ FORCE=0
 usage() {
   cat <<'USAGE'
 Usage:
-  sudo bash install.sh [MIRZABOT_DIRECTORY] [--force]
+  sudo bash install.sh [nexoraBOT_DIRECTORY] [--force]
 
 Examples:
   sudo bash install.sh
-  sudo bash install.sh /var/www/html/mirzabot
+  sudo bash install.sh /var/www/html/nexorabot
 
 Only ADDS new files/columns. Never deletes or rewrites your data.
 USAGE
@@ -32,7 +32,7 @@ for arg in "$@"; do
       ;;
     *)
       if [[ -n "$TARGET" ]]; then
-        echo "Only one Mirzabot directory may be supplied." >&2
+        echo "Only one nexorabot directory may be supplied." >&2
         exit 2
       fi
       TARGET="$arg"
@@ -57,11 +57,11 @@ echo "==> Verifying update files"
 
 if [[ -z "$TARGET" ]]; then
   for candidate in \
-    /var/www/html/mirzabot \
-    /var/www/html/mirzabotconfig \
-    /var/www/mirzabot \
+    /var/www/html/nexorabot \
+    /var/www/html/nexorabotconfig \
+    /var/www/nexorabot \
     /var/www/html/bot \
-    /var/www/html/mirzaprobotconfig
+    /var/www/html/nexorabotconfig
   do
     if [[ -f "$candidate/function.php" && -f "$candidate/index.php" && -f "$candidate/config.php" && -f "$candidate/keyboard.php" && -f "$candidate/botapi.php" ]]; then
       TARGET="$candidate"
@@ -71,8 +71,8 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  echo "==> No existing Mirzabot found — creating fresh installation"
-  TARGET="/var/www/html/mirzabot"
+  echo "==> No existing nexorabot found — creating fresh installation"
+  TARGET="/var/www/html/nexorabot"
   mkdir -p "$TARGET"
   echo "    Installing to $TARGET"
   cd "$PACKAGE_DIR"
@@ -92,7 +92,7 @@ TARGET="$(cd -- "$TARGET" 2>/dev/null && pwd)" || {
 
 for required in function.php index.php keyboard.php table.php config.php botapi.php; do
   if [[ ! -f "$TARGET/$required" ]]; then
-    echo "This does not look like a Mirzabot installation: missing $required" >&2
+    echo "This does not look like a nexorabot installation: missing $required" >&2
     exit 1
   fi
 done
@@ -109,7 +109,7 @@ fi
 PHP_BIN="$(command -v php)"
 
 echo "==> Checking PHP syntax"
-"$PHP_BIN" -l "$PACKAGE_DIR/mirza_style.php" >/dev/null
+"$PHP_BIN" -l "$PACKAGE_DIR/nexora_style.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/migrate.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/patch_keyboard.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/patch_panel.php" >/dev/null
@@ -134,16 +134,16 @@ echo "==> Checking PHP syntax"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-  backup_root="${MIRZABOT_BACKUP_DIR:-/var/backups/mirzabot}"
+  backup_root="${nexoraBOT_BACKUP_DIR:-/var/backups/nexorabot}"
 else
-  backup_root="${MIRZABOT_BACKUP_DIR:-$HOME/mirzabot_backups}"
+  backup_root="${nexoraBOT_BACKUP_DIR:-$HOME/nexorabot_backups}"
 fi
 BACKUP_DIR="$backup_root/nexora-$timestamp"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$backup_root" "$BACKUP_DIR" 2>/dev/null || true
 
 # ---- upgrade: if a previous version exists, remove it first ----
-if [[ -f "$TARGET/mirza_style.php" ]]; then
+if [[ -f "$TARGET/nexora_style.php" ]]; then
   echo "==> Previous version detected — removing it first"
   prev_backup=""
   if [[ -d "$backup_root" ]]; then
@@ -163,7 +163,7 @@ if [[ -f "$TARGET/mirza_style.php" ]]; then
     done
     echo "    stock files restored from $prev_backup"
   fi
-  for _f in mirza_style.php panel/btnstyle.php panel/textemojis.php panel/emojis.php panel/panels.php panel/health.php panel/export.php panel/inc/emoji_picker_bar.php panel/js/emoji-insert.js panel/css/mirza-glass.css agent-panel/login.php agent-panel/index.php agent-panel/logout.php agent-panel/inc/auth.php cronbot/nudge_unpaid.php cronbot/frenzyex.php tools/nexora-indexes.php app/assets/nexora-theme.css payment/frenzyex.php; do
+  for _f in nexora_style.php panel/btnstyle.php panel/textemojis.php panel/emojis.php panel/panels.php panel/health.php panel/export.php panel/inc/emoji_picker_bar.php panel/js/emoji-insert.js panel/css/nexora-glass.css agent-panel/login.php agent-panel/index.php agent-panel/logout.php agent-panel/inc/auth.php cronbot/nudge_unpaid.php cronbot/frenzyex.php tools/nexora-indexes.php app/assets/nexora-theme.css payment/frenzyex.php; do
     rm -f -- "$TARGET/$_f"
   done
   echo "    old files removed — fresh install follows"
@@ -185,7 +185,7 @@ done
 
 echo "==> Installing new files"
 mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment"
-cp -- "$PACKAGE_DIR/mirza_style.php" "$TARGET/mirza_style.php"
+cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
 cp -- "$PACKAGE_DIR/panel/btnstyle.php" "$TARGET/panel/btnstyle.php"
 cp -- "$PACKAGE_DIR/panel/textemojis.php" "$TARGET/panel/textemojis.php"
 cp -- "$PACKAGE_DIR/panel/emojis.php" "$TARGET/panel/emojis.php"
@@ -194,7 +194,7 @@ cp -- "$PACKAGE_DIR/panel/health.php" "$TARGET/panel/health.php"
 cp -- "$PACKAGE_DIR/panel/export.php" "$TARGET/panel/export.php"
 cp -- "$PACKAGE_DIR/panel/inc/emoji_picker_bar.php" "$TARGET/panel/inc/emoji_picker_bar.php"
 cp -- "$PACKAGE_DIR/panel/js/emoji-insert.js" "$TARGET/panel/js/emoji-insert.js"
-cp -- "$PACKAGE_DIR/panel/css/mirza-glass.css" "$TARGET/panel/css/mirza-glass.css"
+cp -- "$PACKAGE_DIR/panel/css/nexora-glass.css" "$TARGET/panel/css/nexora-glass.css"
 cp -- "$PACKAGE_DIR/agent-panel/login.php" "$TARGET/agent-panel/login.php"
 cp -- "$PACKAGE_DIR/agent-panel/index.php" "$TARGET/agent-panel/index.php"
 cp -- "$PACKAGE_DIR/agent-panel/logout.php" "$TARGET/agent-panel/logout.php"
@@ -218,7 +218,7 @@ for _patch in patch_keyboard patch_panel patch_botapi patch_bottext patch_admin 
     echo "==> Patching with ${_patch} (apply)"
     "$PHP_BIN" "$PACKAGE_DIR/${_patch}.php" "$TARGET" --apply
   else
-    echo "WARNING: ${_patch} skipped for this Mirzabot version."
+    echo "WARNING: ${_patch} skipped for this nexorabot version."
     if [ "$_patch" = "patch_keyboard" ]; then
       echo "FATAL: core keyboard patch failed — aborting, nothing was changed." >&2
       exit 1

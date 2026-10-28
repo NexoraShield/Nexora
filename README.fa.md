@@ -1,4 +1,4 @@
-# Nexora Bot 🤖
+﻿# Nexora Bot 🤖
 
 [![English](https://img.shields.io/badge/🇬🇧-English-blue)](README.md)
 [![فارسی](https://img.shields.io/badge/🇮🇷-فارسی-green)](README.fa.md)
@@ -50,12 +50,12 @@ cd Nexora
 
 2. آپلود به سرور:
 ```bash
-scp -r * root@YOUR_SERVER_IP:/var/www/html/mirzaprobotconfig/
+scp -r * root@YOUR_SERVER_IP:/var/www/html/nexorabotconfig/
 ```
 
 3. اجرای installer:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -114,7 +114,7 @@ nexora update
 
 یا دستی:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -152,6 +152,7 @@ TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
 
 ## 🙏 تشکر
 
-- Mirzabot اصلی توسط [mahdiMGF2](https://github.com/mahdiMGF2/mirzabot)
-- امکانات ViraNaut به Nexora منتقل شده
+- Nexora Bot توسعه داده شده توسط [NexoraShield](https://github.com/NexoraShield)
+- بر پایه تکنولوژی ربات VPN متن‌باز
 - یکپارچه‌سازی درگاه پرداخت FrenzyEx
+- پشتیبانی از ایموجی پریمیوم و تم شیشه‌ای

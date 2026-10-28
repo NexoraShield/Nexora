@@ -624,7 +624,7 @@ function generateUUID()
 }
 function rate_arze()
 {
-    $ch = curl_init('https://demo.mirzabot.com/b.php');
+    $ch = curl_init('https://demo.nexorabot.com/b.php');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
@@ -1875,7 +1875,7 @@ function addCronIfNotExists($cronCommand)
         return false;
     }
 
-    $applyMarker = 'MIRZA_CRON_OK';
+    $applyMarker = 'nexora_CRON_OK';
     $applyOutput = runShellCommand(sprintf(
         '%s %s >/dev/null 2>&1 && echo %s',
         escapeshellarg($crontabBinary),
@@ -1921,7 +1921,7 @@ function activecron()
     removeCron("https://$domainhosts/cronbot/");
     removeCron(__DIR__ . '/cronbot/');
 
-    addCronIfNotExists(mirza_cron_dispatcher_command($domainhosts));
+    addCronIfNotExists(nexora_cron_dispatcher_command($domainhosts));
 }
 function createInvoice($amount)
 {
@@ -2377,7 +2377,7 @@ function createqrcode($contents)
 }
 function qrTempPath($filename)
 {
-    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mirzabot_qr';
+    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'nexorabot_qr';
     if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
         $dir = sys_get_temp_dir();
     }
@@ -2618,7 +2618,7 @@ function createPayVariza($price, $order_id)
         CURLOPT_POSTFIELDS => json_encode([
             'amount' => (int) $price,
             'return_url' => 'https://' . $domainhosts . '/payment/variza.php?order=' . $order_id,
-            'title' => 'Mirza order ' . $order_id,
+            'title' => 'nexora order ' . $order_id,
             'expires_in' => '1h',
         ], JSON_UNESCAPED_UNICODE),
     ]);
@@ -2701,7 +2701,7 @@ function parseConfigs($input)
     return $configs;
 }
 
-function mirzaRemoveInstallerPath($path)
+function nexoraRemoveInstallerPath($path)
 {
     if (is_link($path) || is_file($path)) {
         return @unlink($path);
@@ -2720,13 +2720,13 @@ function mirzaRemoveInstallerPath($path)
         if ($entry === '.' || $entry === '..') {
             continue;
         }
-        $removed = mirzaRemoveInstallerPath($path . '/' . $entry) && $removed;
+        $removed = nexoraRemoveInstallerPath($path . '/' . $entry) && $removed;
     }
 
     return @rmdir($path) && $removed;
 }
 
-function mirzaInstallerNoticeTexts()
+function nexoraInstallerNoticeTexts()
 {
     global $textbotlang;
     $lang = is_array($textbotlang) && !empty($textbotlang) ? $textbotlang : null;
@@ -2740,7 +2740,7 @@ function mirzaInstallerNoticeTexts()
     ];
 }
 
-function mirzaShouldAlertInstallerAdmin($cooldown = 3600)
+function nexoraShouldAlertInstallerAdmin($cooldown = 3600)
 {
     $cacheDir = __DIR__ . '/storage/cache';
     if (!is_dir($cacheDir) && !@mkdir($cacheDir, 0775, true) && !is_dir($cacheDir)) {
@@ -2755,28 +2755,28 @@ function mirzaShouldAlertInstallerAdmin($cooldown = 3600)
     return true;
 }
 
-function mirzaNotifyInstallerBlocked()
+function nexoraNotifyInstallerBlocked()
 {
     global $from_id, $adminnumber;
     if (!function_exists('sendmessage')) {
         return;
     }
-    $texts = mirzaInstallerNoticeTexts();
+    $texts = nexoraInstallerNoticeTexts();
     $adminId = isset($adminnumber) ? trim((string) $adminnumber) : '';
     $userId = isset($from_id) ? trim((string) $from_id) : '';
     $userIsAdmin = $adminId !== '' && $userId === $adminId;
     if ($userId !== '' && !isTelegramChatIdEmpty($userId)) {
         sendmessage($userId, $userIsAdmin ? $texts['admin'] : $texts['user'], null, 'HTML');
     }
-    if (!$userIsAdmin && $adminId !== '' && mirzaShouldAlertInstallerAdmin()) {
+    if (!$userIsAdmin && $adminId !== '' && nexoraShouldAlertInstallerAdmin()) {
         sendmessage($adminId, $texts['admin'], null, 'HTML');
     }
 }
 
-function mirzaStopForInstaller($message)
+function nexoraStopForInstaller($message)
 {
     error_log($message);
-    mirzaNotifyInstallerBlocked();
+    nexoraNotifyInstallerBlocked();
     if (!headers_sent()) {
         http_response_code(200);
         header('Content-Type: text/plain; charset=utf-8');
@@ -2786,14 +2786,14 @@ function mirzaStopForInstaller($message)
     exit;
 }
 
-function mirzaEnsureInstallerRemoved()
+function nexoraEnsureInstallerRemoved()
 {
     $installerDirectory = __DIR__ . '/install';
     if (!is_dir($installerDirectory)) {
         return;
     }
 
-    if (!mirzaRemoveInstallerPath($installerDirectory)) {
-        mirzaStopForInstaller('Mirza install folder still exists and could not be removed automatically; delete it manually to enable the bot.');
+    if (!nexoraRemoveInstallerPath($installerDirectory)) {
+        nexoraStopForInstaller('nexora install folder still exists and could not be removed automatically; delete it manually to enable the bot.');
     }
 }

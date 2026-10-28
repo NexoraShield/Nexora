@@ -2404,7 +2404,7 @@ f,n.n2',
 
 <blockquote>🔹 | در صورت مشاهدهٔ فروش یا دریافت وجه، لطفاً وجه خود را پیگیری کرده و بازپس‌گیری نمایید.</blockquote>
 
-<blockquote>🐞 | برای گزارش مشکل، در <a href="https://t.me/mirzapanel?direct">دایرکت کانال میرزا</a> پیام بدهید.</blockquote>',
+<blockquote>🐞 | برای گزارش مشکل، در <a href="https://t.me/nexorapanel?direct">دایرکت کانال میرزا</a> پیام بدهید.</blockquote>',
                         'gatewayRow' => '
 📌 نام درگاه : <code>%s</code>
  - تعداد پرداخت موفق : <code>%s</code>
@@ -4164,7 +4164,7 @@ f,n.n2',
                 'setEducationVariza' => 'آموزش واریزا',
                 'zeroBalance' => '0️⃣ صفر کردن موجودی',
                 'panelSetting' => '🎛 تنظیم پنل',
-                'mirzaAgentPanel' => 'نمایندگی میرزا',
+                'nexoraAgentPanel' => 'نمایندگی میرزا',
                 'setGroupName' => '🎛 تنظیم نام گروه',
                 'subLinkDomain' => '🔗 دامنه لینک ساب',
                 'panelTypeSanaei' => '3x-ui',
@@ -4821,7 +4821,7 @@ f,n.n2',
 
 تا زمان ارتقای PHP، ربات برای همه کاربران غیرفعال است.
 
-🖥 <b>سرور (VPS):</b> دستور <code>mirza update-php</code> را اجرا کنید یا در منوی <code>mirza</code> گزینه «Update PHP» را بزنید.
+🖥 <b>سرور (VPS):</b> دستور <code>nexora update-php</code> را اجرا کنید یا در منوی <code>nexora</code> گزینه «Update PHP» را بزنید.
 🌐 <b>هاست:</b> از کنترل پنل هاست بخش Select PHP Version (یا MultiPHP Manager / PHP Version) نسخه 8.5 را برای دامنه ربات انتخاب کنید. اگر هاست نسخه %2$s یا بالاتر ندارد، از پشتیبانی هاست ارتقای PHP را بخواهید.',
         ],
 ];

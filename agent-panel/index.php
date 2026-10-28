@@ -36,7 +36,7 @@ $commission = $totalBuy * $percent / 100;
   <meta name="theme-color" content="#141a2e">
   <title>پنل نمایندگی — نکسورا</title>
   <link rel="stylesheet" href="../panel/css/style.css">
-  <link rel="stylesheet" href="../panel/css/mirza-glass.css">
+  <link rel="stylesheet" href="../panel/css/nexora-glass.css">
 </head>
 <body>
 <div class="card fade-up" style="max-width:720px;margin:4vh auto;padding:24px">

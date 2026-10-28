@@ -3,15 +3,15 @@ $target = $argv[1] ?? '';
 $target = rtrim($target, "/\\");
 if ($target === '' || !is_dir($target)) { fwrite(STDERR, "Target directory not found.\n"); exit(1); }
 $configFile = $target . '/config.php';
-$helperFile = __DIR__ . '/mirza_style.php';
+$helperFile = __DIR__ . '/nexora_style.php';
 if (!is_file($configFile)) { fwrite(STDERR, "config.php not found in target.\n"); exit(1); }
-if (!is_file($helperFile)) { fwrite(STDERR, "mirza_style.php not found.\n"); exit(1); }
+if (!is_file($helperFile)) { fwrite(STDERR, "nexora_style.php not found.\n"); exit(1); }
 require $configFile;
 require $helperFile;
 if (!isset($pdo) || !($pdo instanceof PDO)) { fwrite(STDERR, "Database connection (\$pdo) not available.\n"); exit(1); }
 try {
-    $added = mirza_ensure_style_columns($pdo);
-    if (function_exists('mirza_ensure_emoji_table')) mirza_ensure_emoji_table($pdo);
+    $added = nexora_ensure_style_columns($pdo);
+    if (function_exists('nexora_ensure_emoji_table')) nexora_ensure_emoji_table($pdo);
     $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     echo "agent_auth table ensured.\n";
     if ($added === []) echo "Columns already exist — nothing to do.\n";

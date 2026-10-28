@@ -1,4 +1,4 @@
-# Nexora Bot 🤖
+﻿# Nexora Bot 🤖
 
 [![English](https://img.shields.io/badge/🇬🇧-English-blue)](README.md)
 [![فارسی](https://img.shields.io/badge/🇮🇷-فارسی-green)](README.fa.md)
@@ -56,12 +56,12 @@ cd Nexora
 
 2. Upload to your server:
 ```bash
-scp -r * root@YOUR_SERVER_IP:/var/www/html/mirzaprobotconfig/
+scp -r * root@YOUR_SERVER_IP:/var/www/html/nexorabotconfig/
 ```
 
 3. Run the installer:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -100,7 +100,7 @@ Nexora/
 ├── keyboard.php           # Keyboard generation
 ├── botapi.php             # Telegram Bot API wrapper
 ├── config.php             # Configuration
-├── mirza_style.php        # Style & emoji helpers
+├── nexora_style.php        # Style & emoji helpers
 ├── admin.php              # Admin panel bot interface
 ├── panels.php             # Panel management
 ├── panels/                # Panel drivers
@@ -169,7 +169,7 @@ nexora update
 
 Or manually:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -187,9 +187,10 @@ This project is licensed under the MIT License.
 
 ## 🙏 Credits
 
-- Original Mirzabot by [mahdiMGF2](https://github.com/mahdiMGF2/mirzabot)
-- ViraNaut features ported to Nexora
+- Nexora Bot developed by [NexoraShield](https://github.com/NexoraShield)
+- Based on open-source VPN bot technology
 - FrenzyEx payment gateway integration
+- Premium emoji & glass theme support
 
 ## 📞 Support
 

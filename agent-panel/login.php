@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/inc/auth.php';
-mirza_ensure_agent_table();
+nexora_ensure_agent_table();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = trim((string) ($_POST['id'] ?? ''));
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="theme-color" content="#141a2e">
   <title>ورود نمایندگی — نکسورا</title>
   <link rel="stylesheet" href="../panel/css/style.css">
-  <link rel="stylesheet" href="../panel/css/mirza-glass.css">
+  <link rel="stylesheet" href="../panel/css/nexora-glass.css">
 </head>
 <body>
 <div class="card fade-up" style="max-width:380px;margin:8vh auto;padding:24px">

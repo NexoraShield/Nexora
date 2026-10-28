@@ -1,6 +1,6 @@
 <?php
 
-function mirza_cron_jobs(): array
+function nexora_cron_jobs(): array
 {
     return [
         ['job' => 'croncard', 'schedule' => '*/1 * * * *', 'title' => 'تأیید خودکار رسید کارت به کارت'],
@@ -25,12 +25,12 @@ function mirza_cron_jobs(): array
     ];
 }
 
-function mirza_cron_dispatcher_path(): string
+function nexora_cron_dispatcher_path(): string
 {
     return __DIR__ . '/run.php';
 }
 
-function mirza_cron_stagger_seconds(string $seed = ''): int
+function nexora_cron_stagger_seconds(string $seed = ''): int
 {
     if ($seed === '') {
         $seed = dirname(__DIR__);
@@ -39,7 +39,7 @@ function mirza_cron_stagger_seconds(string $seed = ''): int
     return (int) (sprintf('%u', crc32($seed)) % 20);
 }
 
-function mirza_cron_php_binary(): string
+function nexora_cron_php_binary(): string
 {
     $php = PHP_BINDIR . '/php';
     if (is_executable($php)) {
@@ -55,16 +55,16 @@ function mirza_cron_php_binary(): string
     return 'php';
 }
 
-function mirza_cron_dispatcher_command(string $seed = ''): string
+function nexora_cron_dispatcher_command(string $seed = ''): string
 {
-    $sleep = mirza_cron_stagger_seconds($seed);
-    $php = mirza_cron_php_binary();
-    $path = mirza_cron_dispatcher_path();
+    $sleep = nexora_cron_stagger_seconds($seed);
+    $php = nexora_cron_php_binary();
+    $path = nexora_cron_dispatcher_path();
 
     return '* * * * * sleep ' . $sleep . '; ' . $php . ' ' . $path . ' >/dev/null 2>&1';
 }
 
-function mirza_cron_dispatcher_curl_command(string $baseUrl): string
+function nexora_cron_dispatcher_curl_command(string $baseUrl): string
 {
     return '* * * * * curl -s ' . rtrim($baseUrl, '/') . '/cronbot/run.php > /dev/null 2>&1';
 }

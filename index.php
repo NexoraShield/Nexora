@@ -8,7 +8,7 @@ require_once 'config.php';
 require_once 'botapi.php';
 require_once 'jdf.php';
 require_once 'function.php';
-mirzaEnsureInstallerRemoved();
+nexoraEnsureInstallerRemoved();
 require_once 'keyboard.php';
 require_once 'vendor/autoload.php';
 require_once 'panels.php';
@@ -67,7 +67,7 @@ if (intval($from_id) == 0)
     return;
 $lockWait = isset($update['pre_checkout_query']) || isset($update['message']['successful_payment']) ? 10 : 0;
 $userLock = $pdo->prepare("SELECT GET_LOCK(?, $lockWait)");
-$userLock->execute(["mirza_user_" . $from_id]);
+$userLock->execute(["nexora_user_" . $from_id]);
 if ((int) $userLock->fetchColumn() !== 1) {
     if ($callback_query_id) {
         telegram('answerCallbackQuery', ['callback_query_id' => $callback_query_id]);
