@@ -194,3 +194,13 @@ This project is licensed under the MIT License.
 - **Support:** @Nexora_supp
 - **Channel:** @Nexorashieeld
 - **Tutorial:** @NexoraUsersHelp
+
+## 💖 Donate
+
+If you find this project useful, please consider supporting its development:
+
+- **Telegram:** @Nexora_supp
+- **Website:** NexoraShield.tr
+- **Crypto/Other:** Contact @Nexora_supp for donation details
+
+Your support helps keep this project free and maintained!
