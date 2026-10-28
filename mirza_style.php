@@ -1,0 +1,456 @@
+<?php
+/**
+ * MirzaStyle — button colors + premium emoji library for Mirzabot.
+ * Additive only: no existing behavior changes when btn_style / btn_emoji_id
+ * are empty and no {emoji:} placeholders are used.
+ */
+
+if (!function_exists('mirza_btn_style')) {
+    function mirza_btn_style($style): string
+    {
+        $style = trim((string) $style);
+        return in_array($style, ['primary', 'success', 'danger'], true) ? $style : '';
+    }
+}
+
+if (!function_exists('mirza_btn_emoji_id')) {
+    function mirza_btn_emoji_id($raw): string
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') return '';
+        if (preg_match('/^\d{1,32}$/', $raw)) return $raw;
+        if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $raw, $m)) return $m[1];
+        return '';
+    }
+}
+
+if (!function_exists('mirza_ensure_style_columns')) {
+    function mirza_ensure_style_columns(PDO $pdo): array
+    {
+        $targets = [
+            'product' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
+            'category' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
+            'marzban_panel' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
+        ];
+        $added = [];
+        foreach ($targets as $table => $cols) {
+            foreach ($cols as [$col, $def]) {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+                $check->execute([$table, $col]);
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE `{$table}` ADD `{$col}` {$def}");
+                    $added[] = "{$table}.{$col}";
+                }
+            }
+        }
+        return $added;
+    }
+}
+
+if (!function_exists('mirza_ensure_emoji_table')) {
+    function mirza_ensure_emoji_table($pdo = null): void
+    {
+        $pdo = $pdo instanceof PDO ? $pdo : ($GLOBALS['pdo'] ?? null);
+        if (!($pdo instanceof PDO)) return;
+        try {
+            $pdo->exec('CREATE TABLE IF NOT EXISTS bot_custom_emoji (id INT UNSIGNED NOT NULL AUTO_INCREMENT, emoji_name VARCHAR(120) NOT NULL, emoji_slug VARCHAR(64) DEFAULT NULL, custom_emoji_id VARCHAR(32) NOT NULL, emoji_utf8 VARCHAR(16) DEFAULT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0, created_by VARCHAR(32) DEFAULT NULL, PRIMARY KEY (id), UNIQUE KEY uq_custom_emoji_id (custom_emoji_id), UNIQUE KEY uq_emoji_slug (emoji_slug), KEY idx_emoji_name (emoji_name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+        } catch (Throwable $e) { error_log('mirza_ensure_emoji_table: ' . $e->getMessage()); }
+    }
+}
+
+if (!function_exists('mirza_emoji_make_slug')) {
+    function mirza_emoji_make_slug(string $name, ?int $excludeId = null): string
+    {
+        $pdo = $GLOBALS['pdo'] ?? null;
+        $slug = function_exists('mb_strtolower') ? mb_strtolower(trim($name), 'UTF-8') : strtolower(trim($name));
+        $slug = preg_replace('/[\s]+/u', '_', $slug);
+        $slug = preg_replace('/[^\p{L}\p{N}_-]+/u', '', (string) $slug);
+        if ($slug === '' || $slug === null) $slug = 'emoji';
+        $slug = function_exists('mb_substr') ? mb_substr($slug, 0, 58, 'UTF-8') : substr($slug, 0, 58);
+        if (!($pdo instanceof PDO)) return $slug;
+        $base = $slug; $try = 0;
+        while ($try < 100) {
+            $candidate = $try === 0 ? $base : $base . '_' . $try;
+            try {
+                $stmt = $pdo->prepare('SELECT id FROM bot_custom_emoji WHERE emoji_slug = ? LIMIT 1');
+                $stmt->execute([$candidate]);
+                $found = (int) ($stmt->fetchColumn() ?: 0);
+            } catch (Throwable $e) { return $candidate; }
+            if ($found === 0 || ($excludeId !== null && $found === $excludeId)) return $candidate;
+            $try++;
+        }
+        return $base . '_' . time();
+    }
+}
+
+if (!function_exists('mirza_emoji_list')) {
+    function mirza_emoji_list($pdo = null, bool $fresh = false): array
+    {
+        static $mem = null;
+        if ($mem !== null && !$fresh) return $mem;
+        $pdo = $pdo instanceof PDO ? $pdo : ($GLOBALS['pdo'] ?? null);
+        if (!($pdo instanceof PDO)) return [];
+        try {
+            $stmt = $pdo->query('SELECT * FROM bot_custom_emoji ORDER BY emoji_name ASC, id ASC');
+            $mem = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            return $mem;
+        } catch (Throwable $e) { return []; }
+    }
+}
+
+if (!function_exists('mirza_emoji_lookup')) {
+    function mirza_emoji_lookup(string $ref, $pdo = null): ?array
+    {
+        $ref = trim($ref);
+        if ($ref === '') return null;
+        try { $list = mirza_emoji_list($pdo); } catch (Throwable $e) { return null; }
+        if ($list === []) return null;
+        if (preg_match('/^#?(\d+)$/', $ref, $num)) {
+            foreach ($list as $row) {
+                if ((int) ($row['id'] ?? 0) === (int) $num[1]) return $row;
+                if (trim((string) ($row['custom_emoji_id'] ?? '')) === $num[1]) return $row;
+            }
+            return null;
+        }
+        $lower = function_exists('mb_strtolower') ? mb_strtolower($ref, 'UTF-8') : strtolower($ref);
+        foreach ($list as $row) {
+            $slug = function_exists('mb_strtolower') ? mb_strtolower(trim((string) ($row['emoji_slug'] ?? '')), 'UTF-8') : strtolower(trim((string) ($row['emoji_slug'] ?? '')));
+            if ($slug !== '' && $slug === $lower) return $row;
+        }
+        foreach ($list as $row) {
+            $name = function_exists('mb_strtolower') ? mb_strtolower(trim((string) ($row['emoji_name'] ?? '')), 'UTF-8') : strtolower(trim((string) ($row['emoji_name'] ?? '')));
+            if ($name !== '' && $name === $lower) return $row;
+        }
+        return null;
+    }
+}
+
+if (!function_exists('mirza_emoji_placeholder')) {
+    function mirza_emoji_placeholder(array $row): string
+    {
+        $slug = trim((string) ($row['emoji_slug'] ?? ''));
+        if ($slug === '') $slug = (string) (int) ($row['id'] ?? 0);
+        return ($slug !== '' && $slug !== '0') ? '{emoji:' . $slug . '}' : '';
+    }
+}
+
+if (!function_exists('mirza_emoji_save')) {
+    function mirza_emoji_save(string $name, string $customEmojiId, string $emojiUtf8 = '', ?string $createdBy = null): array
+    {
+        $pdo = $GLOBALS['pdo'] ?? null;
+        if (!($pdo instanceof PDO)) return ['ok' => false, 'error' => 'DB unavailable'];
+        $name = trim($name);
+        $customEmojiId = trim($customEmojiId);
+        if ($name === '' || $customEmojiId === '') return ['ok' => false, 'error' => 'نام یا شناسه ایموجی خالی است.'];
+        if (!preg_match('/^\d{1,32}$/', $customEmojiId)) return ['ok' => false, 'error' => 'شناسه ایموجی باید عدد باشد.'];
+        try {
+            $find = $pdo->prepare('SELECT id, emoji_slug FROM bot_custom_emoji WHERE custom_emoji_id = ? LIMIT 1');
+            $find->execute([$customEmojiId]);
+            $existing = $find->fetch(PDO::FETCH_ASSOC);
+            if ($existing) {
+                $slug = trim((string) ($existing['emoji_slug'] ?? ''));
+                if ($slug === '') $slug = mirza_emoji_make_slug($name, (int) $existing['id']);
+                $stmt = $pdo->prepare('UPDATE bot_custom_emoji SET emoji_name = ?, emoji_slug = ?, emoji_utf8 = ? WHERE id = ?');
+                $stmt->execute([$name, $slug, $emojiUtf8, (int) $existing['id']]);
+                return ['ok' => true, 'id' => (int) $existing['id'], 'slug' => $slug];
+            }
+            $slug = mirza_emoji_make_slug($name);
+            $stmt = $pdo->prepare('INSERT INTO bot_custom_emoji (emoji_name, emoji_slug, custom_emoji_id, emoji_utf8, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$name, $slug, $customEmojiId, $emojiUtf8, time(), $createdBy]);
+            return ['ok' => true, 'id' => (int) $pdo->lastInsertId(), 'slug' => $slug];
+        } catch (Throwable $e) {
+            error_log('mirza_emoji_save: ' . $e->getMessage());
+            return ['ok' => false, 'error' => 'ذخیره در پایگاه داده ناموفق بود.'];
+        }
+    }
+}
+
+if (!function_exists('mirza_emoji_delete')) {
+    function mirza_emoji_delete(int $id): bool
+    {
+        $pdo = $GLOBALS['pdo'] ?? null;
+        if (!($pdo instanceof PDO) || $id <= 0) return false;
+        try {
+            $stmt = $pdo->prepare('DELETE FROM bot_custom_emoji WHERE id = ?');
+            $stmt->execute([$id]);
+            return $stmt->rowCount() > 0;
+        } catch (Throwable $e) { return false; }
+    }
+}
+
+if (!function_exists('mirza_emoji_rename')) {
+    function mirza_emoji_rename(int $id, string $name): bool
+    {
+        $pdo = $GLOBALS['pdo'] ?? null;
+        $name = trim($name);
+        if (!($pdo instanceof PDO) || $id <= 0 || $name === '') return false;
+        try {
+            $stmt = $pdo->prepare('UPDATE bot_custom_emoji SET emoji_name = ? WHERE id = ?');
+            $stmt->execute([$name, $id]);
+            return $stmt->rowCount() > 0;
+        } catch (Throwable $e) { return false; }
+    }
+}
+
+if (!function_exists('mirza_emoji_chip_meta')) {
+    function mirza_emoji_chip_meta(array $row): array
+    {
+        $name = trim((string) ($row['emoji_name'] ?? ''));
+        $slug = trim((string) ($row['emoji_slug'] ?? ''));
+        $placeholder = mirza_emoji_placeholder($row);
+        $label = $name !== '' ? $name : ($slug !== '' ? $slug : 'emoji');
+        $titleParts = array_filter([$label, ($slug !== '' && $slug !== $name) ? $slug : '', $placeholder]);
+        return ['label' => $label, 'slug' => $slug, 'placeholder' => $placeholder, 'title' => implode(' · ', $titleParts)];
+    }
+}
+
+if (!function_exists('mirza_resolve_btn_label')) {
+    function mirza_resolve_btn_label(string $raw): array
+    {
+        try {
+            if (strpos($raw, '{emoji:') === false) {
+                return ['text' => $raw, 'icon' => ''];
+            }
+            $icon = '';
+            $used = false;
+            $text = preg_replace_callback('/\{emoji:([^}]+)\}/u', function ($m) use (&$icon, &$used) {
+                try { $row = mirza_emoji_lookup(trim($m[1])); } catch (Throwable $e) { return ''; }
+                if (!$row || empty($row['custom_emoji_id'])) return '';
+                if (!$used) {
+                    $used = true;
+                    $icon = (string) $row['custom_emoji_id'];
+                }
+                return '';
+            }, $raw);
+            $text = trim(preg_replace('/\s{2,}/u', ' ', (string) $text));
+            return ['text' => $text, 'icon' => $icon];
+        } catch (Throwable $e) {
+            return ['text' => $raw, 'icon' => ''];
+        }
+    }
+}
+
+if (!function_exists('mirza_resolve_btn_emoji_field')) {
+    function mirza_resolve_btn_emoji_field($raw): string
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') return '';
+        if (preg_match('/^\d{1,32}$/', $raw)) return $raw;
+        if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $raw, $m)) return $m[1];
+        if (preg_match('/^\{emoji:([^}]+)\}$/u', $raw, $m)) {
+            try { $row = mirza_emoji_lookup(trim($m[1])); } catch (Throwable $e) { return ''; }
+            if ($row && !empty($row['custom_emoji_id'])) return (string) $row['custom_emoji_id'];
+        }
+        return '';
+    }
+}
+
+if (!function_exists('mirza_render_text_emoji')) {
+    function mirza_render_text_emoji(string $text): string
+    {
+        try {
+            if (strpos($text, '{emoji:') === false) return $text;
+            return (string) preg_replace_callback('/\{emoji:([^}]+)\}/u', function ($m) {
+                try { $row = mirza_emoji_lookup(trim($m[1])); } catch (Throwable $e) { return ''; }
+                if (!$row || empty($row['custom_emoji_id'])) return '';
+                $id = (string) $row['custom_emoji_id'];
+                $fb = trim((string) ($row['emoji_utf8'] ?? ''));
+                if ($fb === '') $fb = '•';
+                return '<tg-emoji emoji-id="' . $id . '">' . $fb . '</tg-emoji>';
+            }, $text);
+        } catch (Throwable $e) { return $text; }
+    }
+}
+
+if (!function_exists('mirza_strip_placeholders')) {
+    function mirza_strip_placeholders(string $text): string
+    {
+        try {
+            if (strpos($text, '{emoji:') === false) return $text;
+            $out = preg_replace('/\{emoji:[^}]+\}/u', '', $text);
+            $out = trim(preg_replace('/\s{2,}/u', ' ', (string) $out));
+            return $out;
+        } catch (Throwable $e) { return $text; }
+    }
+}
+
+if (!function_exists('mirza_render_markup_emoji')) {
+    function mirza_render_markup_emoji(string $json): string
+    {
+        try {
+            if (strpos($json, '{emoji:') === false) return $json;
+            $markup = json_decode($json, true);
+            if (!is_array($markup)) return $json;
+            $changed = false;
+            foreach (['keyboard', 'inline_keyboard'] as $mkey) {
+                if (!isset($markup[$mkey]) || !is_array($markup[$mkey])) continue;
+                foreach ($markup[$mkey] as $rk => $row) {
+                    if (!is_array($row)) continue;
+                    foreach ($row as $bk => $btn) {
+                        if (!is_array($btn) || !isset($btn['text']) || !is_string($btn['text'])) continue;
+                        if (strpos($btn['text'], '{emoji:') === false) continue;
+                        $r = mirza_resolve_btn_label($btn['text']);
+                        $btn['text'] = $r['text'] !== '' ? $r['text'] : $btn['text'];
+                        if ($r['icon'] !== '' && !isset($btn['icon_custom_emoji_id'])) {
+                            $btn['icon_custom_emoji_id'] = $r['icon'];
+                        }
+                        $markup[$mkey][$rk][$bk] = $btn;
+                        $changed = true;
+                    }
+                }
+            }
+            if (!$changed) return $json;
+            $enc = json_encode($markup, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return $enc === false ? $json : $enc;
+        } catch (Throwable $e) { return $json; }
+    }
+}
+
+if (!function_exists('mirza_strip_markup_placeholders')) {
+    function mirza_strip_markup_placeholders(string $json): string
+    {
+        try {
+            if (strpos($json, '{emoji:') === false) return $json;
+            $markup = json_decode($json, true);
+            if (!is_array($markup)) return $json;
+            $changed = false;
+            foreach (['keyboard', 'inline_keyboard'] as $mkey) {
+                if (!isset($markup[$mkey]) || !is_array($markup[$mkey])) continue;
+                foreach ($markup[$mkey] as $rk => $row) {
+                    if (!is_array($row)) continue;
+                    foreach ($row as $bk => $btn) {
+                        if (!is_array($btn) || !isset($btn['text']) || !is_string($btn['text'])) continue;
+                        if (strpos($btn['text'], '{emoji:') === false) continue;
+                        $btn['text'] = mirza_strip_placeholders($btn['text']);
+                        unset($btn['icon_custom_emoji_id']);
+                        $markup[$mkey][$rk][$bk] = $btn;
+                        $changed = true;
+                    }
+                }
+            }
+            if (!$changed) return $json;
+            $enc = json_encode($markup, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return $enc === false ? $json : $enc;
+        } catch (Throwable $e) { return $json; }
+    }
+}
+
+if (!function_exists('mirza_style_btn')) {
+    function mirza_style_btn($text, $callback_data, $row = []): array
+    {
+        try {
+            if (!is_array($row)) $row = [];
+            $resolved = mirza_resolve_btn_label((string) $text);
+            $label = $resolved['text'] !== '' ? $resolved['text'] : (string) $text;
+            $btn = ['text' => $label, 'callback_data' => (string) $callback_data];
+            if ($resolved['icon'] !== '') {
+                $btn['icon_custom_emoji_id'] = $resolved['icon'];
+            } else {
+                $emoji = mirza_resolve_btn_emoji_field($row['btn_emoji_id'] ?? '');
+                if ($emoji !== '') $btn['icon_custom_emoji_id'] = $emoji;
+            }
+            $style = mirza_btn_style($row['btn_style'] ?? '');
+            if ($style !== '') $btn['style'] = $style;
+            return $btn;
+        } catch (Throwable $e) {
+            return ['text' => (string) $text, 'callback_data' => (string) $callback_data];
+        }
+    }
+}
+
+if (!function_exists('mirza_menu_emoji_map')) {
+    function mirza_menu_emoji_map($pdo = null): array
+    {
+        try {
+            $pdo = $pdo instanceof PDO ? $pdo : ($GLOBALS['pdo'] ?? null);
+            if (!($pdo instanceof PDO)) return [];
+            $stmt = $pdo->query("SELECT NamePay, ValuePay FROM PaySetting WHERE NamePay LIKE 'nx\\_emoji\\_%' ESCAPE '\\'");
+            $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            $map = [];
+            foreach ($rows as $r) {
+                $k = trim((string) ($r['NamePay'] ?? ''));
+                $v = trim((string) ($r['ValuePay'] ?? ''));
+                if (strpos($k, 'nx_emoji_') === 0 && $v !== '') {
+                    $map[substr($k, 9)] = $v;
+                }
+            }
+            return $map;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+}
+
+if (!function_exists('mirza_apply_menu_emoji')) {
+    function mirza_apply_menu_emoji(array $rows, array $labels = []): array
+    {
+        try {
+            $flip = [];
+            foreach ($labels as $k => $v) {
+                if (is_string($v) && $v !== '' && !isset($flip[$v])) {
+                    $flip[$v] = $k;
+                }
+            }
+            $map = mirza_menu_emoji_map();
+            if ($map === []) return $rows;
+            foreach ($rows as $rk => $row) {
+                if (!is_array($row)) continue;
+                foreach ($row as $bk => $btn) {
+                    if (!is_array($btn) || !isset($btn['text']) || !is_string($btn['text'])) continue;
+                    $key = $flip[$btn['text']] ?? null;
+                    if ($key === null || !isset($map[$key])) continue;
+                    $ref = $map[$key];
+                    $icon = '';
+                    $char = '';
+                    if (preg_match('/^\d{1,32}$/', $ref)) {
+                        $icon = $ref;
+                    } elseif (preg_match('/^\{emoji:([^}]+)\}$/u', $ref, $mm)) {
+                        try { $erow = mirza_emoji_lookup(trim($mm[1])); } catch (Throwable $e) { $erow = null; }
+                        if ($erow && !empty($erow['custom_emoji_id'])) {
+                            $icon = (string) $erow['custom_emoji_id'];
+                            $char = trim((string) ($erow['emoji_utf8'] ?? ''));
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    if (isset($btn['callback_data']) || isset($btn['url'])) {
+                        if ($icon !== '' && !isset($btn['icon_custom_emoji_id'])) {
+                            $btn['icon_custom_emoji_id'] = $icon;
+                            $rows[$rk][$bk] = $btn;
+                        }
+                    } elseif ($char !== '' && strpos($btn['text'], $char) !== 0) {
+                        $btn['text'] = $char . ' ' . $btn['text'];
+                        $rows[$rk][$bk] = $btn;
+                    }
+                }
+            }
+            return $rows;
+        } catch (Throwable $e) {
+            return $rows;
+        }
+    }
+}
+
+if (!function_exists('mirza_agent_setpass')) {
+    function mirza_agent_setpass(string $id, string $pass): string
+    {
+        $id = trim($id);
+        if (!preg_match('/^\d+$/', $id)) return 'آیدی عددی معتبر نیست.';
+        if (mb_strlen($pass) < 4) return 'رمز حداقل ۴ کاراکتر باشد.';
+        $pdo = $GLOBALS['pdo'] ?? null;
+        if (!($pdo instanceof PDO)) return 'دیتابیس در دسترس نیست.';
+        try {
+            $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            $hash = password_hash($pass, PASSWORD_DEFAULT);
+            if (!is_string($hash)) return 'خطا در ساخت رمز.';
+            $stmt = $pdo->prepare('INSERT INTO agent_auth (id_user, pass_hash, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE pass_hash = VALUES(pass_hash), created_at = VALUES(created_at)');
+            $stmt->execute([$id, $hash, time()]);
+            return '';
+        } catch (Throwable $e) {
+            error_log('mirza_agent_setpass: ' . $e->getMessage());
+            return 'خطای دیتابیس.';
+        }
+    }
+}
