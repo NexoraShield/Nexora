@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 require_once 'vendor/autoload.php';
 require 'config.php';
 ini_set('error_log', 'error_log');
 
-const MIN_PHP_VERSION = '8.5.12';
+const MIN_PHP_VERSION = '8.2.0';
 
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
@@ -746,7 +746,7 @@ function cubepayFeeValue()
 {
     $raw = select("PaySetting", "ValuePay", "NamePay", "feeternado", "select")['ValuePay'] ?? '0';
 
-    return (float) str_replace([',', '،'], '', (string) $raw);
+    return (float) str_replace([',', 'ØŒ'], '', (string) $raw);
 }
 function cubepayApplyFee($base, $fee)
 {
@@ -1559,7 +1559,7 @@ function savedata($type, $namefiled, $valuefiled)
     } elseif ($type == "save") {
         $userdata = select("user", "*", "id", $from_id, "select");
         // Processing_value must be a JSON object string. It can also be null, "", or a
-        // plain scalar left over from older flows — those decode to null/int/string.
+        // plain scalar left over from older flows â€” those decode to null/int/string.
         $dataperevieos = json_decode((string) ($userdata['Processing_value'] ?? ''), true);
         if (!is_array($dataperevieos)) {
             $dataperevieos = [];
@@ -1617,7 +1617,7 @@ function finishAddPanel()
     $stmt->execute($panelData);
     $pdo->prepare("UPDATE marzban_panel SET display_order = id WHERE id = ?")->execute([$pdo->lastInsertId()]);
     step("home", $from_id);
-    sendmessage($from_id, $textbotlang['Admin']['managepanel']['addedPanel'] . " 🥳", $keyboardadmin, 'HTML');
+    sendmessage($from_id, $textbotlang['Admin']['managepanel']['addedPanel'] . " ðŸ¥³", $keyboardadmin, 'HTML');
     $panelNotes = [
         "x-ui_single" => "noteSetInboundAndDomain",
         "marzban" => "noteSetProtocolInbound",
