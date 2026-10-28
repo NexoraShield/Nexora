@@ -140,6 +140,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('edit') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['bottextPageTitle'] ?></span>
           </a>
+          <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
+            title="دکمه‌های ربات">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">دکمه‌های ربات</span>
+          </a>
         </div>
         <div class="nav-section">
           <div class="nav-heading"><?= $textbotlang['panel']['layoutSidebarToggleLabel'] ?></div>

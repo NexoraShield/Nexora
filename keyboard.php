@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/nexora_style.php';
 $setting = select("setting", "*", null, null, "select");
 $textbotlang = languagechange();
 //-----------------------------[  text panel  ]-------------------------------
@@ -119,6 +120,9 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
     $keyboard = ['inline_keyboard' => []];
     $keyboardcustom = $trace_keyboard;
     $keyboardcustom = applyKeyboardLabels($keyboardcustom, $replacements);
+    if (function_exists('nexora_apply_menu_emoji')) {
+        $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
+    }
     $keyboardcustom[] = $temp_addtional_key;
     $keyboard['inline_keyboard'] = $keyboardcustom;
     $keyboard = json_encode($keyboard);
@@ -129,6 +133,9 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
     $keyboard = ['keyboard' => [], 'resize_keyboard' => true];
     $keyboardcustom = $keyboardRows;
     $keyboardcustom = applyKeyboardLabels($keyboardcustom, $replacements);
+    if (function_exists('nexora_apply_menu_emoji')) {
+        $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
+    }
     $keyboardcustom[] = $temp_addtional_key;
     $keyboard['keyboard'] = $keyboardcustom;
     $keyboard = json_encode($keyboard);
@@ -892,9 +899,9 @@ if ($panelcount > 10) {
         if ($result['type'] == "Manualsale" && empty($manualsellCounts[$result['code_panel']]))
             continue;
         if ($users['step'] == "getusernameinfo") {
-            $temp_row[] = ['text' => $result['name_panel'], 'callback_data' => "locationnotuser_{$result['code_panel']}"];
+            $temp_row[] = nexora_style_btn($result['name_panel'], "locationnotuser_{$result['code_panel']}", $result);
         } else {
-            $temp_row[] = ['text' => $result['name_panel'], 'callback_data' => "location_{$result['code_panel']}"];
+            $temp_row[] = nexora_style_btn($result['name_panel'], "location_{$result['code_panel']}", $result);
         }
         if (count($temp_row) == 2) {
             $list_marzban_panel_users['inline_keyboard'][] = $temp_row;
@@ -912,11 +919,11 @@ if ($panelcount > 10) {
             continue;
         if ($users['step'] == "getusernameinfo") {
             $list_marzban_panel_users['inline_keyboard'][] = [
-                ['text' => $result['name_panel'], 'callback_data' => "locationnotuser_{$result['code_panel']}"]
+                nexora_style_btn($result['name_panel'], "locationnotuser_{$result['code_panel']}", $result)
             ];
         } else {
             $list_marzban_panel_users['inline_keyboard'][] = [
-                ['text' => $result['name_panel'], 'callback_data' => "location_{$result['code_panel']}"]
+                nexora_style_btn($result['name_panel'], "location_{$result['code_panel']}", $result)
             ];
         }
     }
@@ -944,7 +951,7 @@ foreach ($activePanelRows as $result) {
     if ($result['hide_user'] != null and in_array($from_id, json_decode($result['hide_user'], true)))
         continue;
     $list_marzban_panel_users_om['inline_keyboard'][] = [
-        ['text' => $result['name_panel'], 'callback_data' => "locationom_{$result['code_panel']}"]
+        nexora_style_btn($result['name_panel'], "locationom_{$result['code_panel']}", $result)
     ];
 }
 $list_marzban_panel_users_om['inline_keyboard'][] = [
@@ -962,7 +969,7 @@ if ($panelcount > 10) {
         if ($result['hide_user'] != null && in_array($from_id, json_decode($result['hide_user'], true)))
             continue;
 
-        $temp_row[] = ['text' => $result['name_panel'], 'callback_data' => "changelocselectlo-{$result['code_panel']}"];
+        $temp_row[] = nexora_style_btn($result['name_panel'], "changelocselectlo-{$result['code_panel']}", $result);
         if (count($temp_row) == 2) {
             $list_marzban_panel_users_change['inline_keyboard'][] = $temp_row;
             $temp_row = [];
@@ -978,7 +985,7 @@ if ($panelcount > 10) {
         if ($result['hide_user'] != null and in_array($from_id, json_decode($result['hide_user'], true)))
             continue;
         $list_marzban_panel_users_change['inline_keyboard'][] = [
-            ['text' => $result['name_panel'], 'callback_data' => "changelocselectlo-{$result['code_panel']}"]
+            nexora_style_btn($result['name_panel'], "changelocselectlo-{$result['code_panel']}", $result)
         ];
     }
 }
@@ -996,7 +1003,7 @@ foreach ($allPanelRows as $result) {
     if ($result['hide_user'] != null and in_array($from_id, json_decode($result['hide_user'], true)))
         continue;
     $list_marzban_panel_usertest['inline_keyboard'][] = [
-        ['text' => $result['name_panel'], 'callback_data' => "locationtest_{$result['code_panel']}"]
+        nexora_style_btn($result['name_panel'], "locationtest_{$result['code_panel']}", $result)
     ];
 }
 $list_marzban_panel_usertest['inline_keyboard'][] = [
@@ -1331,6 +1338,9 @@ function KeyboardProduct($location, $query, $pricediscount, $datakeyboard, $stat
     global $pdo, $textbotlang, $from_id;
     $product = ['inline_keyboard' => []];
     $statusshowprice = select("shopSetting", "*", "Namevalue", "statusshowprice", "select")['value'];
+    if (stripos($query, 'ORDER BY') === false) {
+        $query .= ' ORDER BY id ASC';
+    }
     $stmt = $pdo->prepare($query);
     $stmt->execute($queryParams);
     if ($valuetow != null) {
@@ -1363,12 +1373,12 @@ function KeyboardProduct($location, $query, $pricediscount, $datakeyboard, $stat
         }
         if ($result['status_product'] == "disable" && str_starts_with($datakeyboard, "prodcutservice")) {
             $product['inline_keyboard'][] = [
-                ['text' => $result['name_product'] . " | " . $textbotlang['keyboard']['productSoldOut'], 'callback_data' => "productsoldout"]
+                nexora_style_btn($result['name_product'] . " | " . $textbotlang['keyboard']['productSoldOut'], "productsoldout", $result)
             ];
             continue;
         }
         $product['inline_keyboard'][] = [
-            ['text' => $result['name_product'], 'callback_data' => "{$datakeyboard}{$result['code_product']}{$valuetow}"]
+            nexora_style_btn($result['name_product'], "{$datakeyboard}{$result['code_product']}{$valuetow}", $result)
         ];
     }
     if ($statuscustom)
@@ -1396,7 +1406,7 @@ function KeyboardCategory($location, $agent, $backuser = "backuser")
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         if (empty($categoryCounts[mb_strtolower(trim((string) $row['remark']), 'UTF-8')]))
             continue;
-        $list_category['inline_keyboard'][] = [['text' => $row['remark'], 'callback_data' => "categorynames_" . $row['id']]];
+        $list_category['inline_keyboard'][] = [[nexora_style_btn($row['remark'], "categorynames_" . $row['id'], $row)]];
     }
     $list_category['inline_keyboard'][] = [
         ['text' => $textbotlang['keyboard']['backToPreviousMenu'], "callback_data" => $backuser],
