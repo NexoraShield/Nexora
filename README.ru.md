@@ -107,8 +107,21 @@ nexora update
 ## 💖 Поддержать проект
 
 Если вам нравится проект, поддержите разработку небольшим донатом:
-- **Telegram:** @Nexora_supp
+
+### Криптовалюта (USDT TRC20 / TRX)
+```
+TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
+```
+
+### Telegram
+- **Stars/Gifts:** @Nexora_supp
 - **Website:** NexoraShield.tr
+
+### Другие способы
+- **Email:** info@NexoraShield.tr
+- **Поддержка:** @Nexora_supp
+
+Ваша поддержка помогает развивать этот бесплатный проект! 🙏
 
 ## 📄 Лицензия
 

@@ -130,8 +130,21 @@ sudo bash install.sh
 ## 💖 حمایت مالی
 
 اگر از این پروژه راضی هستید، با یک دونیت کوچک به ادامه توسعه کمک کنید:
-- **Telegram:** @Nexora_supp
-- **Website:** NexoraShield.tr
+
+### ارز دیجیتال (USDT TRC20 / TRX)
+```
+TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
+```
+
+### تلگرام
+- **ستاره/گیفت:** @Nexora_supp
+- **وبسایت:** NexoraShield.tr
+
+### سایر روش‌ها
+- **ایمیل:** info@NexoraShield.tr
+- **پشتیبانی:** @Nexora_supp
+
+حمایت شما به ادامه توسعه این پروژه رایگان کمک می‌کند! 🙏
 
 ## 📄 لایسنس
 

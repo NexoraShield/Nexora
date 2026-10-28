@@ -204,8 +204,17 @@ This project is licensed under the MIT License.
 
 If you find this project useful, please consider supporting its development:
 
-- **Telegram:** @Nexora_supp
-- **Website:** NexoraShield.tr
-- **Crypto/Other:** Contact @Nexora_supp for donation details
+### Crypto (USDT TRC20 / TRX)
+```
+TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
+```
 
-Your support helps keep this project free and maintained!
+### Telegram
+- **Stars/Gifts:** @Nexora_supp
+- **Website:** NexoraShield.tr
+
+### Other
+- **Email:** info@NexoraShield.tr
+- **Support:** @Nexora_supp
+
+Your support helps keep this project free and maintained! 🙏

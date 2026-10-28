@@ -107,8 +107,21 @@ nexora update
 ## 💖 支持项目
 
 如果您喜欢这个项目，请考虑小额捐赠支持开发：
-- **Telegram:** @Nexora_supp
+
+### 加密货币 (USDT TRC20 / TRX)
+```
+TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
+```
+
+### Telegram
+- **Stars/Gifts:** @Nexora_supp
 - **Website:** NexoraShield.tr
+
+### 其他方式
+- **Email:** info@NexoraShield.tr
+- **Support:** @Nexora_supp
+
+您的支持帮助这个免费项目继续发展！ 🙏
 
 ## 📄 许可证
 
