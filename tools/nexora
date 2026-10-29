@@ -52,13 +52,44 @@ do_update() {
     title
     echo -e "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}"
     hr
+    echo -e "  ${DIM}Fetching available versions...${RESET}"
+    local versions=()
+    while IFS= read -r t; do
+        [[ -z "$t" ]] && continue
+        versions+=("$t")
+    done < <(git ls-remote --tags https://github.com/NexoraShield/Nexora.git 2>/dev/null | sed 's#.*refs/tags/##' | grep -v '\^{}' | sort -rV | head -20)
+    echo ""
+    echo -e "  ${BOLD}Choose version to install:${RESET}"
+    echo -e "  ${BOLD}0)${RESET} ${GREEN}Latest (main)${RESET}  - newest release"
+    local i=1
+    for v in "${versions[@]}"; do
+        echo -e "  ${BOLD}$i)${RESET} $v"
+        i=$((i+1))
+    done
+    echo -e "  ${BOLD}b)${RESET} Back"
+    echo ""
+    echo -n "  ${BOLD}Select [0-${#versions[@]}/b]: ${RESET}"
+    read -r vchoice
+    [[ "$vchoice" == "b" || "$vchoice" == "B" ]] && return 0
+    local ref="main"
+    if [[ "$vchoice" =~ ^[0-9]+$ ]] && (( vchoice >= 1 && vchoice <= ${#versions[@]} )); then
+        ref="${versions[$((vchoice-1))]}"
+    fi
+    echo ""
+    echo -e "  ${DIM}Selected: ${ref}${RESET}"
     local tmpd
     tmpd=$(mktemp -d)
     trap 'rm -rf "$tmpd"' RETURN
-    echo -e "  ${DIM}Downloading latest update...${RESET}"
-    if ! curl -fsSL https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh -o "$tmpd/nexora-update.sh" 2>/dev/null; then
-        echo -e "  ${RED}Download failed. Check internet connection.${RESET}"
-        pause; return 1
+    local url
+    if [[ "$ref" == "main" ]]; then
+        url="https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+    else
+        url="https://raw.githubusercontent.com/NexoraShield/Nexora/${ref}/nexora-update.sh"
+    fi
+    echo -e "  ${DIM}Downloading update ($ref)...${RESET}"
+    if ! curl -fsSL "$url" -o "$tmpd/nexora-update.sh" 2>/dev/null; then
+        echo -e "  ${RED}Download failed for $ref. Trying latest...${RESET}"
+        curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$tmpd/nexora-update.sh" 2>/dev/null || { echo -e "  ${RED}Download failed.${RESET}"; pause; return 1; }
     fi
     chmod +x "$tmpd/nexora-update.sh"
     echo -e "  ${DIM}Running update (single progress bar)...${RESET}"
