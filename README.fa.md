@@ -1,9 +1,11 @@
 ﻿# Nexora Bot 🤖
 
-[![English](https://img.shields.io/badge/🇬🇧-English-blue)](README.md)
-[![فارسی](https://img.shields.io/badge/🇮🇷-فارسی-green)](README.fa.md)
-[![Русский](https://img.shields.io/badge/🇷🇺-Русский-red)](README.ru.md)
-[![中文](https://img.shields.io/badge/🇨🇳-中文-yellow)](README.zh.md)
+<p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/🇬🇧_English-blue?style=for-the-badge" alt="English" height="32"></a>
+  <a href="README.fa.md"><img src="https://img.shields.io/badge/🇮🇷_فارسی-green?style=for-the-badge" alt="فارسی" height="32"></a>
+  <a href="README.ru.md"><img src="https://img.shields.io/badge/🇷🇺_Русский-red?style=for-the-badge" alt="Русский" height="32"></a>
+  <a href="README.zh.md"><img src="https://img.shields.io/badge/🇨🇳_中文-yellow?style=for-the-badge" alt="中文" height="32"></a>
+</p>
 
 **Nexora** یک ربات تلگرامی رایگان و متن‌باز برای فروش و مدیریت VPN است. با PHP نوشته شده و از پنل‌های مختلف VPN (Marzban, Marzneshin, X-UI, Hiddify, WGDashboard, MikroTik, IBSng و غیره) پشتیبانی می‌کند. دارای ایموجی پریمیوم، تم شیشه‌ای، و درگاه پرداخت FrenzyEx.
 
@@ -67,6 +69,66 @@ $domainhosts = 'your-domain.com';
 $usernamebot = 'your_bot_username';
 ```
 
+## 🔄 مهاجرت از ربات‌های دیگر
+
+### از ربات Mirza
+اگر یک نصب **Mirza** موجود دارید، می‌توانید با یک دستور به Nexora مهاجرت کنید. تمام کاربران، موجودی‌ها، فاکتورها، محصولات و داده‌های پنل شما حفظ می‌شوند.
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-mirza.sh)
+```
+
+اسکریپت:
+1. نصب Mirza شما را به‌صورت خودکار شناسایی می‌کند
+2. از دیتابیس و config بکاپ می‌گیرد
+3. آخرین نسخهٔ Nexora را دانلود می‌کند
+4. تمام فایل‌ها را جایگزین می‌کند (config.php و داده‌های شما حفظ می‌شوند)
+
+### از ربات ViraNaut
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-viranaut.sh)
+```
+
+## 📁 ساختار پروژه
+
+```
+Nexora/
+├── index.php              # نقطهٔ ورود بات (webhook)
+├── admin.php              # رابط بات ادمین
+├── function.php           # توابع اصلی
+├── keyboard.php           # تولید کیبورد
+├── nexora_style.php       # توابع style و emoji
+├── panels.php             # مدیریت پنل
+├── config.php             # پیکربندی (دستی)
+├── panel/                 # پنل وب
+│   ├── index.php          # داشبورد
+│   ├── login.php          # ورود
+│   ├── emojis.php         # مدیریت ایموجی پریمیوم
+│   ├── btnstyle.php       # مدیریت رنگ/ایموجی دکمه‌ها
+│   ├── panels.php         # مدیریت پنل‌ها
+│   ├── health.php         # بررسی سلامت
+│   ├── export.php         # خروجی CSV
+│   ├── textemojis.php     # ایموجی دکمه‌های منو
+│   ├── bottext.php        # ویرایشگر متن بات
+│   ├── frenzyex.php       # تنظیمات درگاه FrenzyEx
+│   └── ...
+├── payment/               # درگاه‌های پرداخت
+│   ├── frenzyex.php       # handler callback FrenzyEx
+│   └── ...
+├── cronbot/               # کارهای cron
+│   ├── frenzyex.php       # polling FrenzyEx
+│   ├── nudge_unpaid.php   # یادآوری فاکتورهای پرداخت‌نشده
+│   └── ...
+├── agent-panel/           # پنل نمایندگی/عامل
+├── app/                   # مینی اپ
+├── db/                    # schema و migrationهای دیتابیس
+├── lang/                  # فایل‌های زبان (fa, en, ru, zh)
+├── tools/                 # اسکریپت‌های کمکی
+├── install.sh             # نصب‌کننده
+├── migrate.php            # migration دیتابیس
+└── README.md              # این فایل
+```
+
 ## 🔧 دستورات CLI
 
 بعد از نصب، از دستور `nexora` استفاده کنید:
@@ -118,6 +180,10 @@ cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
+## 📱 مینی اپ
+
+Nexora شامل یک تلگرام مینی اپ است. آن را در BotFather پیکربندی کنید و به دامنهٔ خود اشاره دهید.
+
 ## 📞 پشتیبانی
 
 - **ربات:** @NexoraShield_bot
@@ -145,6 +211,10 @@ TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
 - **پشتیبانی:** @Nexora_supp
 
 حمایت شما به ادامه توسعه این پروژه رایگان کمک می‌کند! 🙏
+
+## 🤝 مشارکت
+
+مشارکت‌ها خوش‌آمد هستند! لطفاً یک issue باز کنید یا pull request ارسال کنید.
 
 ## 📄 لایسنس
 
