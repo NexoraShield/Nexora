@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/inc/auth.php';
@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'آیدی یا رمز اشتباه است.';
         }
         sleep(1);
+    }
 }
 ?>
 <!DOCTYPE html>
