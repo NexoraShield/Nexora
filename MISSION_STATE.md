@@ -11,7 +11,7 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 Phase 7 — Security hardening + regression fixes + runtime color/emoji wiring audit + payment integrity (P0–P2).
 
 ## Last successful checkpoint
-**v1.9.5 (00edfa4)** — committed + pushed to origin/main + tag v1.9.5 pushed.
+**v1.9.6 (bf39526)** — committed + pushed to origin/main + tag v1.9.6 pushed. (v1.9.5 color/emoji prefix-match fallback also committed/tagged/pushed.)
 Fix: nx_bb_* color/emoji now resolve for menu buttons whose label was prefixed
 with an emoji glyph by nexora_apply_menu_emoji (tolerant prefix-match fallback
 in nexora_apply_bb_style). php -l clean; regression test: 6/6 cases pass.
@@ -31,6 +31,7 @@ in nexora_apply_bb_style). php -l clean; regression test: 6/6 cases pass.
 - v1.9.3 (7fb8d4d): agent-login brute-force throttle (5 attempts / 300s, DB counter, reset on success)
 - v1.9.4 (bc10789): fixed unclosed braces / BOM / undefined-constant ?? in agent-panel auth.php+login.php
 - v1.9.5 (00edfa4): FIXED nx_bb_* color/emoji on emoji-prefixed menu buttons (prefix-match fallback in nexora_apply_bb_style) + refreshed MISSION_STATE
+- v1.9.6 (bf39526): prevented double-credit on re-entrant DirectPayment — already-settled order now returns without addBalance (was re-crediting); php -l clean.
 
 ## P0/P1 audit findings
 - nexora_apply_menu_emoji DOES exist (nexora_style.php:406); wired in keyboard.php
@@ -40,25 +41,33 @@ in nexora_apply_bb_style). php -l clean; regression test: 6/6 cases pass.
 - Agent-panel auth.php (42/42 braces), login.php (32/32 braces), BOM stripped,
   constants guarded with defined() ? : default -> v1.9.4.
 
-## Outstanding (P1/P2) — next targets
-- P1: payment callback idempotency (duplicate successful_payment / Confirm_pay).
-  admin.php:1740 has `NOT IN ('paid','reject')` guard on Payment_report UPDATE, but
-  downstream invoice/subscription/wallet mutations must be confirmed idempotent. IN PROGRESS.
-- P1: agent invoice -> subscription -> delivery trace. TODO.
-- P2: invoice.Status vs status casing inconsistency (MySQL case-insensitive so it runs,
-  but admin.php uses both `status` and `Status`; cronbot too). Normalize. TODO.
-- P3: RELEASE_NOTES.md missing v1.8.0–v1.9.5 entries (only goes to v1.7.0). TODO.
+## Resolved (P1) — payment integrity
+- Payment callback idempotency: VERIFIED. Every gateway callback (nowpayment.php,
+  variza_webhook.php, zarinpal.php, iranpay1/2/4, aqayepardakht.php, plisio.php,
+  Telegram inline index.php:101) gates DirectPayment() behind claimPaymentPaid()
+  (conditional `UPDATE ... WHERE payment_Status <> 'paid'`). DirectPayment itself
+  also refuses to re-credit on an already-settled order (v1.9.6).
+- Agent invoice -> subscription -> delivery traced via DirectPayment()
+  (function.php:1031+): load Payment_report+user -> paymentOrder link -> wallet
+  math (addBalance/deductBalance) -> reset Processing_value -> marzban service
+  creation -> sendMessageService delivery -> invoice update + discount code
+  consumption + channel report.
+
+## Outstanding (P2) — deferred / low-risk
+- invoice.Status vs status casing inconsistency (cosmetic on MySQL case-insensitive
+  columns; not changed to avoid gratuitous churn).
+- RELEASE_NOTES.md missing v1.8.0–v1.9.4 entries (v1.9.5 backfilled).
 
 ## Test results
 - PHP 8.x CLI at %TEMP%\php_lint\php\php.exe (note: inside a `php` subfolder).
-- Lint OK: nexora_style.php, keyboard.php, agent-panel/inc/auth.php,
+- Lint OK: nexora_style.php, keyboard.php, function.php, agent-panel/inc/auth.php,
   agent-panel/login.php, agent-panel/index.php.
 - Regression (runtime color/emoji wiring): 6/6 cases pass (exact, emoji-prefixed,
   unknown-label, inline, plain, callback). Scratch test removed after verification.
 - No PHPUnit / test framework in repo.
 
 ## Current Git commit
-00edfa4 (v1.9.5 tip) — origin/main and v1.9.5 pushed.
+bf39526 (v1.9.6 tip) — origin/main + tag v1.9.6 pushed.
 
 ## Releases
-v0.9.1 … v1.9.5 (all tagged + pushed to origin).
+v0.9.1 … v1.9.6 (all tagged + pushed to origin).
