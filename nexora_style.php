@@ -5,11 +5,33 @@
  * are empty and no {emoji:} placeholders are used.
  */
 
+if (!function_exists('nexora_color_palette')) {
+    function nexora_color_palette(): array
+    {
+        return [
+            ''        => ['label' => 'پیش‌فرض', 'hex' => '#888888', 'native' => ''],
+            'primary' => ['label' => 'آبی', 'hex' => '#3390ec', 'native' => 'primary'],
+            'success' => ['label' => 'سبز', 'hex' => '#4fae4e', 'native' => 'success'],
+            'danger'  => ['label' => 'قرمز', 'hex' => '#e17076', 'native' => 'danger'],
+            'warning' => ['label' => 'نارنجی', 'hex' => '#f59e0b', 'native' => 'danger'],
+            'info'    => ['label' => 'آبی روشن', 'hex' => '#38bdf8', 'native' => 'primary'],
+            'purple'  => ['label' => 'بنفش', 'hex' => '#8a2be2', 'native' => 'primary'],
+            'pink'    => ['label' => 'صورتی', 'hex' => '#ec4899', 'native' => 'danger'],
+            'teal'    => ['label' => 'فیروزه‌ای', 'hex' => '#14b8a6', 'native' => 'success'],
+            'gray'    => ['label' => 'خاکستری', 'hex' => '#6b7280', 'native' => ''],
+        ];
+    }
+}
+if (!function_exists('nexora_color_slugs')) {
+    function nexora_color_slugs(): array { return array_keys(nexora_color_palette()); }
+}
 if (!function_exists('nexora_btn_style')) {
     function nexora_btn_style($style): string
     {
         $style = trim((string) $style);
-        return in_array($style, ['primary', 'success', 'danger'], true) ? $style : '';
+        $palette = nexora_color_palette();
+        if (!isset($palette[$style])) return '';
+        return $palette[$style]['native'];
     }
 }
 

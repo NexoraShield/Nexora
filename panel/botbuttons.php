@@ -7,7 +7,10 @@ if (is_file($__nexoraStyleLib)) {
 }
 require_auth();
 
-$STYLE_COLORS = ['primary' => '#3b82f6', 'success' => '#22c55e', 'danger' => '#ef4444'];
+$STYLE_COLORS = [];
+foreach (nexora_color_palette() as $slug => $info) {
+    if ($slug !== '') $STYLE_COLORS[$slug] = $info['hex'];
+}
 
 // Build a comprehensive list of "button" entries from multiple lang groups.
 // Each entry: storage key (sanitized, used for PaySetting nx_bb_*) + dotted path + default text.
@@ -43,7 +46,7 @@ $keyboardTexts = $textbotlang['keyboard'] ?? [];
 function nexora_bb_clean_style($v): string
 {
     $v = trim((string) $v);
-    return in_array($v, ['primary', 'success', 'danger'], true) ? $v : '';
+    return in_array($v, nexora_color_slugs(), true) ? $v : '';
 }
 function nexora_bb_clean_emoji($v): string
 {
@@ -189,10 +192,9 @@ if ($flashErr) { echo '<div class="card fade-up" style="margin-bottom:14px"><div
           <td><textarea name="btn_text" class="textarea ms-emoji-field" data-ms-max="3" dir="auto" rows="2" style="min-width:160px"><?= htmlspecialchars($curText) ?></textarea></td>
           <td>
             <select name="btn_style" class="select" style="min-width:90px">
-              <option value="" <?= $curStyle === '' ? 'selected' : '' ?>>پیش‌فرض</option>
-              <option value="primary" <?= $curStyle === 'primary' ? 'selected' : '' ?>>آبی</option>
-              <option value="success" <?= $curStyle === 'success' ? 'selected' : '' ?>>سبز</option>
-              <option value="danger" <?= $curStyle === 'danger' ? 'selected' : '' ?>>قرمز</option>
+              <?php foreach (nexora_color_palette() as $v => $info): ?>
+                <option value="<?= htmlspecialchars($v) ?>" <?= $curStyle === (string)$v ? 'selected' : '' ?>><?= htmlspecialchars($v === '' ? 'پیش‌فرض' : ($info['label'] ?? $v)) ?></option>
+              <?php endforeach; ?>
             </select>
           </td>
           <td><input type="text" name="btn_emoji" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:150px" placeholder="emoji id" value="<?= htmlspecialchars($curEmoji) ?>"></td>

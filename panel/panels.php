@@ -13,7 +13,7 @@ try {
     header('Location: panels.php');
     exit;
 }
-function nexora_panels_clean_style($v): string { $v = trim((string) $v); return in_array($v, ['primary', 'success', 'danger'], true) ? $v : ''; }
+function nexora_panels_clean_style($v): string { $v = trim((string) $v); return in_array($v, nexora_color_slugs(), true) ? $v : ''; }
 function nexora_panels_clean_emoji($v): string {
     $v = trim((string) $v);
     if ($v === '') return '';
@@ -59,7 +59,10 @@ if (function_exists('nexora_emoji_placeholder')) {
     }
 }
 include __DIR__ . '/inc/layout_head.php';
-$STYLE_COLORS = ['primary' => '#3390ec', 'success' => '#4fae4e', 'danger' => '#e17076'];
+$STYLE_COLORS = [];
+foreach (nexora_color_palette() as $slug => $info) {
+    if ($slug !== '') $STYLE_COLORS[$slug] = $info['hex'];
+}
 ?>
 <?php $flashOk = get_flash('success');
 $flashErr = get_flash('error'); ?>
@@ -95,10 +98,9 @@ $flashErr = get_flash('error'); ?>
           <td><input type="text" name="limit_panel" class="input" dir="ltr" style="max-width:70px" value="<?= htmlspecialchars($p['limit_panel'] ?? '') ?>"></td>
           <td>
             <select name="btn_style" class="select" style="min-width:80px">
-              <option value="" <?= $st === '' ? ' selected' : '' ?>>پیش‌فرض</option>
-              <option value="primary" <?= $st === 'primary' ? ' selected' : '' ?>>آبی</option>
-              <option value="success" <?= $st === 'success' ? ' selected' : '' ?>>سبز</option>
-              <option value="danger" <?= $st === 'danger' ? ' selected' : '' ?>>قرمز</option>
+              <?php foreach (nexora_color_palette() as $v => $info): ?>
+                <option value="<?= htmlspecialchars($v) ?>" <?= $st === (string)$v ? ' selected' : '' ?>><?= htmlspecialchars($v === '' ? 'پیش‌فرض' : ($info['label'] ?? $v)) ?></option>
+              <?php endforeach; ?>
             </select>
           </td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:150px" placeholder="emoji id" value="<?= htmlspecialchars($em) ?>"></td>

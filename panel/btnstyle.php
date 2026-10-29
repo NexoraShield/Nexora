@@ -7,7 +7,10 @@ if (is_file($__nexoraStyleLib)) {
 }
 require_auth();
 $STYLE_LABELS = ['' => 'پیش‌فرض', 'primary' => 'آبی', 'success' => 'سبز', 'danger' => 'قرمز'];
-$STYLE_COLORS = ['primary' => '#3390ec', 'success' => '#4fae4e', 'danger' => '#e17076'];
+$STYLE_COLORS = [];
+foreach (nexora_color_palette() as $slug => $info) {
+    if ($slug !== '') $STYLE_COLORS[$slug] = $info['hex'];
+}
 try {
     foreach (['product', 'category', 'marzban_panel'] as $t) {
         foreach ([['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']] as [$col, $def]) {
@@ -26,7 +29,7 @@ try {
 function nexora_btnstyle_clean_style($v): string
 {
     $v = trim((string) $v);
-    return in_array($v, ['primary', 'success', 'danger'], true) ? $v : '';
+    return in_array($v, nexora_color_slugs(), true) ? $v : '';
 }
 function nexora_btnstyle_clean_emoji($v): string
 {
@@ -85,11 +88,12 @@ function nexora_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
 
 function nexora_btnstyle_style_select($selected): string
 {
-    $opts = ['' => 'پیش‌فرض', 'primary' => 'آبی', 'success' => 'سبز', 'danger' => 'قرمز'];
     $h = '<select name="btn_style" class="select" style="min-width:90px">';
-    foreach ($opts as $v => $l) {
+    foreach (nexora_color_palette() as $v => $info) {
+        $label = $info['label'] ?? $v;
+        if ($v === '') $label = 'پیش‌فرض';
         $sel = ((string) $v === (string) $selected) ? ' selected' : '';
-        $h .= '<option value="' . htmlspecialchars($v) . '"' . $sel . '>' . htmlspecialchars($l) . '</option>';
+        $h .= '<option value="' . htmlspecialchars($v) . '"' . $sel . '>' . htmlspecialchars($label) . '</option>';
     }
     return $h . '</select>';
 }

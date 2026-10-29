@@ -47,7 +47,7 @@ if (is_array($keyboardLayout) && isset($keyboardLayout['keyboard']) && is_array(
 $agentPanelAllowed = $users['agent'] != "f";
 $agentRequestAllowed = $users['agent'] == "f";
 if (!empty($keyboardRows)) {
-    $allowed_btn_styles = ['primary', 'success', 'danger'];
+    $allowed_btn_styles = nexora_color_slugs();
     foreach ($keyboardRows as $kb_r => $kb_row) {
         if (!is_array($kb_row)) {
             continue;
