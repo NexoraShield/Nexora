@@ -43,7 +43,7 @@ while ($row = $stmt->fetch()) {
 }
 
 $page_title = 'مدیریت ایموجی پریمیوم';
-$activeNav = 'emojis';
+$activeNav = 'emoji_picker';
 
 include __DIR__ . '/inc/layout_head.php';
 ?>

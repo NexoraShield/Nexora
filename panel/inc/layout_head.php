@@ -140,6 +140,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('edit') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['bottextPageTitle'] ?></span>
           </a>
+          <a href="emoji_picker.php" class="nav-item <?= $activeNav === 'emoji_picker' ? 'active' : '' ?>"
+            title="انتخاب‌گر ایموجی پرمیوم">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">🎭 انتخاب‌گر ایموجی</span>
+          </a>
           <a href="maintenance.php" class="nav-item <?= $activeNav === 'maintenance' ? 'active' : '' ?>"
             title="حالت تعمیرات">
             <span class="nav-icon"><?= icon('settings') ?></span><span
