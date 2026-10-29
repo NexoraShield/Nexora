@@ -439,6 +439,21 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value_four", "0", "id", $from_id);
     step('home', $from_id);
     return;
+} elseif (preg_match('/^customapp_(\d+)/', $datain, $dataget)) {
+    deletemessage($from_id, $message_id);
+    $caid = (int)$dataget[1];
+    $ca = select("custom_apps", "*", "id", $caid, "select");
+    $back = json_encode(['inline_keyboard' => [[['text' => $textbotlang['users']['status']['backinfo'], 'callback_data' => "helpbtn"]]]]);
+    if (is_array($ca) && ($ca['status'] ?? '') === 'active') {
+        $txt = "📱 " . htmlspecialchars($ca['name'] ?? '') . "\n";
+        if (!empty($ca['platform'])) $txt .= "پلتفرم: " . htmlspecialchars($ca['platform']) . "\n";
+        if (!empty($ca['download_link'])) $txt .= "دانلود: " . htmlspecialchars($ca['download_link']) . "\n";
+        if (!empty($ca['tutorial'])) $txt .= "\n" . $ca['tutorial'];
+        sendmessage($from_id, $txt, $back, 'HTML');
+    } else {
+        sendmessage($from_id, "برنامه یافت نشد.", $back, 'HTML');
+    }
+    return;
 } elseif ($text == "/support" || $text == "support" || $text == "پشتیبانی") {
     sendmessage($from_id, "🎫 ارسال تیکت پشتیبانی\n\nلطفاً موضوع تیکت را وارد کنید:", null, 'html');
     step('support_subject', $from_id);
@@ -3244,6 +3259,23 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $helpidos['inline_keyboard'][] = [
                 ['text' => $textbotlang['keyboard']['appDownloadLink'], 'callback_data' => "linkappdownlod"],
             ];
+        }
+        // Custom apps & connection tutorials (from panel/custom_apps.php)
+        try {
+            $customApps = $pdo->query("SELECT * FROM custom_apps WHERE status = 'active' ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) { $customApps = []; }
+        foreach ($customApps as $ca) {
+            $label = trim(($ca['icon'] ?? '') . ' ' . ($ca['name'] ?? ''));
+            if ($label === '') continue;
+            if (!empty($ca['download_link'])) {
+                $helpidos['inline_keyboard'][] = [
+                    ['text' => $label, 'url' => $ca['download_link']]
+                ];
+            } else {
+                $helpidos['inline_keyboard'][] = [
+                    ['text' => $label, 'callback_data' => "customapp_{$ca['id']}"]
+                ];
+            }
         }
         $helpidos['inline_keyboard'][] = [
             ['text' => $textbotlang['users']['backmenu'], 'callback_data' => "backuser"],
