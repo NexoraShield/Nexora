@@ -32,6 +32,8 @@ try {
         'frenzyex_base_url' => 'https://frenzy.fastsnap.info',
         'frenzyex_callback_secret' => '',
         'cashbackfrenzyex' => '0',
+        'minbalancefrenzyex' => '20000',
+        'maxbalancefrenzyex' => '1000000',
     ];
     foreach ($frenzyDefaults as $name => $val) {
         $chk = $pdo->prepare("SELECT COUNT(*) FROM PaySetting WHERE NamePay = ?");

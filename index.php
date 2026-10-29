@@ -4861,7 +4861,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value", $balancelast, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment, 'HTML');
     step('get_step_payment', $from_id);
-} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "iranpay3", "digitaltron", "startelegrams"])) {
+} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "frenzyex", "iranpay1", "iranpay2", "iranpay4", "iranpay3", "digitaltron", "startelegrams"])) {
     if ($user['step'] == "get_step_payment_buy") {
         $pending_order = select("invoice", "*", "id_invoice", $user['Processing_value_one'], "select");
         if ($pending_order == false || $pending_order['Status'] != "unpaid") {
@@ -5024,6 +5024,49 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
         $message_id = sendmessage($from_id, $textnowpayments, $paymentkeyboard, 'HTML');
         updatePaymentMessageId($message_id, $randomString);
+    } elseif ($datain == "frenzyex") {
+        require_once __DIR__ . '/frenzyex_lib.php';
+        $fx_min = frenzyex_setting('minbalancefrenzyex', '20000');
+        $fx_max = frenzyex_setting('maxbalancefrenzyex', '1000000');
+        if ($user['Processing_value'] < $fx_min || $user['Processing_value'] > $fx_max) {
+            $fx_range_tpl = $textbotlang['users']['Balance']['depositRange']
+                ?? $textbotlang['extracted']['index_php']['depositAmountRange']
+                ?? 'مبلغ باید بین {mainbalance} تا {maxbalance} تومان باشد.';
+            sendmessage($from_id, strtr($fx_range_tpl, [
+                '{mainbalance}' => number_format($fx_min),
+                '{maxbalance}' => number_format($fx_max),
+            ]), null, 'HTML');
+            return;
+        }
+        deletemessage($from_id, $message_id);
+        sendmessage($from_id, $textbotlang['users']['Balance']['linkpayments'], $keyboard, 'HTML');
+        $fx_order = bin2hex(random_bytes(5));
+        $fx_pay = createPayFrenzyEx($user['Processing_value'], $fx_order);
+        if (empty($fx_pay['pay_url'])) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            step('home', $from_id);
+            error_log('FrenzyEx: no pay_url — ' . json_encode($fx_pay));
+            return;
+        }
+        $fx_invoice = "{$user['Processing_value_tow']}|{$user['Processing_value_one']}";
+        $fx_stmt = $pdo->prepare("INSERT INTO Payment_report (id_user,id_order,time,price,payment_Status,Payment_Method,id_invoice,dec_not_confirmed) VALUES (?,?,?,?,?,?,?,?)");
+        $fx_stmt->execute([
+            $from_id, $fx_order, date('Y/m/d H:i:s'), $user['Processing_value'],
+            "Unpaid", "frenzyex", $fx_invoice, (string) ($fx_pay['request_id'] ?? ''),
+        ]);
+        $fx_created_tpl = $textbotlang['users']['Balance']['invoiceCreated2']
+            ?? $textbotlang['hardcoded']['paymentInvoiceCreated2']
+            ?? "شماره سفارش: %s\nمبلغ: %s تومان";
+        sendmessage($from_id, sprintf(
+            $fx_created_tpl,
+            $fx_order,
+            number_format($user['Processing_value'], 0)
+        ), json_encode([
+            'inline_keyboard' => [[
+                ['text' => $textbotlang['users']['Balance']['payments'], 'url' => $fx_pay['pay_url']],
+            ]]
+        ]), 'HTML');
+
     } elseif ($datain == "zarinpal") {
         if ($user['Processing_value'] < 5000) {
             sendmessage($from_id, $textbotlang['users']['Balance']['zarinpal'], null, 'HTML');
