@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
-# Nexora CLI - stylish server menu + one-bar update
+!/usr/bin/env bash
+# Nexora CLI - stylish blue server menu + one-bar update
 set -Eeuo pipefail
 
 BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
 CYAN=$'\033[0;36m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; RED=$'\033[0;31m'
-MAGENTA=$'\033[0;35m'; BLUE=$'\033[0;34m'; WHITE=$'\033[1;37m'
+BLUE=$'\033[0;34m'; MAGENTA=$'\033[0;35m'; WHITE=$'\033[1;37m'
+LIGHTBLUE=$'\033[1;34m'
 
 BOT_DIR=""
 for c in /var/www/html/nexorabot /var/www/html/nexorabotconfig /var/www/nexorabot /var/www/html/bot; do
@@ -19,20 +20,26 @@ if [[ -n "$BOT_DIR" && -f "$BOT_DIR/version" ]]; then
 fi
 [[ -z "$BOT_VERSION" ]] && BOT_VERSION="unknown"
 
-hr() { printf "${DIM}%s${RESET}\n" "--------------------------------------------------------"; }
+hr() { printf "${BLUE}  %s${RESET}\n" "--------------------------------------------------------"; }
 title() {
     clear
-    printf "${CYAN}${BOLD}"
+    printf "${BLUE}${BOLD}"
     printf "  +======================================================+\n"
     printf "  |                                                      |\n"
-    printf "  |            N E X O R A   B O T                       |\n"
-    printf "  |            Server Control Menu                        |\n"
+    printf "  |   ${LIGHTBLUE}███╗   ██╗███████╗██╗  ██╗ ██████╗ ██████╗  ${BLUE}  |\n"
+    printf "  |   ${LIGHTBLUE}████╗  ██║██╔════╝╚██╗██╔╝██╔═══██╗██╔══██╗ ${BLUE} |\n"
+    printf "  |   ${LIGHTBLUE}██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║██████╔╝ ${BLUE} |\n"
+    printf "  |   ${LIGHTBLUE}██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║██╔══██╗ ${BLUE} |\n"
+    printf "  |   ${LIGHTBLUE}██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝██║  ██║ ${BLUE} |\n"
+    printf "  |   ${LIGHTBLUE}╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ${BLUE}  |\n"
+    printf "  |                                                      |\n"
+    printf "  |              ${WHITE}Server Control Menu${BLUE}                  |\n"
     printf "  |                                                      |\n"
     printf "  +======================================================+\n"
     printf "${RESET}"
-    printf "  ${DIM}Bot dir : %s${RESET}\n" "${BOT_DIR:-not found}"
-    printf "  ${DIM}Version : %s${RESET}\n" "$BOT_VERSION"
-    printf "  ${DIM}PHP     : %s${RESET}\n" "$(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)"
+    printf "  ${DIM}Bot dir : ${RESET}${WHITE}%s${RESET}\n" "${BOT_DIR:-not found}"
+    printf "  ${DIM}Version : ${RESET}${WHITE}%s${RESET}\n" "$BOT_VERSION"
+    printf "  ${DIM}PHP     : ${RESET}${WHITE}%s${RESET}\n" "$(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)"
     hr
 }
 progress_bar() {
@@ -44,10 +51,9 @@ progress_bar() {
     local bar=""
     for ((i=0;i<filled;i++)); do bar+="█"; done
     for ((i=0;i<empty;i++)); do bar+="░"; done
-    printf "\r  ${CYAN}[${GREEN}%s${CYAN}]${RESET} ${BOLD}%3d%%${RESET}" "$bar" "$pct"
+    printf "\r  ${BLUE}[${GREEN}%s${BLUE}]${RESET} ${BOLD}%3d%%${RESET}" "$bar" "$pct"
 }
 pause() { printf "\n  ${DIM}Press Enter to continue...${RESET}"; read -r _; }
-
 do_update() {
     title
     printf "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}\n"
