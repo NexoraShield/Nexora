@@ -1,5 +1,30 @@
 # Nexora Bot — Release Notes
 
+## Migration Guide
+
+### From Mirza to Nexora
+1. Back up the database: `mysqldump -u DB_USER -p DB_NAME > backup.sql`
+2. Keep a backup of `config.php`.
+3. Run `migrate-mirza.sh` on the server (or copy files manually).
+4. Run `install.sh` to install new files.
+5. Open the panel and verify panels/products/categories.
+6. Check `lang/fa.php` (must not be empty).
+
+### From ViraNaut to Nexora
+1. Back up database and `config.php`.
+2. Run `migrate-viranaut.sh`.
+3. Run `install.sh`.
+4. Verify the panel.
+
+### Important Migration Notes
+- Always back up before updating.
+- Transfer `config.php` manually (installer won't overwrite it).
+- After updating, check `lang/override/`.
+- For future updates use `nexora update`.
+
+---
+
+
 ## v1.7.0 (2026-10-29) — Audit Log
 **New**
 - `panel/audit.php` — full audit log of admin actions (admin, action, detail, IP, timestamp).
