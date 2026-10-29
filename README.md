@@ -78,6 +78,62 @@ $usernamebot = 'your_bot_username';
 https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook?url=https://your-domain.com/index.php?secret=YOUR_SECRET
 ```
 
+## 🔄 Migration from Other Bots
+
+### From Mirza Bot
+If you have an existing **Mirza** bot installation, you can migrate to Nexora with a single command. All your users, balances, invoices, products, and panel data will be preserved.
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-mirza.sh)
+```
+
+The script will:
+1. Auto-detect your Mirza installation
+2. Back up your database and config
+3. Download the latest Nexora
+4. Replace all files (keeping your `config.php` and database)
+5. Run database migrations and rebrand
+6. Set up the webhook
+
+### From ViraNaut Bot
+If you have an existing **ViraNaut** bot installation:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-viranaut.sh)
+```
+
+The script will:
+1. Auto-detect your ViraNaut installation
+2. Back up your database and config
+3. Download the latest Nexora
+4. Replace all files (keeping your `config.php` and database)
+5. Run database migrations and rebrand
+6. Set up the webhook
+
+### Manual Migration
+If the auto-migration script doesn't work, you can migrate manually:
+
+1. Back up your database:
+   ```bash
+   mysqldump -u YOUR_DB_USER -p YOUR_DB_NAME > backup.sql
+   ```
+2. Back up your `config.php`
+3. Upload Nexora files to your server (overwrite existing files, but keep `config.php`)
+4. Run the migration:
+   ```bash
+   php migrate.php /var/www/html/nexorabot
+   ```
+5. Apply rebrand:
+   ```bash
+   php rebrand.php /var/www/html/nexorabot --apply
+   ```
+6. Reload Apache:
+   ```bash
+   systemctl reload apache2
+   ```
+
+---
+
 ## 🔧 CLI Commands
 
 After installation, use the `nexora` command:
