@@ -1,28 +1,37 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/inc/auth.php';
 nexora_agent_ensure_table();
 $error = '';
+$throttle = nexora_agent_login_throttle();
+if (!$throttle['allowed']) {
+    $error = $throttle['msg'];
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = trim((string) ($_POST['id'] ?? ''));
-    $pass = (string) ($_POST['pass'] ?? '');
-    if ($id !== '' && $pass !== '' && preg_match('/^\d+$/', $id)) {
-        try {
-            $stmt = $pdo->prepare('SELECT pass_hash FROM agent_auth WHERE id_user = ? LIMIT 1');
-            $stmt->execute([$id]);
-            $hash = $stmt->fetchColumn();
-            if (is_string($hash) && password_verify($pass, $hash)) {
-                $_SESSION['nexora_agent_id'] = $id;
-                header('Location: index.php');
-                exit;
+    if ($error === '') {
+        $id = trim((string) ($_POST['id'] ?? ''));
+        $pass = (string) ($_POST['pass'] ?? '');
+        if ($id !== '' && $pass !== '' && preg_match('/^\d+$/', $id)) {
+            try {
+                $stmt = $pdo->prepare('SELECT pass_hash FROM agent_auth WHERE id_user = ? LIMIT 1');
+                $stmt->execute([$id]);
+                $hash = $stmt->fetchColumn();
+                if (is_string($hash) && password_verify($pass, $hash)) {
+                    nexora_agent_login_reset();
+                    $_SESSION['nexora_agent_id'] = $id;
+                    header('Location: index.php');
+                    exit;
+                }
+            } catch (Throwable $e) {
+                $error = 'خطای دیتابیس.';
             }
-        } catch (Throwable $e) {
-            $error = 'خطای دیتابیس.';
         }
-    }
-    if ($error === '') $error = 'آیدی یا رمز اشتباه است.';
-    sleep(1);
+        if ($error === '') {
+            nexora_agent_login_fail();
+            $error = 'آیدی یا رمز اشتباه است.';
+        }
+        sleep(1);
 }
 ?>
 <!DOCTYPE html>
