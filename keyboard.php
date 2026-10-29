@@ -123,6 +123,11 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
     if (function_exists('nexora_apply_menu_emoji')) {
         $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
     }
+    if (function_exists('nexora_apply_bb_style')) {
+        $bbFlip = [];
+        foreach ($replacements as $k => $v) { if (is_string($v) && $v !== '' && !isset($bbFlip[$v])) $bbFlip[$v] = $k; }
+        $keyboardcustom = nexora_apply_bb_style($keyboardcustom, $bbFlip);
+    }
     $keyboardcustom[] = $temp_addtional_key;
     $keyboard['inline_keyboard'] = $keyboardcustom;
     $keyboard = json_encode($keyboard);
@@ -135,6 +140,11 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
     $keyboardcustom = applyKeyboardLabels($keyboardcustom, $replacements);
     if (function_exists('nexora_apply_menu_emoji')) {
         $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
+    }
+    if (function_exists('nexora_apply_bb_style')) {
+        $bbFlip = [];
+        foreach ($replacements as $k => $v) { if (is_string($v) && $v !== '' && !isset($bbFlip[$v])) $bbFlip[$v] = $k; }
+        $keyboardcustom = nexora_apply_bb_style($keyboardcustom, $bbFlip);
     }
     $keyboardcustom[] = $temp_addtional_key;
     $keyboard['keyboard'] = $keyboardcustom;

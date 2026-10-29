@@ -476,3 +476,63 @@ if (!function_exists('nexora_agent_setpass')) {
         }
     }
 }
+
+// === Runtime application of nx_bb_* (color+emoji for keyboard-group buttons) ===
+if (!function_exists('nexora_bb_map')) {
+    function nexora_bb_map(): array
+    {
+        try {
+            global $pdo;
+            $pdo = $pdo instanceof PDO ? $pdo : ($GLOBALS['pdo'] ?? null);
+            if (!($pdo instanceof PDO)) return ['emoji' => [], 'style' => []];
+            $rows = $pdo->query("SELECT NamePay, ValuePay FROM PaySetting WHERE NamePay LIKE 'nx_bb_emoji_%' OR NamePay LIKE 'nx_bb_style_%'")->fetchAll(PDO::FETCH_ASSOC);
+            $emoji = []; $style = [];
+            foreach ($rows as $r) {
+                $k = trim((string) ($r['NamePay'] ?? ''));
+                $v = trim((string) ($r['ValuePay'] ?? ''));
+                if ($v === '') continue;
+                if (strpos($k, 'nx_bb_emoji_') === 0) $emoji[substr($k, 12)] = $v;
+                elseif (strpos($k, 'nx_bb_style_') === 0) $style[substr($k, 12)] = $v;
+            }
+            return ['emoji' => $emoji, 'style' => $style];
+        } catch (Throwable $e) { return ['emoji' => [], 'style' => []]; }
+    }
+}
+if (!function_exists('nexora_apply_bb_style')) {
+    function nexora_apply_bb_style(array $rows, array $flip = []): array
+    {
+        try {
+            $map = nexora_bb_map();
+            if ($map['emoji'] === [] && $map['style'] === []) return $rows;
+            foreach ($rows as $rk => $row) {
+                if (!is_array($row)) continue;
+                foreach ($row as $bk => $btn) {
+                    if (!is_array($btn) || !isset($btn['text']) || !is_string($btn['text'])) continue;
+                    $key = $flip[$btn['text']] ?? null;
+                    if ($key === null) continue;
+                    $changed = false;
+                    if (isset($map['emoji'][$key])) {
+                        $ref = $map['emoji'][$key];
+                        $icon = '';
+                        if (preg_match('/^\d{1,32}$/', $ref)) $icon = $ref;
+                        elseif (preg_match('/^\{emoji:([^}]+)\}$/', $ref, $m)) {
+                            try { $erow = nexora_emoji_lookup(trim($m[1])); } catch (Throwable $e) { $erow = null; }
+                            if ($erow && !empty($erow['custom_emoji_id'])) $icon = (string) $erow['custom_emoji_id'];
+                        }
+                        if ($icon !== '' && !isset($btn['icon_custom_emoji_id'])) {
+                            $btn['icon_custom_emoji_id'] = $icon; $changed = true;
+                        }
+                    }
+                    if (isset($map['style'][$key])) {
+                        $native = nexora_btn_style($map['style'][$key]);
+                        if ($native !== '' && !isset($btn['style'])) {
+                            $btn['style'] = $native; $changed = true;
+                        }
+                    }
+                    if ($changed) $rows[$rk][$bk] = $btn;
+                }
+            }
+            return $rows;
+        } catch (Throwable $e) { return $rows; }
+    }
+}
