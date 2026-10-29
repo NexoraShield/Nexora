@@ -21,6 +21,7 @@ try {
 
 // Handle admin reply / close
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check_post();
     $action = $_POST['action'] ?? '';
     $tid = (int)($_POST['id'] ?? 0);
     if ($tid > 0) {
@@ -101,6 +102,7 @@ include __DIR__ . '/inc/layout_head.php';
         <td>
           <?php if ($t['status'] !== 'closed'): ?>
           <form method="POST" style="display:inline-block;margin:2px">
+            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
             <input type="hidden" name="action" value="reply">
             <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
             <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
@@ -108,6 +110,7 @@ include __DIR__ . '/inc/layout_head.php';
             <button type="submit" class="btn btn-sm btn-primary">پاسخ</button>
           </form>
           <form method="POST" style="display:inline-block;margin:2px">
+            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
             <input type="hidden" name="action" value="close">
             <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
             <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">

@@ -15,6 +15,7 @@ $target = $_GET['target'] ?? '';
 
 // Handle emoji selection
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['emoji_id'])) {
+    csrf_check_post();
     $emoji_id = trim($_POST['emoji_id']);
     $target = $_POST['target'] ?? '';
     $target_type = $_POST['target_type'] ?? 'button';
@@ -74,6 +75,7 @@ include __DIR__ . '/inc/layout_head.php';
     </div>
     <div class="card-body">
         <form method="POST" action="emoji_picker.php">
+            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
             <div class="form-group">
                 <label>نام دکمه/متن:</label>
                 <input type="text" name="target" class="input" value="<?= htmlspecialchars($target) ?>" placeholder="مثل: back_btn, panel_btn, buy_btn">

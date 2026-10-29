@@ -16,6 +16,7 @@ try {
 } catch (Throwable $e) {}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check_post();
     $act = $_POST['action'] ?? '';
     if ($act === 'add') {
         $title = trim((string)($_POST['title'] ?? ''));
@@ -51,6 +52,7 @@ include __DIR__ . '/inc/layout_head.php';
   <div class="card-head"><div><div class="card-title">🤝 همکاری (<?= count($notes) ?>)</div></div></div>
   <div class="card-body">
     <form method="POST" style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:16px">
+      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
       <input type="hidden" name="action" value="add">
       <input type="text" name="title" placeholder="عنوان یادداشت *" class="input" required>
       <textarea name="body" placeholder="متن یادداشت..." class="input" style="min-height:80px" required></textarea>
@@ -68,8 +70,8 @@ include __DIR__ . '/inc/layout_head.php';
           <td><?= htmlspecialchars($n['admin_user'] ?? '') ?></td>
           <td dir="ltr" style="font-size:.75rem"><?= htmlspecialchars($n['created_at']) ?></td>
           <td>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="pin"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><button type="submit" class="btn btn-sm"><?= $n['pinned'] ? 'Unpin' : 'Pin' ?></button></form>
-            <form method="POST" style="display:inline" onsubmit="return confirm('حذف؟')"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><button type="submit" class="btn btn-sm">حذف</button></form>
+            <form method="POST" style="display:inline"><input type="hidden" name="_csrf" value="<?= csrf_token() ?>"><input type="hidden" name="action" value="pin"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><button type="submit" class="btn btn-sm"><?= $n['pinned'] ? 'Unpin' : 'Pin' ?></button></form>
+            <form method="POST" style="display:inline" onsubmit="return confirm('حذف؟')"><input type="hidden" name="_csrf" value="<?= csrf_token() ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><button type="submit" class="btn btn-sm">حذف</button></form>
           </td>
         </tr>
         <?php endforeach; ?>
