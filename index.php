@@ -439,6 +439,35 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value_four", "0", "id", $from_id);
     step('home', $from_id);
     return;
+} elseif ($text == "/support" || $text == "support" || $text == "پشتیبانی") {
+    sendmessage($from_id, "🎫 ارسال تیکت پشتیبانی\n\nلطفاً موضوع تیکت را وارد کنید:", null, 'html');
+    step('support_subject', $from_id);
+    return;
+} elseif ($user['step'] == 'support_subject') {
+    $subj = trim($text);
+    if ($subj === '') { sendmessage($from_id, "موضوع نمی‌تواند خالی باشد.", null, 'html'); return; }
+    update("user", "Processing_value", $subj, "id", $from_id);
+    sendmessage($from_id, "پیام/توضیحات تیکت را وارد کنید:", null, 'html');
+    step('support_message', $from_id);
+    return;
+} elseif ($user['step'] == 'support_message') {
+    $subj = (string)$user['Processing_value'];
+    $msg = trim($text);
+    if ($msg === '') { sendmessage($from_id, "پیام نمی‌تواند خالی باشد.", null, 'html'); return; }
+    try {
+        $st = $pdo->prepare("INSERT INTO support_tickets (id_user, subject, message, status) VALUES (?,?,?,'open')");
+        $st->execute([$from_id, $subj, $msg]);
+        $tid = (int)$pdo->lastInsertId();
+        sendmessage($from_id, "✅ تیکت #" . $tid . " ثبت شد. پاسخ از طریق همین بات ارسال می‌شود.", null, 'html');
+        foreach ($admin_ids as $aid) {
+            sendmessage($aid, "🎫 تیکت جدید #" . $tid . " از " . $from_id . "\nموضوع: " . $subj . "\nپیام: " . $msg, null, 'html');
+        }
+    } catch (Throwable $e) {
+        sendmessage($from_id, "خطا در ثبت تیکت. لطفاً دوباره تلاش کنید.", null, 'html');
+    }
+    update("user", "Processing_value", "0", "id", $from_id);
+    step('home', $from_id);
+    return;
 } elseif ($text == "version") {
     sendmessage($from_id, file_get_contents('version'), null, 'html');
 } elseif ($text == $textbotlang['users']['backbtn'] || $datain == "backuser") {
