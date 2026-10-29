@@ -163,12 +163,12 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <a href="botcolors.php" class="nav-item <?= $activeNav === 'botcolors' ? 'active' : '' ?>"
             title="رنگ تمام کلیدها">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">رنگ تمام کلیدها</span>
+              class="nav-label">🎨 رنگ تمام کلیدها</span>
           </a>
           <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
             title="دکمه‌های ربات">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">دکمه‌های ربات</span>
+              class="nav-label">🔘 دکمه‌های ربات</span>
           </a>
           <a href="tickets.php" class="nav-item <?= $activeNav === 'tickets' ? 'active' : '' ?>"
             title="پشتیبانی و تیکت‌ها">
