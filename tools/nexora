@@ -2,9 +2,9 @@
 # Nexora CLI - stylish server menu + one-bar update
 set -Eeuo pipefail
 
-BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
-CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RED='\033[0;31m'
-MAGENTA='\033[0;35m'; BLUE='\033[0;34m'; WHITE='\033[1;37m'
+BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
+CYAN=$'\033[0;36m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; RED=$'\033[0;31m'
+MAGENTA=$'\033[0;35m'; BLUE=$'\033[0;34m'; WHITE=$'\033[1;37m'
 
 BOT_DIR=""
 for c in /var/www/html/nexorabot /var/www/html/nexorabotconfig /var/www/nexorabot /var/www/html/bot; do
@@ -15,68 +15,67 @@ done
 
 BOT_VERSION=""
 if [[ -n "$BOT_DIR" && -f "$BOT_DIR/version" ]]; then
-    BOT_VERSION="$(cat "$BOT_DIR/version" 2>/dev/null | tr -d '[:space:]')"
+    BOT_VERSION="$(tr -d '[:space:]' < "$BOT_DIR/version" 2>/dev/null)"
 fi
 [[ -z "$BOT_VERSION" ]] && BOT_VERSION="unknown"
 
 hr() { printf "${DIM}%s${RESET}\n" "--------------------------------------------------------"; }
 title() {
     clear
-    echo -e "${CYAN}${BOLD}"
-    echo "  +======================================================+"
-    echo "  |                                                      |"
-    echo "  |            N E X O R A   B O T                       |"
-    echo "  |            Server Control Menu                        |"
-    echo "  |                                                      |"
-    echo "  +======================================================+"
-    echo -e "${RESET}"
-    echo -e "  ${DIM}Bot dir : ${BOT_DIR:-not found}${RESET}"
-    echo -e "  ${DIM}Version : ${BOT_VERSION}${RESET}"
-    echo -e "  ${DIM}PHP     : $(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)${RESET}"
+    printf "${CYAN}${BOLD}"
+    printf "  +======================================================+\n"
+    printf "  |                                                      |\n"
+    printf "  |            N E X O R A   B O T                       |\n"
+    printf "  |            Server Control Menu                        |\n"
+    printf "  |                                                      |\n"
+    printf "  +======================================================+\n"
+    printf "${RESET}"
+    printf "  ${DIM}Bot dir : %s${RESET}\n" "${BOT_DIR:-not found}"
+    printf "  ${DIM}Version : %s${RESET}\n" "$BOT_VERSION"
+    printf "  ${DIM}PHP     : %s${RESET}\n" "$(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)"
     hr
 }
 progress_bar() {
     local pct=${1:-0}
     (( pct < 0 )) && pct=0
     (( pct > 100 )) && pct=100
-    local width=46 filled=$(( pct * 46 / 100 )) empty
+    local width=46 filled=$(( pct * 46 / 100 )) empty i
     empty=$(( 46 - filled ))
-    local bar="" i
+    local bar=""
     for ((i=0;i<filled;i++)); do bar+="█"; done
     for ((i=0;i<empty;i++)); do bar+="░"; done
     printf "\r  ${CYAN}[${GREEN}%s${CYAN}]${RESET} ${BOLD}%3d%%${RESET}" "$bar" "$pct"
 }
-pause() { echo; echo -e "  ${DIM}Press Enter to continue...${RESET}"; read -r _; }
+pause() { printf "\n  ${DIM}Press Enter to continue...${RESET}"; read -r _; }
 
 do_update() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}"
+    printf "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}\n"
     hr
-    echo -e "  ${DIM}Fetching available versions...${RESET}"
+    printf "  ${DIM}Fetching available versions...${RESET}\n"
     local versions=()
     while IFS= read -r t; do
         [[ -z "$t" ]] && continue
         versions+=("$t")
     done < <(git ls-remote --tags https://github.com/NexoraShield/Nexora.git 2>/dev/null | sed 's#.*refs/tags/##' | grep -v '\^{}' | sort -rV | head -20)
-    echo ""
-    echo -e "  ${BOLD}Choose version to install:${RESET}"
-    echo -e "  ${BOLD}0)${RESET} ${GREEN}Latest (main)${RESET}  - newest release"
+    printf "\n"
+    printf "  ${BOLD}Choose version to install:${RESET}\n"
+    printf "  ${BOLD}0)${RESET} ${GREEN}Latest (main)${RESET}  - newest release\n"
     local i=1
     for v in "${versions[@]}"; do
-        echo -e "  ${BOLD}$i)${RESET} $v"
+        printf "  ${BOLD}%d)${RESET} %s\n" "$i" "$v"
         i=$((i+1))
     done
-    echo -e "  ${BOLD}b)${RESET} Back"
-    echo ""
-    echo -n "  ${BOLD}Select [0-${#versions[@]}/b]: ${RESET}"
+    printf "  ${BOLD}b)${RESET} Back\n"
+    printf "\n"
+    printf "  ${BOLD}Select [0-%d/b]: ${RESET}" "${#versions[@]}"
     read -r vchoice
     [[ "$vchoice" == "b" || "$vchoice" == "B" ]] && return 0
     local ref="main"
     if [[ "$vchoice" =~ ^[0-9]+$ ]] && (( vchoice >= 1 && vchoice <= ${#versions[@]} )); then
         ref="${versions[$((vchoice-1))]}"
     fi
-    echo ""
-    echo -e "  ${DIM}Selected: ${ref}${RESET}"
+    printf "\n  ${DIM}Selected: %s${RESET}\n" "$ref"
     local tmpd
     tmpd=$(mktemp -d)
     trap 'rm -rf "$tmpd"' RETURN
@@ -86,65 +85,77 @@ do_update() {
     else
         url="https://raw.githubusercontent.com/NexoraShield/Nexora/${ref}/nexora-update.sh"
     fi
-    echo -e "  ${DIM}Downloading update ($ref)...${RESET}"
+    printf "  ${DIM}Downloading update (%s)...${RESET}\n" "$ref"
     if ! curl -fsSL "$url" -o "$tmpd/nexora-update.sh" 2>/dev/null; then
-        echo -e "  ${RED}Download failed for $ref. Trying latest...${RESET}"
-        curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$tmpd/nexora-update.sh" 2>/dev/null || { echo -e "  ${RED}Download failed.${RESET}"; pause; return 1; }
+        printf "  ${RED}Download failed for %s. Trying latest...${RESET}\n" "$ref"
+        curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$tmpd/nexora-update.sh" 2>/dev/null || { printf "  ${RED}Download failed.${RESET}\n"; pause; return 1; }
     fi
     chmod +x "$tmpd/nexora-update.sh"
-    echo -e "  ${DIM}Running update (single progress bar)...${RESET}"
-    echo ""
-    local pct=0
+    printf "  ${DIM}Running update (single progress bar)...${RESET}\n\n"
+    local pct=0 logfile="$tmpd/update.log"
     progress_bar 0
-    "$tmpd/nexora-update.sh" 2>&1 | while IFS= read -r line; do
-        if [[ "$line" == NEXORA_PROGRESS:* ]]; then
-            pct="${line#NEXORA_PROGRESS:}"
-            pct="${pct//[!0-9]/}"
+    "$tmpd/nexora-update.sh" > "$logfile" 2>&1 &
+    local upid=$!
+    while kill -0 "$upid" 2>/dev/null; do
+        if grep -q "NEXORA_PROGRESS:" "$logfile" 2>/dev/null; then
+            pct=$(grep -o "NEXORA_PROGRESS:[0-9]*" "$logfile" | tail -1 | cut -d: -f2)
             [[ -z "$pct" ]] && pct=0
-            progress_bar "$pct"
+        else
+            pct=$(( (pct + 2) % 95 ))
+            (( pct < 5 )) && pct=5
         fi
+        progress_bar "$pct"
+        sleep 0.3
     done
-    progress_bar 100
-    echo ""
-    echo ""
-    echo -e "  ${GREEN}${BOLD}Update finished.${RESET}"
-    echo -e "  ${DIM}Restart services if needed (option 5).${RESET}"
+    wait "$upid" 2>/dev/null || true
+    if grep -q "NEXORA_PROGRESS:" "$logfile" 2>/dev/null; then
+        pct=$(grep -o "NEXORA_PROGRESS:[0-9]*" "$logfile" | tail -1 | cut -d: -f2)
+        [[ -z "$pct" ]] && pct=100
+    else
+        pct=100
+    fi
+    progress_bar "$pct"
+    printf "\n\n"
+    printf "  ${GREEN}${BOLD}Update finished.${RESET}\n"
+    printf "  ${DIM}Restart services if needed (option 5).${RESET}\n"
+    if grep -qi "error\|fail" "$logfile" 2>/dev/null; then
+        printf "  ${YELLOW}See log: %s${RESET}\n" "$logfile"
+    fi
     pause
 }
 
 do_update_php() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Updating PHP${RESET}"
+    printf "  ${BOLD}${MAGENTA}Updating PHP${RESET}\n"
     hr
     if command -v apt-get >/dev/null 2>&1; then
-        echo -e "  ${DIM}Running apt-get update...${RESET}"
+        printf "  ${DIM}Running apt-get update...${RESET}\n"
         apt-get update -qq
-        echo -e "  ${DIM}Installing latest PHP...${RESET}"
+        printf "  ${DIM}Installing latest PHP...${RESET}\n"
         apt-get install -y -qq php php-cli php-mysql php-curl php-gd php-mbstring php-xml php-zip php-json 2>&1 | tail -5
-        echo -e "  ${GREEN}${BOLD}PHP update done.${RESET}"
+        printf "  ${GREEN}${BOLD}PHP update done.${RESET}\n"
         php -v | head -1
     else
-        echo -e "  ${RED}apt-get not found. Update PHP manually.${RESET}"
+        printf "  ${RED}apt-get not found. Update PHP manually.${RESET}\n"
     fi
     pause
 }
 do_status() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Status${RESET}"
+    printf "  ${BOLD}${MAGENTA}Status${RESET}\n"
     hr
-    echo -e "  ${BOLD}Bot dir  :${RESET} ${BOT_DIR:-not found}"
-    echo -e "  ${BOLD}Version  :${RESET} ${BOT_VERSION}"
-    echo -e "  ${BOLD}PHP      :${RESET} $(php -v 2>/dev/null | head -1 || echo n/a)"
-    echo -e "  ${BOLD}Disk     :${RESET} $(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')"
-    echo ""
+    printf "  ${BOLD}Bot dir  :${RESET} %s\n" "${BOT_DIR:-not found}"
+    printf "  ${BOLD}Version  :${RESET} %s\n" "$BOT_VERSION"
+    printf "  ${BOLD}PHP      :${RESET} %s\n" "$(php -v 2>/dev/null | head -1 || echo n/a)"
+    printf "  ${BOLD}Disk     :${RESET} %s\n" "$(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')"
+    printf "\n"
     if [[ -n "$BOT_DIR" ]]; then
-        echo -e "  ${BOLD}error_log:${RESET} $(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0) lines"
+        printf "  ${BOLD}error_log:${RESET} %s lines\n" "$(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0)"
     fi
-    echo ""
-    echo -e "  ${DIM}Services:${RESET}"
+    printf "\n  ${DIM}Services:${RESET}\n"
     for s in php*-fpm nginx apache2; do
         if systemctl is-active --quiet "$s" 2>/dev/null; then
-            echo -e "    ${GREEN}OK${RESET} $s"
+            printf "    ${GREEN}OK${RESET} %s\n" "$s"
         fi
     done
     pause
@@ -152,67 +163,67 @@ do_status() {
 
 do_logs() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Logs (last 40 lines)${RESET}"
+    printf "  ${BOLD}${MAGENTA}Logs (last 40 lines)${RESET}\n"
     hr
     if [[ -n "$BOT_DIR" && -f "$BOT_DIR/error_log" ]]; then
         tail -40 "$BOT_DIR/error_log"
     else
-        echo -e "  ${DIM}No error_log found.${RESET}"
+        printf "  ${DIM}No error_log found.${RESET}\n"
     fi
     pause
 }
 
 do_restart() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Restarting services${RESET}"
+    printf "  ${BOLD}${MAGENTA}Restarting services${RESET}\n"
     hr
     for s in php*-fpm nginx apache2; do
         if systemctl is-active --quiet "$s" 2>/dev/null || systemctl list-unit-files "$s.service" 2>/dev/null | grep -q "$s"; then
-            echo -e "  restarting $s..."
-            systemctl restart "$s" 2>/dev/null && echo -e "  ${GREEN}OK $s${RESET}" || echo -e "  ${YELLOW}skip $s${RESET}"
+            printf "  restarting %s...\n" "$s"
+            systemctl restart "$s" 2>/dev/null && printf "  ${GREEN}OK %s${RESET}\n" "$s" || printf "  ${YELLOW}skip %s${RESET}\n" "$s"
         fi
     done
     php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
-    echo -e "  ${GREEN}${BOLD}Done.${RESET}"
+    printf "  ${GREEN}${BOLD}Done.${RESET}\n"
     pause
 }
 
 do_version() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Version${RESET}"
+    printf "  ${BOLD}${MAGENTA}Version${RESET}\n"
     hr
-    echo -e "  Bot version : ${BOT_VERSION}"
-    echo -e "  PHP version : $(php -v 2>/dev/null | head -1)"
+    printf "  Bot version : %s\n" "$BOT_VERSION"
+    printf "  PHP version : %s\n" "$(php -v 2>/dev/null | head -1)"
     if [[ -n "$BOT_DIR" && -d "$BOT_DIR/.git" ]]; then
-        echo -e "  Git HEAD    : $(cd "$BOT_DIR" && git log --oneline -1 2>/dev/null)"
+        printf "  Git HEAD    : %s\n" "$(cd "$BOT_DIR" && git log --oneline -1 2>/dev/null)"
     fi
     pause
 }
 
 do_magic() {
     title
-    echo -e "  ${BOLD}${MAGENTA}Running Magic (auto-repair)${RESET}"
+    printf "  ${BOLD}${MAGENTA}Running Magic (auto-repair)${RESET}\n"
     hr
     if [[ -n "$BOT_DIR" && -f "$BOT_DIR/panel/magic.php" ]]; then
         php "$BOT_DIR/panel/magic.php" 2>&1 | tail -20
     else
-        echo -e "  ${DIM}magic.php not found.${RESET}"
+        printf "  ${DIM}magic.php not found.${RESET}\n"
     fi
     pause
 }
 
 while true; do
     title
-    echo -e "  ${BOLD}1)${RESET}  Update Bot (latest)"
-    echo -e "  ${BOLD}2)${RESET}  Update PHP"
-    echo -e "  ${BOLD}3)${RESET}  Status"
-    echo -e "  ${BOLD}4)${RESET}  Logs (tail)"
-    echo -e "  ${BOLD}5)${RESET}  Restart services"
-    echo -e "  ${BOLD}6)${RESET}  Version"
-    echo -e "  ${BOLD}7)${RESET}  Run Magic (auto-repair)"
-    echo -e "  ${BOLD}0)${RESET}  Exit"
-    echo ""
-    echo -n "  ${BOLD}Select option [0-7]: ${RESET}"
+    printf "  ${BOLD}1)${RESET}  Update Bot (latest or choose version)\n"
+    printf "  ${BOLD}2)${RESET}  Update PHP\n"
+    printf "  ${BOLD}3)${RESET}  Status\n"
+    printf "  ${BOLD}4)${RESET}  Logs (tail)\n"
+    printf "  ${BOLD}5)${RESET}  Restart services\n"
+    printf "  ${BOLD}6)${RESET}  Version\n"
+    printf "  ${BOLD}7)${RESET}  Run Magic (auto-repair)\n"
+    printf "  ${BOLD}0)${RESET}  Exit\n"
+    printf "\n"
+    printf "  ${BOLD}Select option [0-7]: ${RESET}"
     read -r choice
     case "$choice" in
         1) do_update ;;
@@ -222,7 +233,7 @@ while true; do
         5) do_restart ;;
         6) do_version ;;
         7) do_magic ;;
-        0) clear; echo -e "  ${GREEN}Goodbye!${RESET}"; exit 0 ;;
-        *) echo -e "  ${RED}Invalid option.${RESET}"; sleep 1 ;;
+        0) clear; printf "  ${GREEN}Goodbye!${RESET}\n"; exit 0 ;;
+        *) printf "  ${RED}Invalid option.${RESET}\n"; sleep 1 ;;
     esac
 done
