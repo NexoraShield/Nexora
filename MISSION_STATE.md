@@ -30,24 +30,20 @@ Final verification and documentation.
 - Agent panel login fix (v1.9.1)
 - Maintenance mode panel (v1.9.0)
 
+## Security fixes (P0/P1)
+- v1.9.2 (f565262): wired nx_bb_* color+emoji into bot runtime (keyboard.php) so panel color choices actually apply to keyboard-group buttons.
+- v1.9.3 (7fb8d4d): agent-login brute-force throttle (5 attempts / 300s lockout), DB counter, reset on success.
+
 ## Outstanding bugs
-- Runtime wiring of nx_bb_* color/emoji for keyboard-group buttons not applied in bot (panel saves but bot doesn't read). Next priority.
-- Invoice table column casing (Status vs status) — normalized in agent panel only.
+- (v1.9.2) b1: keyboard color/emoji runtime wiring -> FIXED.
+- (v1.9.3) b2: agent login brute force -> FIXED.
 
 ## Test results
-- No PHP lint available locally. Manual review only.
-- No automated tests executed (none exist in repo).
+- No PHP lint locally. Manual review only.
+- v1.9.3 tag + commit pushed.
 
 ## Current Git commit
-4cc9b42
-
-## Pending operations
-- None.
-
-## Exact next steps
-1. Wire nx_bb_* into keyboard.php runtime for keyboard-group buttons.
-2. Add CSRF/rate-limit review.
-3. Final documentation.
+7fb8d4d
 
 ## Releases created
-v1.0.0 … v1.9.1 (all pushed).
+v1.0.0 ... v1.9.3 (all pushed).
