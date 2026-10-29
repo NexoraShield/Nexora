@@ -25,6 +25,38 @@
 ---
 
 
+## v1.9.5 (2026-10-29) — Color/Emoji Runtime Fix
+**Fixed**
+- `nexora_apply_bb_style` exact flip-lookup failed for menu buttons whose label was prefixed with an emoji glyph by `nexora_apply_menu_emoji` (e.g. 🎯 خانه), silently dropping panel-configured colors and custom emoji for keyboard-group buttons. Added a tolerant prefix-match fallback (strip a leading symbol/mark/whitespace run, then retry the exact lookup). Inline buttons (callback_data/url set) keep their plain text and the original exact path. Regression test: 6/6 cases pass.
+
+## v1.9.4 (2026-10-29) — Agent Panel Auth Regression
+**Fixed**
+- Removed stray `}` in `agent-panel/inc/auth.php`; closed unclosed `if` block in `agent-panel/login.php`; stripped BOM.
+- Replaced `??` on undefined constants (`NEXORA_AGENT_LOGIN_MAX`, etc.) with `defined() ?: default`.
+- Verified brace balance: auth.php 42/42, login.php 32/32.
+
+## v1.9.3 (2026-10-29) — Agent Login Brute-Force Throttle
+**Security**
+- Agent login: 5 attempts / 300s lockout with DB counter; counter resets on success.
+
+## v1.9.2 (2026-10-29) — Runtime Color/Emoji Wiring
+**Fixed**
+- Wired `nx_bb_*` color+emoji overrides from the admin panel into the bot runtime (`keyboard.php`) so panel color choices apply to keyboard-group buttons. Partially regressed (emoji-prefixed labels); fully fixed in v1.9.5.
+
+## v1.9.1 (2026-10-29) — Agent Panel Login Fix
+**Fixed**
+- Agent panel login function name + invoice status casing.
+
+## v1.9.0 (2026-10-29) — Maintenance Mode
+**New**
+- Maintenance mode panel (`panel/maintenance.php`).
+
+## v1.8.0 (2026-10-29) — Stability + Migration Guide
+**Fixed**
+- Bug review & stability improvements.
+**Docs**
+- Migration guide added to release notes (EN + FA).
+
 ## v1.7.0 (2026-10-29) — Audit Log
 **New**
 - `panel/audit.php` — full audit log of admin actions (admin, action, detail, IP, timestamp).
