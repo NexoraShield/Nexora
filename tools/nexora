@@ -131,7 +131,7 @@ do_update() {
     printf "  ${DIM}Running update (single progress bar)...${RESET}\n\n"
     local pct=0 logfile="$tmpd/update.log"
     progress_bar 0
-    "$tmpd/nexora-update.sh" > "$logfile" 2>&1 &
+    "$tmpd/nexora-update.sh" --force > "$logfile" 2>&1 &
     local upid=$!
     while kill -0 "$upid" 2>/dev/null; do
         if grep -q "NEXORA_PROGRESS:" "$logfile" 2>/dev/null; then
