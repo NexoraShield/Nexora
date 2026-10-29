@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/inc/auth.php';
-nexora_ensure_agent_table();
+nexora_agent_ensure_table();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = trim((string) ($_POST['id'] ?? ''));

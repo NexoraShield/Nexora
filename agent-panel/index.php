@@ -16,7 +16,7 @@ if ($subs !== []) {
     $ids = array_column($subs, 'id');
     $ph = implode(',', array_fill(0, count($ids), '?'));
     try {
-        $stmt = $pdo->prepare("SELECT COALESCE(SUM(price_product),0) FROM invoice WHERE id_user IN ($ph) AND Status != 'Unpaid'");
+        $stmt = $pdo->prepare("SELECT COALESCE(SUM(price_product),0) FROM invoice WHERE id_user IN ($ph) AND Status != 'unpaid'");
         $stmt->execute($ids);
         $totalBuy = (float) $stmt->fetchColumn();
     } catch (Throwable $e) { $totalBuy = 0; }
