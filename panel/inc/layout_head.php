@@ -180,6 +180,21 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('settings') ?></span><span
               class="nav-label">📋 صف عملیات</span>
           </a>
+          <a href="service_volumes.php" class="nav-item <?= $activeNav === 'service_volumes' ? 'active' : '' ?>"
+            title="بررسی حجم/زمان سرویس‌ها">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">📊 بررسی حجم/زمان</span>
+          </a>
+          <a href="custom_apps.php" class="nav-item <?= $activeNav === 'custom_apps' ? 'active' : '' ?>"
+            title="برنامه اختصاصی و آموزش اتصال">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">📱 برنامه و آموزش</span>
+          </a>
+          <a href="collab.php" class="nav-item <?= $activeNav === 'collab' ? 'active' : '' ?>"
+            title="همکاری">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">🤝 همکاری</span>
+          </a>
         </div>
         <div class="nav-section">
           <div class="nav-heading"><?= $textbotlang['panel']['layoutSidebarToggleLabel'] ?></div>
