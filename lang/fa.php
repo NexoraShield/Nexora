@@ -2404,7 +2404,7 @@ f,n.n2',
 
 <blockquote>🔹 | در صورت مشاهدهٔ فروش یا دریافت وجه، لطفاً وجه خود را پیگیری کرده و بازپس‌گیری نمایید.</blockquote>
 
-<blockquote>🐞 | برای گزارش مشکل، در <a href="https://t.me/nexorapanel?direct">دایرکت کانال میرزا</a> پیام بدهید.</blockquote>',
+<blockquote>🐞 | برای گزارش مشکل، در <a href="https://t.me/NexoraSupport?direct">دایرکت کانال نکسورا</a> پیام بدهید.</blockquote>',
                         'gatewayRow' => '
 📌 نام درگاه : <code>%s</code>
  - تعداد پرداخت موفق : <code>%s</code>

@@ -18,7 +18,7 @@ $flatTexts = function (array $texts): array {
     return $flat;
 };
 
-$baseTexts = array_diff_key(require dirname(__DIR__) . '/lang/' . $lang . '.php', array_flip(['bottext', 'Admin', 'panel']));
+$baseTexts = array_diff_key(require dirname(__DIR__) . '/lang/' . $lang . '.php', array_flip(['bottext', 'panel']));
 $defaults = $flatTexts($baseTexts);
 $overrideFile = dirname(__DIR__) . '/lang/override/' . $lang . '.php';
 $overrideTexts = is_file($overrideFile) ? include $overrideFile : [];
