@@ -1891,8 +1891,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $pricelastextend && $user['agent'] != "n2" && intval($pricelastextend) != 0) {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']];
-            $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']];
+            $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
+            $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
             $minbalance = number_format($minbalance);
             $maxbalance = number_format($maxbalance);
             $bakinfos = json_encode([
@@ -1928,7 +1928,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['agent'] == "f") {
         $valurcashbackextend = select("shopSetting", "*", "Namevalue", "chashbackextend", "select")['value'];
     } else {
-        $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'], true)[$user['agent']];
+        $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'] ?? '{}', true)[$user['agent']] ?? 0;
     }
     $cashbackextend = 0;
     if (intval($valurcashbackextend) != 0 and intval($pricelastextend) != 0) {
@@ -2176,8 +2176,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $volume && $user['agent'] != "n2") {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -2389,8 +2389,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $Pricechange && $user['agent'] != "n2" && $limitfree) {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -2730,8 +2730,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $tmieextra && $user['agent'] != "n2") {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -4128,8 +4128,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         if ($Balance_prim <= 1)
             $Balance_prim = 0;
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -4683,8 +4683,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($priceproduct > $user['Balance'] && $user['agent'] != "n2") {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -4826,8 +4826,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     if ($user['number'] == "none" && $setting['get_number'] == "onAuthenticationphone")
         return;
-    $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-    $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+    $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+    $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
     $bakinfos = json_encode([
         'inline_keyboard' => [
             [
@@ -4842,8 +4842,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     deletemessage($from_id, $user['Processing_value']);
     if (!is_numeric($text))
         return sendmessage($from_id, $textbotlang['users']['Balance']['errorprice'], null, 'HTML');
-    $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']];
-    $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']];
+    $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
+    $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
     $balancelast = $text;
     if ($text > $maxbalance or $text < $minbalance) {
         $minbalance = number_format($minbalance);
@@ -6155,8 +6155,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $volume && $user['agent'] != "n2") {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -6834,8 +6834,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($user['Balance'] < $prodcut['price_product'] && $user['agent'] != "n2") {
         $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [

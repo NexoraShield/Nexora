@@ -1372,7 +1372,7 @@ function DirectPayment($order_id, $image = 'images.jpg')
         if ($Balance_id['agent'] == "f") {
             $valurcashbackextend = select("shopSetting", "*", "Namevalue", "chashbackextend", "select")['value'];
         } else {
-            $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'], true)[$Balance_id['agent']];
+            $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'] ?? '{}', true)[$Balance_id['agent']] ?? 0;
         }
         if (intval($valurcashbackextend) != 0) {
             $result = ($prodcut['price_product'] * $valurcashbackextend) / 100;
