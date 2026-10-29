@@ -156,7 +156,7 @@ if [[ -f "$TARGET/nexora_style.php" ]]; then
     [[ -f "$prev_backup/bottext.php" ]] && cp -a -- "$prev_backup/bottext.php" "$TARGET/panel/bottext.php"
     [[ -f "$prev_backup/admin.php" ]] && cp -a -- "$prev_backup/admin.php" "$TARGET/admin.php"
     [[ -f "$prev_backup/miniapp-index.php" ]] && cp -a -- "$prev_backup/miniapp-index.php" "$TARGET/app/index.php"
-    for _rb in lang/fa.php lang/en.php lang/ru.php lang/zh.php install/checks.php install/index.php api/index.html composer.json; do
+    for _rb in install/checks.php install/index.php api/index.html composer.json; do
       if [[ -f "$prev_backup/$_rb" ]]; then
         cp -a -- "$prev_backup/$_rb" "$TARGET/$_rb"
       fi
@@ -207,6 +207,12 @@ cp -- "$PACKAGE_DIR/app/assets/nexora-theme.css" "$TARGET/app/assets/nexora-them
 cp -- "$PACKAGE_DIR/payment/frenzyex.php" "$TARGET/payment/frenzyex.php"
 if [[ -f "$PACKAGE_DIR/tools/nexora" ]]; then
   cp -- "$PACKAGE_DIR/tools/nexora" /usr/local/bin/nexora 2>/dev/null && chmod +x /usr/local/bin/nexora && echo "nexora CLI installed."
+# refresh base language files so new/updated bot messages come through (user overrides in lang/override/ are preserved)
+mkdir -p "$TARGET/lang"
+for _lf in "$PACKAGE_DIR"/lang/*.php; do
+  [[ -f "$_lf" ]] || continue
+  cp -- "$_lf" "$TARGET/lang/$(basename "$_lf")"
+done
 fi
 echo "NEXORA_PROGRESS:60"
 
