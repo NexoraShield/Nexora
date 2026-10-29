@@ -1,11 +1,14 @@
 ﻿# Nexora Bot 🤖
 
-<h2 align="center">
-  <a href="README.md"><kbd>🇬🇧 English</kbd></a> &nbsp;
-  <a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a> &nbsp;
-  <a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a> &nbsp;
-  <a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a>
-</h2>
+<p align="center">
+  <a href="README.md"><img src="https://flagcdn.com/28x21/gb.png" height="24" alt="English">&nbsp;<img src="https://img.shields.io/badge/English-007bff?style=for-the-badge" height="24" alt="English"></a>
+  &nbsp;
+  <a href="README.fa.md"><img src="https://flagcdn.com/28x21/ir.png" height="24" alt="فارسی">&nbsp;<img src="https://img.shields.io/badge/%D9%81%D8%A7%D8%B1%D8%B3%DB%8C-28a745?style=for-the-badge" height="24" alt="فارسی"></a>
+  &nbsp;
+  <a href="README.ru.md"><img src="https://flagcdn.com/28x21/ru.png" height="24" alt="Русский">&nbsp;<img src="https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-dc3545?style=for-the-badge" height="24" alt="Русский"></a>
+  &nbsp;
+  <a href="README.zh.md"><img src="https://flagcdn.com/28x21/cn.png" height="24" alt="中文">&nbsp;<img src="https://img.shields.io/badge/%E4%B8%AD%E6%96%87-ffc107?style=for-the-badge" height="24" alt="中文"></a>
+</p>
 
 **Nexora** 是一个免费的开源 Telegram 机器人，用于 VPN 销售和管理。使用 PHP 编写，支持多种 VPN 面板（Marzban、Marzneshin、X-UI、Hiddify、WGDashboard、MikroTik、IBSng 等）。包含高级表情、玻璃主题 UI 和 FrenzyEx 支付网关。
 
