@@ -1,4 +1,4 @@
-!/usr/bin/env bash
+#!/usr/bin/env bash
 # Nexora CLI - stylish blue server menu + one-bar update
 set -Eeuo pipefail
 
@@ -20,7 +20,16 @@ if [[ -n "$BOT_DIR" && -f "$BOT_DIR/version" ]]; then
 fi
 [[ -z "$BOT_VERSION" ]] && BOT_VERSION="unknown"
 
-hr() { printf "${BLUE}  %s${RESET}\n" "--------------------------------------------------------"; }
+BOT_USER=""
+BOT_DOMAIN=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/config.php" ]]; then
+    BOT_USER=$(grep -oP "usernamebot\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    BOT_DOMAIN=$(grep -oP "domainhosts\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+fi
+[[ -z "$BOT_USER" ]] && BOT_USER="unknown"
+[[ -z "$BOT_DOMAIN" ]] && BOT_DOMAIN="unknown"
+
+hr() { printf "${BLUE}  %s${RESET}\n" "──────────────────────────────────────────────────────────────"; }
 title() {
     clear
     printf "${BLUE}${BOLD}"
@@ -33,14 +42,25 @@ title() {
     printf "  |   ${LIGHTBLUE}██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝██║  ██║ ${BLUE} |\n"
     printf "  |   ${LIGHTBLUE}╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ${BLUE}  |\n"
     printf "  |                                                      |\n"
-    printf "  |              ${WHITE}Server Control Menu${BLUE}                  |\n"
+    printf "  |        ${WHITE}Telegram VPN Sales & Management Bot${BLUE}           |\n"
+    printf "  |              ${DIM}https://github.com/NexoraShield/Nexora${BLUE}       |\n"
     printf "  |                                                      |\n"
     printf "  +======================================================+\n"
     printf "${RESET}"
-    printf "  ${DIM}Bot dir : ${RESET}${WHITE}%s${RESET}\n" "${BOT_DIR:-not found}"
-    printf "  ${DIM}Version : ${RESET}${WHITE}%s${RESET}\n" "$BOT_VERSION"
-    printf "  ${DIM}PHP     : ${RESET}${WHITE}%s${RESET}\n" "$(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)"
-    hr
+    printf "\n"
+    printf "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Bot:${RESET}      Installed\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Version:${RESET}  %s\n" "$BOT_VERSION"
+    printf "  ${GREEN}●${RESET} ${BOLD}Path:${RESET}     %s\n" "${BOT_DIR:-not found}"
+    printf "  ${GREEN}●${RESET} ${BOLD}Domain:${RESET}   %s\n" "$BOT_DOMAIN"
+    printf "  ${GREEN}●${RESET} ${BOLD}Bot:${RESET}      @%s\n" "$BOT_USER"
+    printf "\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Apache:${RESET}   %s\n" "$(systemctl is-active apache2 2>/dev/null || echo 'unknown')"
+    printf "  ${GREEN}●${RESET} ${BOLD}MySQL:${RESET}    %s\n" "$(systemctl is-active mysql 2>/dev/null || (systemctl is-active mariadb 2>/dev/null || echo 'unknown'))"
+    printf "  ${GREEN}●${RESET} ${BOLD}PHP:${RESET}      %s\n" "$(php -v 2>/dev/null | head -1 || echo 'unknown')"
+    printf "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+    printf "\n"
+    printf "  ${BOLD}Main Menu:${RESET}\n"
 }
 progress_bar() {
     local pct=${1:-0}
