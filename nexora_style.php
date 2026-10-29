@@ -509,6 +509,17 @@ if (!function_exists('nexora_apply_bb_style')) {
                 foreach ($row as $bk => $btn) {
                     if (!is_array($btn) || !isset($btn['text']) || !is_string($btn['text'])) continue;
                     $key = $flip[$btn['text']] ?? null;
+                    if ($key === null && $btn['text'] !== '') {
+                        // Tolerant prefix-match fallback: nexora_apply_menu_emoji()
+                        // prepends a leading emoji glyph to non-inline menu buttons
+                        // (e.g. "🎯 خانه") before this runs, which defeats the exact
+                        // flip lookup. Strip a leading run of symbol/mark/whitespace
+                        // so the plain label still resolves to its nx_bb_* override.
+                        $stripped = preg_replace('/^[\p{S}\p{M}\s]+/u', '', $btn['text']);
+                        if ($stripped !== $btn['text'] && $stripped !== '') {
+                            $key = $flip[$stripped] ?? null;
+                        }
+                    }
                     if ($key === null) continue;
                     $changed = false;
                     if (isset($map['emoji'][$key])) {
