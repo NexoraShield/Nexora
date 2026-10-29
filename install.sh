@@ -183,6 +183,7 @@ for _rb in lang/fa.php lang/en.php lang/ru.php lang/zh.php install/checks.php in
   fi
 done
 
+echo "NEXORA_PROGRESS:45"
 echo "==> Installing new files"
 mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment"
 cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
@@ -204,6 +205,10 @@ cp -- "$PACKAGE_DIR/cronbot/frenzyex.php" "$TARGET/cronbot/frenzyex.php"
 cp -- "$PACKAGE_DIR/tools/nexora-indexes.php" "$TARGET/tools/nexora-indexes.php"
 cp -- "$PACKAGE_DIR/app/assets/nexora-theme.css" "$TARGET/app/assets/nexora-theme.css"
 cp -- "$PACKAGE_DIR/payment/frenzyex.php" "$TARGET/payment/frenzyex.php"
+if [[ -f "$PACKAGE_DIR/tools/nexora" ]]; then
+  cp -- "$PACKAGE_DIR/tools/nexora" /usr/local/bin/nexora 2>/dev/null && chmod +x /usr/local/bin/nexora && echo "nexora CLI installed."
+fi
+echo "NEXORA_PROGRESS:60"
 
 if [[ -f "$TARGET/panel/product.php" ]]; then
   for _f in btnstyle.php textemojis.php emojis.php panels.php health.php export.php; do
@@ -236,9 +241,11 @@ echo "==> Checking patched syntax"
 "$PHP_BIN" -l "$TARGET/admin.php" >/dev/null
 "$PHP_BIN" -l "$TARGET/app/index.php" >/dev/null
 
+echo "NEXORA_PROGRESS:75"
 echo "==> Running database migration (additive only)"
 "$PHP_BIN" "$PACKAGE_DIR/migrate.php" "$TARGET"
 
+echo "NEXORA_PROGRESS:85"
 echo "==> Applying Nexora display rebrand (exact-match only, safe)"
 "$PHP_BIN" "$PACKAGE_DIR/rebrand.php" "$TARGET" --apply || echo "WARNING: rebrand step had skips (see above)."
 
@@ -246,11 +253,13 @@ if command -v restorecon >/dev/null 2>&1; then
   restorecon -R "$TARGET" >/dev/null 2>&1 || true
 fi
 
+echo "NEXORA_PROGRESS:92"
 if command -v php >/dev/null 2>&1; then
   php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
 fi
 
 echo
+echo "NEXORA_PROGRESS:98"
 echo "==> Verifying installation completeness"
 _missing=0
 for _f in nexora_style.php keyboard.php index.php admin.php function.php panel/emojis.php panel/magic.php agent-panel/inc/auth.php migrate.php; do
@@ -292,3 +301,4 @@ echo "  7. FrenzyEx gateway: Finance -> Payment settings -> FrenzyEx"
 echo "  8. Optional speed: php tools/nexora-indexes.php"
 echo "     Optional unpaid reminders cron: */30 * * * * php BOTDIR/cronbot/nudge_unpaid.php"
 echo "  9. Check the bot and the panel — no restart needed."
+echo "NEXORA_PROGRESS:100"

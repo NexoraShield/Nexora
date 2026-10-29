@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# Nexora CLI - stylish server menu + one-bar update
+set -Eeuo pipefail
+
+BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
+CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RED='\033[0;31m'
+MAGENTA='\033[0;35m'; BLUE='\033[0;34m'; WHITE='\033[1;37m'
+
+BOT_DIR=""
+for c in /var/www/html/nexorabot /var/www/html/nexorabotconfig /var/www/nexorabot /var/www/html/bot; do
+    if [[ -f "$c/function.php" && -f "$c/index.php" && -f "$c/config.php" ]]; then
+        BOT_DIR="$c"; break
+    fi
+done
+
+BOT_VERSION=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/version" ]]; then
+    BOT_VERSION="$(cat "$BOT_DIR/version" 2>/dev/null | tr -d '[:space:]')"
+fi
+[[ -z "$BOT_VERSION" ]] && BOT_VERSION="unknown"
+
+hr() { printf "${DIM}%s${RESET}\n" "--------------------------------------------------------"; }
+title() {
+    clear
+    echo -e "${CYAN}${BOLD}"
+    echo "  +======================================================+"
+    echo "  |                                                      |"
+    echo "  |            N E X O R A   B O T                       |"
+    echo "  |            Server Control Menu                        |"
+    echo "  |                                                      |"
+    echo "  +======================================================+"
+    echo -e "${RESET}"
+    echo -e "  ${DIM}Bot dir : ${BOT_DIR:-not found}${RESET}"
+    echo -e "  ${DIM}Version : ${BOT_VERSION}${RESET}"
+    echo -e "  ${DIM}PHP     : $(php -r 'echo PHP_VERSION;' 2>/dev/null || echo n/a)${RESET}"
+    hr
+}
+progress_bar() {
+    local pct=${1:-0}
+    (( pct < 0 )) && pct=0
+    (( pct > 100 )) && pct=100
+    local width=46 filled=$(( pct * 46 / 100 )) empty
+    empty=$(( 46 - filled ))
+    local bar="" i
+    for ((i=0;i<filled;i++)); do bar+="█"; done
+    for ((i=0;i<empty;i++)); do bar+="░"; done
+    printf "\r  ${CYAN}[${GREEN}%s${CYAN}]${RESET} ${BOLD}%3d%%${RESET}" "$bar" "$pct"
+}
+pause() { echo; echo -e "  ${DIM}Press Enter to continue...${RESET}"; read -r _; }
+
+do_update() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}"
+    hr
+    local tmpd
+    tmpd=$(mktemp -d)
+    trap 'rm -rf "$tmpd"' RETURN
+    echo -e "  ${DIM}Downloading latest update...${RESET}"
+    if ! curl -fsSL https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh -o "$tmpd/nexora-update.sh" 2>/dev/null; then
+        echo -e "  ${RED}Download failed. Check internet connection.${RESET}"
+        pause; return 1
+    fi
+    chmod +x "$tmpd/nexora-update.sh"
+    echo -e "  ${DIM}Running update (single progress bar)...${RESET}"
+    echo ""
+    local pct=0
+    progress_bar 0
+    "$tmpd/nexora-update.sh" 2>&1 | while IFS= read -r line; do
+        if [[ "$line" == NEXORA_PROGRESS:* ]]; then
+            pct="${line#NEXORA_PROGRESS:}"
+            pct="${pct//[!0-9]/}"
+            [[ -z "$pct" ]] && pct=0
+            progress_bar "$pct"
+        fi
+    done
+    progress_bar 100
+    echo ""
+    echo ""
+    echo -e "  ${GREEN}${BOLD}Update finished.${RESET}"
+    echo -e "  ${DIM}Restart services if needed (option 5).${RESET}"
+    pause
+}
+
+do_update_php() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Updating PHP${RESET}"
+    hr
+    if command -v apt-get >/dev/null 2>&1; then
+        echo -e "  ${DIM}Running apt-get update...${RESET}"
+        apt-get update -qq
+        echo -e "  ${DIM}Installing latest PHP...${RESET}"
+        apt-get install -y -qq php php-cli php-mysql php-curl php-gd php-mbstring php-xml php-zip php-json 2>&1 | tail -5
+        echo -e "  ${GREEN}${BOLD}PHP update done.${RESET}"
+        php -v | head -1
+    else
+        echo -e "  ${RED}apt-get not found. Update PHP manually.${RESET}"
+    fi
+    pause
+}
+do_status() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Status${RESET}"
+    hr
+    echo -e "  ${BOLD}Bot dir  :${RESET} ${BOT_DIR:-not found}"
+    echo -e "  ${BOLD}Version  :${RESET} ${BOT_VERSION}"
+    echo -e "  ${BOLD}PHP      :${RESET} $(php -v 2>/dev/null | head -1 || echo n/a)"
+    echo -e "  ${BOLD}Disk     :${RESET} $(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')"
+    echo ""
+    if [[ -n "$BOT_DIR" ]]; then
+        echo -e "  ${BOLD}error_log:${RESET} $(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0) lines"
+    fi
+    echo ""
+    echo -e "  ${DIM}Services:${RESET}"
+    for s in php*-fpm nginx apache2; do
+        if systemctl is-active --quiet "$s" 2>/dev/null; then
+            echo -e "    ${GREEN}OK${RESET} $s"
+        fi
+    done
+    pause
+}
+
+do_logs() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Logs (last 40 lines)${RESET}"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/error_log" ]]; then
+        tail -40 "$BOT_DIR/error_log"
+    else
+        echo -e "  ${DIM}No error_log found.${RESET}"
+    fi
+    pause
+}
+
+do_restart() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Restarting services${RESET}"
+    hr
+    for s in php*-fpm nginx apache2; do
+        if systemctl is-active --quiet "$s" 2>/dev/null || systemctl list-unit-files "$s.service" 2>/dev/null | grep -q "$s"; then
+            echo -e "  restarting $s..."
+            systemctl restart "$s" 2>/dev/null && echo -e "  ${GREEN}OK $s${RESET}" || echo -e "  ${YELLOW}skip $s${RESET}"
+        fi
+    done
+    php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
+    echo -e "  ${GREEN}${BOLD}Done.${RESET}"
+    pause
+}
+
+do_version() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Version${RESET}"
+    hr
+    echo -e "  Bot version : ${BOT_VERSION}"
+    echo -e "  PHP version : $(php -v 2>/dev/null | head -1)"
+    if [[ -n "$BOT_DIR" && -d "$BOT_DIR/.git" ]]; then
+        echo -e "  Git HEAD    : $(cd "$BOT_DIR" && git log --oneline -1 2>/dev/null)"
+    fi
+    pause
+}
+
+do_magic() {
+    title
+    echo -e "  ${BOLD}${MAGENTA}Running Magic (auto-repair)${RESET}"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/panel/magic.php" ]]; then
+        php "$BOT_DIR/panel/magic.php" 2>&1 | tail -20
+    else
+        echo -e "  ${DIM}magic.php not found.${RESET}"
+    fi
+    pause
+}
+
+while true; do
+    title
+    echo -e "  ${BOLD}1)${RESET}  Update Bot (latest)"
+    echo -e "  ${BOLD}2)${RESET}  Update PHP"
+    echo -e "  ${BOLD}3)${RESET}  Status"
+    echo -e "  ${BOLD}4)${RESET}  Logs (tail)"
+    echo -e "  ${BOLD}5)${RESET}  Restart services"
+    echo -e "  ${BOLD}6)${RESET}  Version"
+    echo -e "  ${BOLD}7)${RESET}  Run Magic (auto-repair)"
+    echo -e "  ${BOLD}0)${RESET}  Exit"
+    echo ""
+    echo -n "  ${BOLD}Select option [0-7]: ${RESET}"
+    read -r choice
+    case "$choice" in
+        1) do_update ;;
+        2) do_update_php ;;
+        3) do_status ;;
+        4) do_logs ;;
+        5) do_restart ;;
+        6) do_version ;;
+        7) do_magic ;;
+        0) clear; echo -e "  ${GREEN}Goodbye!${RESET}"; exit 0 ;;
+        *) echo -e "  ${RED}Invalid option.${RESET}"; sleep 1 ;;
+    esac
+done

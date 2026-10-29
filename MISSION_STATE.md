@@ -90,4 +90,11 @@ bf39526 (v1.9.6 tip) — origin/main + tag v1.9.6 pushed.
 - **install.sh**: patch loop now tracks skipped patches (`_skipped_patches`) and prints a clear WARNING listing them; final status is "PARTIALLY" vs "successfully" based on skips. Added post-install verification: checks all required files exist + runs `php -l` on EVERY installed PHP file (not just a subset); aborts with clear error on missing files or syntax errors. OPcache reset already present at end of install.
 
 ## Releases
+## v1.9.9 — Nexora CLI + progress-bar update (2026-10-29)
+- Added `tools/nexora`: a stylish bash CLI menu (Update Bot, Update PHP, Status, Logs, Restart, Version, Magic, Exit) installed to `/usr/local/bin/nexora` by install.sh. Typing `nexora` in SSH now shows a boxed, colored menu.
+- `nexora update` runs the update with a single 0-100% progress bar instead of many messages: install.sh now emits `NEXORA_PROGRESS:N` markers at key phases (verify 5, lint 10, backup 20, remove-old 30, install-files 45, patches 60, migration 75, rebrand 85, opcache 92, verify 98, done 100); the CLI parses them and renders one bar.
+- install.sh now installs the `nexora` CLI and (already) runs migrate.php + clears OPcache + verifies all files/lint.
+
+## Releases
+v0.9.1 … v1.9.9 (all tagged + pushed to origin).
 v0.9.1 … v1.9.8 (all tagged + pushed to origin).
