@@ -124,17 +124,18 @@ if ($datain == "paygwback") {
 } elseif (in_array($text, $textadmin) || $datain == "admin") {
     if ($datain == "admin")
         deletemessage($from_id, $message_id);
+    $version_mini_app = file_get_contents('app/version');
+    if ($version_mini_app === false) $version_mini_app = '0.1.1';
+    $text_admin = sprintf($text_panel_admin_login_template, $version, $version_mini_app);
+    if (trim((string) $text_admin) !== '') {
+        sendmessage($from_id, $text_admin, $aboutBotKeyboard, 'HTML');
+    }
     if ($buyreport == "0" || $otherservice == "0" || $otherreport == "0" || $paymentreports == "0" || $reporttest == "0" || $errorreport == "0") {
         sendmessage($from_id, $textbotlang['Admin']['activeBotText'], $active_panell, 'HTML');
         return;
     }
-    $version_mini_app = file_get_contents('app/version');
     activecron();
-    $text_admin = sprintf($text_panel_admin_login_template, $version, $version_mini_app);
     sendmessage($from_id, $textbotlang['Admin']['report']['adminMenuHint'], $keyboardadmin, 'HTML');
-    if (trim((string) $text_admin) !== '') {
-        sendmessage($from_id, $text_admin, $aboutBotKeyboard, 'HTML');
-    }
     $miniAppInstructionHidden = isset($user['hide_mini_app_instruction']) ? (string) $user['hide_mini_app_instruction'] : '0';
     if ($miniAppInstructionHidden !== '1') {
         $miniAppInstructionKeyboard = json_encode([
@@ -147,16 +148,17 @@ if ($datain == "paygwback") {
         sendmessage($from_id, $miniAppInstructionText, $miniAppInstructionKeyboard, 'HTML');
     }
 } elseif ($text == $textbotlang['Admin']['backAdminBtn']) {
+    $version_mini_app = file_get_contents('app/version');
+    if ($version_mini_app === false) $version_mini_app = '0.1.1';
+    $text_admin = sprintf($text_panel_admin_login_template, $version, $version_mini_app);
+    if (trim((string) $text_admin) !== '') {
+        sendmessage($from_id, $text_admin, $aboutBotKeyboard, 'HTML');
+    }
     if ($buyreport == "0" || $otherservice == "0" || $otherreport == "0" || $paymentreports == "0" || $reporttest == "0" || $errorreport == "0") {
         sendmessage($from_id, $textbotlang['Admin']['activeBotText'], $active_panell, 'HTML');
         return;
     }
-    $version_mini_app = file_get_contents('app/version');
-    $text_admin = sprintf($text_panel_admin_login_template, $version, $version_mini_app);
     sendmessage($from_id, $textbotlang['Admin']['report']['adminMenuHint'], $keyboardadmin, 'HTML');
-    if (trim((string) $text_admin) !== '') {
-        sendmessage($from_id, $text_admin, $aboutBotKeyboard, 'HTML');
-    }
     step('home', $from_id);
     return;
 } elseif ($datain == "hide_mini_app_instruction") {
