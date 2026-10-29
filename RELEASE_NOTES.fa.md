@@ -25,6 +25,14 @@
 ---
 
 
+## v1.9.8 (۲۰۲۶-۱۰-۲۹) — تقویت مکانیزم به‌روزرسانی
+**جدید**
+- `nexora_self_heal()` به‌صورت خودکار در boot اجرا می‌شود (از طریق `nexora_style.php` که `keyboard.php` زود بارگذاری می‌کند): اطمینان از ستون‌های style/emoji، جداول `bot_custom_emoji` + `nexora_emoji_map`، جداول `agent_auth` + `agent_login_attempts`، پیش‌فرض‌های PaySetting، و `opcache_reset()` محافظت‌شده — همه idempotent، یک‌بار per PHP process. حتی اگر `migrate.php` اجرا نشده باشد یا جدولی گم شده باشد، ربات در اولین درخواست خودش را تعمیر می‌کند.
+**رفع شده**
+- `migrate.php` حالا جدول `agent_login_attempts` را هم ensure می‌کند.
+- `install.sh`: حلقهٔ patch حالا patchهای skip‌شده را ردیابی می‌کند (`_skipped_patches`) و یک WARNING واضح چاپ می‌کند؛ وضعیت نهایی "PARTIALLY" در برابر "successfully" بر اساس skipهاست. افزوده شد: بررسی پس از نصب — چک کردن وجود تمام فایل‌های لازم + اجرای `php -l` روی همهٔ فایل‌های PHP نصب‌شده (نه فقط زیرمجموعه)؛ در صورت فایل گمشده یا خطای syntax با خطای واضح abort می‌کند. پاکسازی OPcache از قبل در انتهای install وجود داشت.
+
+
 ## v1.9.7 (۲۰۲۶-۱۰-۲۹) — ایمنی پرداخت، پایه lint، تکمیل انتخاب‌گر ایموجی پرمیوم
 **رفع شده**
 - نگهبان `claimPaymentPaid()` از `<> 'paid'` به `NOT IN ('paid', 'reject')` هم‌راستا با claim ادمین `Confirm_pay_` تغییر یافت؛ بدین ترتیب یک webhook قدیمی/تکراری درگاه نمی‌تواند پرداختی که ادمین آن را reject کرده را دوباره claim کرده و `DirectPayment` را دوباره فعال کند (defense-in-depth؛ نگهبان‌های پایین‌دستی از قبل از تحویل دوباره جلوگیری می‌کنند).

@@ -25,6 +25,14 @@
 ---
 
 
+## v1.9.8 (2026-10-29) — Update Mechanism Hardening
+**New**
+- `nexora_self_heal()` runs automatically on boot (via `nexora_style.php`, loaded early by `keyboard.php`): ensures style/emoji columns, `bot_custom_emoji` + `nexora_emoji_map` tables, `agent_auth` + `agent_login_attempts` tables, PaySetting defaults, and a guarded `opcache_reset()` — all idempotent, once per PHP process. Even if `migrate.php` was not run or a table is missing, the bot self-heals on first request.
+**Fixed**
+- `migrate.php` now also ensures `agent_login_attempts` table.
+- `install.sh`: patch loop now tracks skipped patches (`_skipped_patches`) and prints a clear WARNING listing them; final status is "PARTIALLY" vs "successfully". Added post-install verification: checks all required files exist + runs `php -l` on EVERY installed PHP file (not just a subset); aborts with a clear error on missing files or syntax errors. OPcache reset already present at end of install.
+
+
 ## v1.9.7 (2026-10-29) — Payment Idempotency + Lint Baseline + Emoji Picker Completion
 **Fixed**
 - `claimPaymentPaid()` guard aligned from `<> 'paid'` to `NOT IN ('paid', 'reject')`, matching the admin `Confirm_pay_` claim so a stale/replayed gateway webhook cannot re-claim an admin-rejected payment and re-trigger `DirectPayment` (defense-in-depth; downstream guards already prevent double delivery).
