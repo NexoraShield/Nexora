@@ -53,6 +53,8 @@ if (!function_exists('nexora_ensure_style_columns')) {
             'product' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
             'category' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
             'marzban_panel' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
+            'invoice' => [['id_payment', 'VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL']],
+            'service_other' => [['id_payment', 'VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL']],
         ];
         $added = [];
         foreach ($targets as $table => $cols) {
