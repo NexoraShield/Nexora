@@ -29,6 +29,17 @@ fi
 [[ -z "$BOT_USER" ]] && BOT_USER="unknown"
 [[ -z "$BOT_DOMAIN" ]] && BOT_DOMAIN="unknown"
 
+DB_HOST=""
+DB_NAME=""
+DB_USER=""
+DB_PASS=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/config.php" ]]; then
+    DB_HOST=$(grep -oP "dbhost\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_NAME=$(grep -oP "dbname\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_USER=$(grep -oP "usernamedb\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_PASS=$(grep -oP "passworddb\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+fi
+
 hr() { printf "${BLUE}  %s${RESET}\n" "──────────────────────────────────────────────────────────────"; }
 title() {
     clear
@@ -238,27 +249,120 @@ do_magic() {
     pause
 }
 
+do_install() {
+    title
+    printf "  ${BOLD}${MAGENTA}Fresh Install${RESET}\n"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/install.sh" ]]; then
+        bash "$BOT_DIR/install.sh" 2>&1 | tail -20
+    else
+        printf "  ${DIM}install.sh not found in %s${RESET}\n" "${BOT_DIR:-?}"
+    fi
+    pause
+}
+do_backup() {
+    title
+    printf "  ${BOLD}${MAGENTA}Database Backup${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    local out="/root/nexora_backup_$(date +%Y%m%d_%H%M%S).sql"
+    if mysqldump -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" > "$out" 2>/dev/null; then
+        printf "  ${GREEN}Backup saved: %s (%s bytes)${RESET}\n" "$out" "$(wc -c < "$out")"
+    else
+        printf "  ${RED}Backup failed. Check mysqldump/credentials.${RESET}\n"
+    fi
+    pause
+}
+do_reset_password() {
+    title
+    printf "  ${BOLD}${MAGENTA}Reset Admin Panel Password${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    printf "  ${DIM}Enter new admin password (min 6 chars): ${RESET}"
+    read -rs newpass; echo
+    if [[ ${#newpass} -lt 6 ]]; then
+        printf "  ${RED}Password too short.${RESET}\n"; pause; return 1
+    fi
+    local hash
+    hash=$(php -r 'echo password_hash($argv[1], PASSWORD_BCRYPT);' "$newpass" 2>/dev/null)
+    if [[ -z "$hash" ]]; then
+        printf "  ${RED}Failed to hash password.${RESET}\n"; pause; return 1
+    fi
+    if mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" \
+        -e "UPDATE admin SET password='$hash' WHERE rule='administrator';" 2>/dev/null; then
+        printf "  ${GREEN}Admin password updated. New password: %s${RESET}\n" "$newpass"
+    else
+        printf "  ${RED}Update failed.${RESET}\n"
+    fi
+    pause
+}
+do_analytics() {
+    title
+    printf "  ${BOLD}${MAGENTA}Bot Analytics${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    local q="SELECT (SELECT COUNT(*) FROM users) AS u, (SELECT COUNT(*) FROM invoice) AS i, (SELECT COUNT(*) FROM service) AS s, (SELECT COUNT(*) FROM payments) AS p;"
+    mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -N -e "$q" 2>/dev/null | awk -F'\t' '{printf "  Users: %s   Invoices: %s   Services: %s   Payments: %s\n", $1,$2,$3,$4}'
+    printf "\n  ${DIM}error_log lines: %s${RESET}\n" "$(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0)"
+    printf "  ${DIM}Disk free: %s${RESET}\n" "$(df -h / 2>/dev/null | awk 'NR==2{print $4}')"
+    pause
+}
+do_optimize() {
+    title
+    printf "  ${BOLD}${MAGENTA}Optimize & Cleanup${RESET}\n"
+    hr
+    if [[ -n "$DB_NAME" && -n "$DB_USER" ]]; then
+        local tables
+        tables=$(mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -N -e "SHOW TABLES;" 2>/dev/null | tr '\n' ' ')
+        if [[ -n "$tables" ]]; then
+            mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "OPTIMIZE TABLE $tables;" 2>/dev/null | tail -5
+            printf "  ${GREEN}Tables optimized.${RESET}\n"
+        fi
+    fi
+    if [[ -f "$BOT_DIR/error_log" ]]; then
+        local sz; sz=$(wc -c < "$BOT_DIR/error_log")
+        if (( sz > 5242880 )); then
+            tail -1000 "$BOT_DIR/error_log" > "$BOT_DIR/error_log.tmp" && mv "$BOT_DIR/error_log.tmp" "$BOT_DIR/error_log"
+            printf "  ${GREEN}error_log trimmed (was %s bytes).${RESET}\n" "$sz"
+        else
+            printf "  ${DIM}error_log small (%s bytes), skipped.${RESET}\n" "$sz"
+        fi
+    fi
+    printf "  ${GREEN}${BOLD}Done.${RESET}\n"
+    pause
+}
+
 while true; do
     title
-    printf "  ${BOLD}1)${RESET}  🔄 Update Bot    - Update from GitHub\n"
-    printf "  ${BOLD}2)${RESET}  🐘 Update PHP    - Update PHP version\n"
-    printf "  ${BOLD}3)${RESET}  📊 Status        - Check bot & services\n"
-    printf "  ${BOLD}4)${RESET}  📋 Logs          - View error logs\n"
-    printf "  ${BOLD}5)${RESET}  🔁 Restart       - Restart services\n"
-    printf "  ${BOLD}6)${RESET}  ℹ️  Version       - Show version\n"
-    printf "  ${BOLD}7)${RESET}  🧹 Magic         - Auto-repair\n"
+    printf "  ${BOLD}1)${RESET}  📊 Status        - Check bot & services\n"
+    printf "  ${BOLD}2)${RESET}  📋 Logs          - View error logs\n"
+    printf "  ${BOLD}3)${RESET}  🔄 Restart       - Restart services\n"
+    printf "  ${BOLD}4)${RESET}  📥 Update        - Update from GitHub\n"
+    printf "  ${BOLD}5)${RESET}  🔧 Install       - Fresh install\n"
+    printf "  ${BOLD}6)${RESET}  📦 Backup        - Backup database\n"
+    printf "  ${BOLD}7)${RESET}  🔑 Reset Password - Reset admin panel password\n"
+    printf "  ${BOLD}8)${RESET}  📈 Analytics     - Show bot statistics\n"
+    printf "  ${BOLD}9)${RESET}  🧹 Optimize      - Clean up & optimize\n"
     printf "  ${BOLD}0)${RESET}  ❌ Exit\n"
     printf "\n"
-    printf "  ${BOLD}Select option [0-7]: ${RESET}"
+    printf "  ${BOLD}Select option [0-9]: ${RESET}"
     read -r choice
     case "$choice" in
-        1) do_update ;;
-        2) do_update_php ;;
-        3) do_status ;;
-        4) do_logs ;;
-        5) do_restart ;;
-        6) do_version ;;
-        7) do_magic ;;
+        1) do_status ;;
+        2) do_logs ;;
+        3) do_restart ;;
+        4) do_update ;;
+        5) do_install ;;
+        6) do_backup ;;
+        7) do_reset_password ;;
+        8) do_analytics ;;
+        9) do_optimize ;;
         0) clear; printf "  ${GREEN}Goodbye!${RESET}\n"; exit 0 ;;
         *) printf "  ${RED}Invalid option.${RESET}\n"; sleep 1 ;;
     esac
