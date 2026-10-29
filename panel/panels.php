@@ -111,5 +111,4 @@ $flashErr = get_flash('error'); ?>
 </div>
 
 <script src="js/emoji-insert.js"></script>
-<?php include __DIR__ . '/inc/layout_head.php' === false ? '' : ''; ?>
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

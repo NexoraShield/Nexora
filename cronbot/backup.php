@@ -77,7 +77,7 @@ if ($ok && $adminChatId > 0) {
         sendDocument($adminChatId, $filePath, "📦 Nexora auto-backup " . date('Y-m-d H:i:s') . "\nSize: " . round(filesize($filePath)/1024, 1) . " KB");
     } catch (Throwable $e) {
         // fallback: message
-        try { sendmessage($adminChatId, "📦 Backup ready: " . $fileName . " (" . round(filesize($filePath)/1024,1) . " KB) on server."); } catch (Throwable $e2) {}
+        try { sendmessage($adminChatId, "📦 Backup ready: " . $fileName . " (" . round(filesize($filePath)/1024,1) . " KB) on server.", null, 'HTML'); } catch (Throwable $e2) {}
     }
 }
 
