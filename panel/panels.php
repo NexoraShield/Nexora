@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
-require_once __DIR__ . '/inc/bot_emojis.php';
 require_auth();
 try {
     foreach ([['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']] as [$col, $def]) {
