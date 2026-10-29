@@ -212,6 +212,7 @@ if [[ -f "$TARGET/panel/product.php" ]]; then
   done
 fi
 
+_skipped_patches=""
 for _patch in patch_keyboard patch_panel patch_botapi patch_bottext patch_admin patch_miniapp; do
   echo "==> Patching with ${_patch} (dry run)"
   if "$PHP_BIN" "$PACKAGE_DIR/${_patch}.php" "$TARGET"; then
@@ -219,6 +220,7 @@ for _patch in patch_keyboard patch_panel patch_botapi patch_bottext patch_admin 
     "$PHP_BIN" "$PACKAGE_DIR/${_patch}.php" "$TARGET" --apply
   else
     echo "WARNING: ${_patch} skipped for this nexorabot version."
+    _skipped_patches="$_skipped_patches $_patch"
     if [ "$_patch" = "patch_keyboard" ]; then
       echo "FATAL: core keyboard patch failed — aborting, nothing was changed." >&2
       exit 1
@@ -249,7 +251,29 @@ if command -v php >/dev/null 2>&1; then
 fi
 
 echo
-echo "Update installed successfully."
+echo "==> Verifying installation completeness"
+_missing=0
+for _f in nexora_style.php keyboard.php index.php admin.php function.php panel/emojis.php panel/magic.php agent-panel/inc/auth.php migrate.php; do
+  if [[ ! -f "$TARGET/$_f" ]]; then echo "  MISSING FILE: $_f"; _missing=1; fi
+done
+if [[ $_missing -eq 1 ]]; then echo "ERROR: required files missing." >&2; exit 1; fi
+_lint_fail=0
+while IFS= read -r -d '' _f; do
+  if ! "$PHP_BIN" -l "$_f" >/dev/null 2>&1; then echo "  LINT FAIL: $_f"; _lint_fail=1; fi
+done < <(find "$TARGET" -type f -name '*.php' -print0)
+if [[ $_lint_fail -eq 1 ]]; then echo "ERROR: PHP syntax errors found in installed files." >&2; exit 1; fi
+echo "    All required files present; all PHP files syntactically valid."
+
+if [[ -n "$_skipped_patches" ]]; then
+  echo
+  echo "WARNING: the following patches were SKIPPED (some features may be missing):$_skipped_patches"
+  echo "         Review the warnings above. Re-run the update or apply the patches manually."
+  echo
+  echo "Update installed PARTIALLY. See warnings above."
+else
+  echo
+  echo "Update installed successfully."
+fi
 echo "Backup: $BACKUP_DIR"
 echo
 echo "Next:"

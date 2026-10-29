@@ -14,6 +14,8 @@ try {
     if (function_exists('nexora_ensure_emoji_table')) nexora_ensure_emoji_table($pdo);
     $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     echo "agent_auth table ensured.\n";
+    $pdo->exec('CREATE TABLE IF NOT EXISTS agent_login_attempts (ip VARCHAR(64) NOT NULL PRIMARY KEY, attempts INT UNSIGNED NOT NULL DEFAULT 0, first_attempt INT UNSIGNED NOT NULL DEFAULT 0, last_attempt INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    echo "agent_login_attempts table ensured.\n";
     if ($added === []) echo "Columns already exist — nothing to do.\n";
     else echo "Added columns: " . implode(', ', $added) . "\n";
     $frenzyDefaults = [

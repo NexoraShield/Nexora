@@ -84,5 +84,10 @@ bf39526 (v1.9.6 tip) — origin/main + tag v1.9.6 pushed.
 **P3 — GitHub Release object for v1.9.6.** BLOCKED: `gh` CLI is not installed in this environment; cannot create the release object from here. Compiled changelog is ready in RELEASE_NOTES.md (v1.9.6 + v1.9.7). User can run `gh release create v1.9.6 --notes-file ...` (or use GitHub web UI) once gh is available.
 **v1.9.7 plan:** commit the above hardening edits; tag v1.9.7; push. Then continue with cronbot casing normalization + agent-panel nav link for emoji_picker + deeper feature work.
 
+## Update mechanism hardening (2026-10-29)
+- **Self-heal on boot** (`nexora_style.php`): added `nexora_self_heal()` that runs once per PHP process and ensures all schema (style/emoji columns on product/category/marzban_panel, bot_custom_emoji + nexora_emoji_map tables, agent_auth + agent_login_attempts, PaySetting defaults) plus a guarded `opcache_reset()`. Runs automatically whenever nexora_style.php is loaded (keyboard.php requires it early in index.php), so even if migrate.php was not run or a table is missing, the bot self-heals on first request. Directly addresses "some features don't get added after update."
+- **migrate.php**: now also ensures agent_login_attempts table (was only created lazily by agent-panel login).
+- **install.sh**: patch loop now tracks skipped patches (`_skipped_patches`) and prints a clear WARNING listing them; final status is "PARTIALLY" vs "successfully" based on skips. Added post-install verification: checks all required files exist + runs `php -l` on EVERY installed PHP file (not just a subset); aborts with clear error on missing files or syntax errors. OPcache reset already present at end of install.
+
 ## Releases
-v0.9.1 … v1.9.7 (all tagged + pushed to origin).
+v0.9.1 … v1.9.8 (all tagged + pushed to origin).

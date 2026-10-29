@@ -548,3 +548,36 @@ if (!function_exists('nexora_apply_bb_style')) {
         } catch (Throwable $e) { return $rows; }
     }
 }
+if (!function_exists('nexora_self_heal')) {
+    function nexora_self_heal(): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        $pdo = $GLOBALS['pdo'] ?? null;
+        if (!($pdo instanceof PDO)) return;
+        try {
+            if (function_exists('nexora_ensure_style_columns')) {
+                nexora_ensure_style_columns($pdo);
+            }
+            if (function_exists('nexora_ensure_emoji_table')) {
+                nexora_ensure_emoji_table($pdo);
+            }
+            $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS agent_login_attempts (ip VARCHAR(64) NOT NULL PRIMARY KEY, attempts INT UNSIGNED NOT NULL DEFAULT 0, first_attempt INT UNSIGNED NOT NULL DEFAULT 0, last_attempt INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            $frenzyDefaults = ['frenzyexstatus' => 'offfrenzyex', 'frenzyex_api_key' => '', 'frenzyex_base_url' => 'https://frenzy.fastsnap.info', 'frenzyex_callback_secret' => '', 'cashbackfrenzyex' => '0'];
+            foreach ($frenzyDefaults as $name => $val) {
+                $chk = $pdo->prepare('SELECT COUNT(*) FROM PaySetting WHERE NamePay = ?');
+                $chk->execute([$name]);
+                if ((int) $chk->fetchColumn() === 0) {
+                    $pdo->prepare('INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?, ?)')->execute([$name, $val]);
+                }
+            }
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+        } catch (Throwable $e) {
+            error_log('nexora_self_heal: ' . $e->getMessage());
+        }
+    }
+}
+nexora_self_heal();
