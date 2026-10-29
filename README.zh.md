@@ -1,10 +1,10 @@
 ﻿# Nexora Bot 🤖
 
 <h2 align="center">
-  <a href="README.md">🇬🇧 English</a> &nbsp;•&nbsp;
-  <a href="README.fa.md">🇮🇷 فارسی</a> &nbsp;•&nbsp;
-  <a href="README.ru.md">🇷🇺 Русский</a> &nbsp;•&nbsp;
-  <a href="README.zh.md">🇨🇳 中文</a>
+  <a href="README.md"><kbd>🇬🇧 English</kbd></a> &nbsp;
+  <a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a> &nbsp;
+  <a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a> &nbsp;
+  <a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a>
 </h2>
 
 **Nexora** 是一个免费的开源 Telegram 机器人，用于 VPN 销售和管理。使用 PHP 编写，支持多种 VPN 面板（Marzban、Marzneshin、X-UI、Hiddify、WGDashboard、MikroTik、IBSng 等）。包含高级表情、玻璃主题 UI 和 FrenzyEx 支付网关。

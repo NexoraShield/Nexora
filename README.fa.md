@@ -1,10 +1,10 @@
 ﻿# Nexora Bot 🤖
 
 <h2 align="center">
-  <a href="README.md">🇬🇧 English</a> &nbsp;•&nbsp;
-  <a href="README.fa.md">🇮🇷 فارسی</a> &nbsp;•&nbsp;
-  <a href="README.ru.md">🇷🇺 Русский</a> &nbsp;•&nbsp;
-  <a href="README.zh.md">🇨🇳 中文</a>
+  <a href="README.md"><kbd>🇬🇧 English</kbd></a> &nbsp;
+  <a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a> &nbsp;
+  <a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a> &nbsp;
+  <a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a>
 </h2>
 
 **Nexora** یک ربات تلگرامی رایگان و متن‌باز برای فروش و مدیریت VPN است. با PHP نوشته شده و از پنل‌های مختلف VPN (Marzban, Marzneshin, X-UI, Hiddify, WGDashboard, MikroTik, IBSng و غیره) پشتیبانی می‌کند. دارای ایموجی پریمیوم، تم شیشه‌ای، و درگاه پرداخت FrenzyEx.
