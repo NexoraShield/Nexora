@@ -76,6 +76,7 @@ if (!function_exists('nexora_ensure_emoji_table')) {
         if (!($pdo instanceof PDO)) return;
         try {
             $pdo->exec('CREATE TABLE IF NOT EXISTS bot_custom_emoji (id INT UNSIGNED NOT NULL AUTO_INCREMENT, emoji_name VARCHAR(120) NOT NULL, emoji_slug VARCHAR(64) DEFAULT NULL, custom_emoji_id VARCHAR(32) NOT NULL, emoji_utf8 VARCHAR(16) DEFAULT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0, created_by VARCHAR(32) DEFAULT NULL, PRIMARY KEY (id), UNIQUE KEY uq_custom_emoji_id (custom_emoji_id), UNIQUE KEY uq_emoji_slug (emoji_slug), KEY idx_emoji_name (emoji_name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS nexora_emoji_map (target_type VARCHAR(32) NOT NULL, target_name VARCHAR(190) NOT NULL, emoji_id VARCHAR(32) NOT NULL, PRIMARY KEY (target_type, target_name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
         } catch (Throwable $e) { error_log('nexora_ensure_emoji_table: ' . $e->getMessage()); }
     }
 }

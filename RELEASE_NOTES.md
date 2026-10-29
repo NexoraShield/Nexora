@@ -25,6 +25,26 @@
 ---
 
 
+## v1.9.7 (2026-10-29) — Payment Idempotency + Lint Baseline + Emoji Picker Completion
+**Fixed**
+- `claimPaymentPaid()` guard aligned from `<> 'paid'` to `NOT IN ('paid', 'reject')`, matching the admin `Confirm_pay_` claim so a stale/replayed gateway webhook cannot re-claim an admin-rejected payment and re-trigger `DirectPayment` (defense-in-depth; downstream guards already prevent double delivery).
+- Normalized `invoice.Status` casing in the `removeservice-` admin flow (`status` -> `Status`, the canonical column name from all INSERT sites). Cosmetic on MySQL (case-insensitive columns) but keeps PHP keyed reads consistent.
+- Completed the orphaned `panel/emoji_picker.php`: fixed the parse error (unclosed `if (!empty($emoji_map)):`), stale `mirza_style.php` include -> `nexora_style.php`, `<value>` -> `<option>` HTML typos, and `$pdo->query($sql, $params)` misuse -> `prepare()/execute()`.
+- Added the missing `nexora_emoji_map` table to `nexora_ensure_emoji_table()` (idempotent `CREATE TABLE IF NOT EXISTS`) and auto-ensure it on the picker page, so the premium emoji picker is functional.
+**Audit**
+- P1: traced agent invoice path end-to-end (agent web panel is read-only affiliate dashboard; real purchase flow is the Telegram bot: panel select -> product -> INSERT IGNORE INTO invoice -> linkPaymentToOrder -> gateway Payment_report -> claimPaymentPaid -> DirectPayment -> Marzban createUser + sendMessageService to the customer).
+- P4: full-repo `php -l` sweep -> 105 clean / 0 errors (root + agent-panel + payment + cronbot + panel + api).
+- P5: audited `Confirm_pay_` flow (1696-1753): role guard + atomic claim lock verified; TOCTOU under single admin = low.
+- P2: casing audit confirmed no PHP keyed-read breakage (invoice reads use `Status`; service_other uses `status` internally consistent); cosmetic lowercase writers in cronbot/configtest.php flagged for follow-up.
+**Docs**
+- Backfilled v1.9.6 entry (was missing from release notes).
+
+## v1.9.6 (2026-10-29) — DirectPayment Re-entrancy Fix
+**Fixed**
+- `DirectPayment()` no longer double-credits on a re-entrant call to an already-settled order: when `invoice.Status == 'active'` or the service is already `paid`, the function now returns before the balance credit (v1.9.6). Upstream `claimPaymentPaid()` makes this path rare; the guard keeps it safe.
+- Payment-callback idempotency verified (not a bug): every gateway callback gates `DirectPayment()` behind `claimPaymentPaid()` (conditional `UPDATE ... WHERE payment_Status <> 'paid'`).
+
+
 ## v1.9.5 (2026-10-29) — Color/Emoji Runtime Fix
 **Fixed**
 - `nexora_apply_bb_style` exact flip-lookup failed for menu buttons whose label was prefixed with an emoji glyph by `nexora_apply_menu_emoji` (e.g. 🎯 خانه), silently dropping panel-configured colors and custom emoji for keyboard-group buttons. Added a tolerant prefix-match fallback (strip a leading symbol/mark/whitespace run, then retry the exact lookup). Inline buttons (callback_data/url set) keep their plain text and the original exact path. Regression test: 6/6 cases pass.

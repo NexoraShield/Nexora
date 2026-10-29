@@ -6,9 +6,10 @@
 
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
-require_once __DIR__ . '/../mirza_style.php';
+require_once __DIR__ . '/../nexora_style.php';
 require_auth();
 
+nexora_ensure_emoji_table();
 $action = $_GET['action'] ?? '';
 $target = $_GET['target'] ?? '';
 
@@ -19,9 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['emoji_id'])) {
     $target_type = $_POST['target_type'] ?? 'button';
     
     // Store emoji mapping in database
-    $pdo->query("INSERT INTO nexora_emoji_map (target_type, target_name, emoji_id) VALUES (?, ?, ?) 
-                 ON DUPLICATE KEY UPDATE emoji_id = VALUES(emoji_id)", 
-        [$target_type, $target, $emoji_id]);
+        $stmt = $pdo->prepare("INSERT INTO nexora_emoji_map (target_type, target_name, emoji_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE emoji_id = VALUES(emoji_id)");
+    $stmt->execute([$target_type, $target, $emoji_id]);
     
     header('Location: emoji_picker.php?target=' . urlencode($target) . '&target_type=' . $target_type . '&saved=1');
     exit;
@@ -82,9 +82,9 @@ include __DIR__ . '/inc/layout_head.php';
                 <label>نوع هدف:</label>
                 <select name="target_type" class="input">
                     <option value="button" <?= $target_type === 'button' ? 'selected' : '' ?>>دکمه</option>
-                    <value>panel</option>
-                    <value>category</option>
-                    <value>product</option>
+                    <option value="panel">panel</option>
+                    <option value="category">category</option>
+                    <option value="product">product</option>
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">ثبت</button>
@@ -127,6 +127,7 @@ include __DIR__ . '/inc/layout_head.php';
     </div>
 </div>
 
+<?php endif; ?>
 <script>
 function selectEmoji(emojiId, emojiName) {
     document.getElementById('selected_emoji').value = emojiId;

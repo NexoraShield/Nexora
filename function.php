@@ -1021,7 +1021,11 @@ function paymentOrder($order_id): array
 function claimPaymentPaid($order_id)
 {
     global $pdo;
-    $stmt = $pdo->prepare("UPDATE Payment_report SET payment_Status = 'paid' WHERE id_order = :id_order AND payment_Status <> 'paid'");
+    // Defense-in-depth idempotency lock. Mirrors admin.php Confirm_pay claim (NOT IN ('paid','reject'))
+    // so a stale/replayed gateway webhook cannot re-claim a payment the admin already rejected ('reject')
+    // and thereby re-trigger DirectPayment. Downstream guards (DirectPayment re-entrant check + per-invoice
+    // Status claim) already prevent double delivery; this keeps the claim itself consistent with the manual path.
+    $stmt = $pdo->prepare("UPDATE Payment_report SET payment_Status = 'paid' WHERE id_order = :id_order AND payment_Status NOT IN ('paid', 'reject')");
     $stmt->bindValue(':id_order', $order_id);
     $stmt->execute();
     clearSelectCache('Payment_report');

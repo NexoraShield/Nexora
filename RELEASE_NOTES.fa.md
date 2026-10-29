@@ -25,6 +25,26 @@
 ---
 
 
+## v1.9.7 (۲۰۲۶-۱۰-۲۹) — ایمنی پرداخت، پایه lint، تکمیل انتخاب‌گر ایموجی پرمیوم
+**رفع شده**
+- نگهبان `claimPaymentPaid()` از `<> 'paid'` به `NOT IN ('paid', 'reject')` هم‌راستا با claim ادمین `Confirm_pay_` تغییر یافت؛ بدین ترتیب یک webhook قدیمی/تکراری درگاه نمی‌تواند پرداختی که ادمین آن را reject کرده را دوباره claim کرده و `DirectPayment` را دوباره فعال کند (defense-in-depth؛ نگهبان‌های پایین‌دستی از قبل از تحویل دوباره جلوگیری می‌کنند).
+- نرمال‌سازی حالت نوشتاری `invoice.Status` در جریان ادمین `removeservice-` (`status` -> `Status`، نام ستون استاندارد در تمام INSERTها). روی MySQL کاسمتیک (ستون‌ها case-insensitive) اما خواندن‌های keyed PHP را یکدست نگه می‌دارد.
+- تکمیل `panel/emoji_picker.php` که نیمه‌کاره بود: رفع خطای parse (endif نبسته)، include قدیمی `mirza_style.php` -> `nexora_style.php`، غلط املایی HTML `<value>` -> `<option>`، و استفادهٔ اشتباه `$pdo->query($sql, $params)` -> `prepare()/execute()`.
+- جدول گمشدهٔ `nexora_emoji_map` به `nexora_ensure_emoji_table()` افزوده شد (CREATE TABLE IF NOT EXISTS idempotent) و در صفحهٔ picker به‌صورت خودکار ensure می‌شود.
+**بررسی**
+- P1: ردیابی کامل مسیر فاکتور عامل (پنل وب عامل فقط داشبورد افیلیت فقط-خواندنی است؛ جریان خرید واقعی در ربات تلگرام است: انتخاب پنل -> محصول -> INSERT IGNORE INTO invoice -> linkPaymentToOrder -> Payment_report درگاه -> claimPaymentPaid -> DirectPayment -> Marzban createUser + sendMessageService به مشتری).
+- P4: جاروی کامل `php -l` -> ۱۰۵ تمیز / ۰ خطا (root + agent-panel + payment + cronbot + panel + api).
+- P5: بررسی جریان `Confirm_pay_` (1696-1753): نگهبان نقش + قفل claim اتمیک تأیید؛ TOCTOU زیر یک ادمین کم‌خطر.
+- P2: بررسی casing: هیچ شکست خواندن keyed PHP (invoice از `Status` می‌خواند؛ service_other از `status` به‌صورت داخلی یکدست است)؛ نویسندهٔ lowercase در cronbot/configtest.php برای پاکسازی بعدی علامت‌گذاری شد.
+**مستندات**
+- ورودی v1.9.6 (که قبلاً در یادداشت‌ها نبود) تکمیل شد.
+
+## v1.9.6 (۲۰۲۶-۱۰-۲۹) — رفع re-entrancy در DirectPayment
+**رفع شده**
+- `DirectPayment()` دیگر در فراخوانی مجدد برای یک سفارش already-settled دوباره اعتبار نمی‌دهد: وقتی `invoice.Status == 'active'` یا سرویس already `paid` است، تابع قبل از اعتباردهی Balance برمی‌گردد. مسیر upstream `claimPaymentPaid()` این مسیر را نادر می‌کند؛ نگهبان آن را امن نگه می‌دارد.
+- ایمنوستن پرداخت callbackها تأیید شد (نه باگ): هر callback درگاه `DirectPayment()` را پشت `claimPaymentPaid()` (conditional `UPDATE ... WHERE payment_Status <> 'paid'`) gate می‌کند.
+
+
 ## v1.9.5 (۲۰۲۶-۱۰-۲۹) — اصلاح زمان‌بندی رنگ و ایموجی در ران‌تایم
 **رفع شده**
 - `nexora_apply_bb_style` جستجوی دقیق برای برچسب دک‌های منو که `nexora_apply_menu_emoji` یک گلیف اموجی به‌عنوان پیشوند افزوده بود (مثلاً 🎯 خانه) شکست می‌خورد؛ درنتیجه رنگ و ایموجی سفارشی‌شده توسط پنل برای دک‌های صفحه اصلی از دست می‌رفت. افزوده شدن پشتیبانی پیشوندی با تحمل بیشتر: یک نوبت نماد/علامت/فاصه از ابتدا قبل از جستجوی مجدد حذف می‌شود. (دک‌های اینلاین با callback_data/url متنی‌شان بدون تغییر می‌مانند.) تست رگرسیون: ۶ از ۶ مورد موفق.

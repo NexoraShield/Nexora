@@ -3782,7 +3782,7 @@ elseif ($datain == "systemsms") {
     $info_product = select("invoice", "*", "id_invoice", $username, "select");
     $DataUserOut = $ManagePanel->DataUser($info_product['Service_location'], $info_product['username']);
     $ManagePanel->RemoveUser($info_product['Service_location'], $info_product['username']);
-    update('invoice', 'status', 'removebyadmin', 'id_invoice', $username);
+    update('invoice', 'Status', 'removebyadmin', 'id_invoice', $username);
     sendmessage($from_id, $textbotlang['Admin']['manageUser']['removedService'], $keyboardadmin, 'HTML');
     Editmessagetext($from_id, $message_id, $text_inline, json_encode(['inline_keyboard' => []]));
     step('home', $from_id);
