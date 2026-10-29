@@ -140,6 +140,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('edit') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['bottextPageTitle'] ?></span>
           </a>
+          <a href="botcolors.php" class="nav-item <?= $activeNav === 'botcolors' ? 'active' : '' ?>"
+            title="رنگ تمام کلیدها">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">رنگ تمام کلیدها</span>
+          </a>
           <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
             title="دکمه‌های ربات">
             <span class="nav-icon"><?= icon('settings') ?></span><span
