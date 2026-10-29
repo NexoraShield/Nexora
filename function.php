@@ -1045,8 +1045,15 @@ function DirectPayment($order_id, $image = 'images.jpg')
     $get_invoice = $linkedOrder['invoice'];
     $service_order = $linkedOrder['service'];
     if (($get_invoice && $get_invoice['Status'] == "active") || (!$get_invoice && $service_order && $service_order['status'] == "paid")) {
-        addBalance($Balance_id['id'], intval($Payment_report['price']));
-        sendmessage($Balance_id['id'], sprintf($textbotlang['users']['Balance']['addedNotice5'], number_format(intval($Payment_report['price']))), $keyboard, 'HTML');
+        // Idempotency / replay safety: this order was already settled
+        // (invoice already 'active' or service already 'paid'). The user's
+        // balance was credited on the first DirectPayment pass (line ~1066),
+        // so crediting again here would double-count the payment if this
+        // function were ever re-entered on a settled order (e.g. under a
+        // narrow concurrency window). Suppress the re-entrant credit and bail.
+        // Upstream claimPaymentPaid() makes this path rare; this guard keeps
+        // it safe whenever it is reached.
+        error_log('[DirectPayment] re-entrant call on already-settled order id_order=' . $order_id . '; suppressed balance re-credit');
         return;
     }
     $orderType = "topup";
