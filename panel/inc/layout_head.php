@@ -175,6 +175,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('settings') ?></span><span
               class="nav-label">💾 پشتیبان‌گیری</span>
           </a>
+          <a href="queue.php" class="nav-item <?= $activeNav === 'queue' ? 'active' : '' ?>"
+            title="صف عملیات‌های ناقص">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">📋 صف عملیات</span>
+          </a>
         </div>
         <div class="nav-section">
           <div class="nav-heading"><?= $textbotlang['panel']['layoutSidebarToggleLabel'] ?></div>

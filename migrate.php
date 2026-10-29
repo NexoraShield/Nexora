@@ -18,6 +18,8 @@ try {
     echo "agent_login_attempts table ensured.\n";
     $pdo->exec("CREATE TABLE IF NOT EXISTS support_tickets (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, subject VARCHAR(255) NOT NULL, message TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'open', admin_reply TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     echo "support_tickets table ensured.\n";
+    $pdo->exec("CREATE TABLE IF NOT EXISTS op_queue (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, id_invoice VARCHAR(64) NULL, op_type VARCHAR(32) NOT NULL, payload TEXT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0, last_error TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    echo "op_queue table ensured.\n";
     if ($added === []) echo "Columns already exist — nothing to do.\n";
     else echo "Added columns: " . implode(', ', $added) . "\n";
     $frenzyDefaults = [

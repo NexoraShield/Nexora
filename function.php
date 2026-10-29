@@ -1128,6 +1128,7 @@ function DirectPayment($order_id, $image = 'images.jpg')
         }
         $dataoutput = $ManagePanel->createUser($marzban_list_get['name_panel'], $info_product['code_product'], $username_ac, $datac);
         if (!is_array($dataoutput) || empty($dataoutput['username'])) {
+            enqueue_op($pdo, $get_invoice['id_user'], $get_invoice['id_invoice'], 'create_user', ['panel' => $marzban_list_get['name_panel'], 'code_product' => $info_product['code_product'], 'username' => $username_ac, 'datac' => $datac]);
             update("invoice", "Status", $invoiceStatusBefore, "id_invoice", $get_invoice['id_invoice']);
             $dataoutput['msg'] = json_encode($dataoutput['msg'] ?? $dataoutput ?? 'unknown error');
             addBalance($Balance_id['id'], $orderPrice);
@@ -2806,5 +2807,15 @@ function nexoraEnsureInstallerRemoved()
 
     if (!nexoraRemoveInstallerPath($installerDirectory)) {
         nexoraStopForInstaller('nexora install folder still exists and could not be removed automatically; delete it manually to enable the bot.');
+    }
+}
+if (!function_exists('enqueue_op')) {
+    function enqueue_op($pdo, $id_user, $id_invoice, $op_type, $payload = []) {
+        if (!($pdo instanceof PDO)) return false;
+        try {
+            $st = $pdo->prepare("INSERT INTO op_queue (id_user, id_invoice, op_type, payload, status) VALUES (?,?,?,?, 'pending')");
+            $st->execute([$id_user, $id_invoice, $op_type, json_encode($payload, JSON_UNESCAPED_UNICODE)]);
+            return (int)$pdo->lastInsertId();
+        } catch (Throwable $e) { error_log('enqueue_op: ' . $e->getMessage()); return false; }
     }
 }
