@@ -64,17 +64,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <meta name="theme-color" content="#0F172A" id="mtc">
+  <meta name="theme-color" content="#0B0F1A" id="mtc">
   <title><?= $textbotlang['panel']['loginPanelTitle'] ?></title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/login-lux.css">
   <script>(function () { var t = localStorage.getItem('panel-theme') || 'navy'; document.documentElement.setAttribute('data-theme', t); var c = { navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C', sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9', linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF' }; var m = document.getElementById('mtc'); if (m && c[t]) m.content = c[t]; })();</script>
 </head>
 
 <body>
+  <div class="lux-orb o1"></div>
+  <div class="lux-orb o2"></div>
+  <div class="lux-orb o3"></div>
+  <div class="lux-grid"></div>
+
   <div class="auth">
     <aside class="auth-aside">
       <div class="auth-mark">
-        <div class="dot">M</div>
+        <div class="dot">N</div>
         <span><?= $textbotlang['panel']['loginHeading'] ?></span>
       </div>
       <div class="auth-quote">
@@ -86,7 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="auth-foot">© <?= date('Y') ?> <?= $textbotlang['panel']['loginPasswordPlaceholder'] ?></div>
     </aside>
     <main class="auth-main">
-      <div class="auth-box" style="animation:fadeUp .5s ease-out">
+      <div class="auth-box lux-box" style="position:relative">
+        <div class="lux-corner"></div>
         <h1><?= $textbotlang['panel']['loginButton'] ?></h1>
         <p class="lede"><?= $textbotlang['panel']['loginRememberMe'] ?></p>
         <?php if ($error): ?>
@@ -106,10 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="password" id="password" name="password" class="input" placeholder="••••••••"
               autocomplete="current-password" required maxlength="200">
           </div>
-          <button type="submit" class="btn btn-primary" id="loginBtn">
+          <button type="submit" class="btn lux-btn" id="loginBtn">
             <span id="loginText"><?= $textbotlang['panel']['loginShowPassword'] ?></span>
-            <span id="loginSpin"
-              style="display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite"></span>
+            <span id="loginSpin" class="spin"></span>
           </button>
         </form>
         <div class="auth-bottom"><?= $textbotlang['panel']['loginHidePassword'] ?></div>
