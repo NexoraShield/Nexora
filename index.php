@@ -1547,7 +1547,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $productextend = ['inline_keyboard' => []];
         $statusshowprice = select("shopSetting", "*", "Namevalue", "statusshowprice", "select")['value'];
         while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $hide_panel = json_decode($result['hide_panel'], true);
+            $hide_panel = json_decode($result['hide_panel'], true) ?: [];
             if (in_array($nameloc['Service_location'], $hide_panel))
                 continue;
             if (intval($user['pricediscount']) != 0) {
