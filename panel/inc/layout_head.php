@@ -243,9 +243,9 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <button class="icon-btn menu-toggle" onclick="openSidebar()"><?= icon('menu', 18) ?></button>
           <button class="icon-btn sb-toggle" onclick="toggleSidebar()"><?= icon('menu', 17) ?></button>
           <div>
-            <div class="topbar-title"><?= htmlspecialchars($pageTitle) ?></div>
+            <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? '') ?></div>
             <div class="crumb"><span><?= $textbotlang['panel']['layoutPageTitleSuffix'] ?></span><span
-                style="opacity:.4;margin:0 3px">/</span><span><?= htmlspecialchars($pageTitle) ?></span></div>
+                style="opacity:.4;margin:0 3px">/</span><span><?= htmlspecialchars($pageTitle ?? '') ?></span></div>
           </div>
         </div>
         <div class="topbar-tools">
@@ -268,7 +268,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <div class="notice notice-warn"><?= htmlspecialchars($w) ?></div><?php endif;
         if ($showPageHead): ?>
           <div class="page-head fade-up">
-            <h1><?= htmlspecialchars($pageTitle) ?></h1>
+            <h1><?= htmlspecialchars($pageTitle ?? '') ?></h1>
             <?php if ($pageLede): ?>
               <p><?= htmlspecialchars($pageLede) ?></p><?php endif; ?>
           </div>

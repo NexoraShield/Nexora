@@ -7,6 +7,9 @@
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
 require_once __DIR__ . '/../nexora_style.php';
+$target = $_GET['target'] ?? '';
+$target_type = $_GET['target_type'] ?? 'button';
+
 require_auth();
 
 nexora_ensure_emoji_table();
