@@ -1,3 +1,28 @@
+// >>> FRENZYEX GATEWAY
+if (!empty($step_payment['inline_keyboard']) && is_array($step_payment['inline_keyboard'])) {
+    $fx_priority = ['frenzyex' => 0, 'iranpay2' => 1, 'nowpayment' => 2];
+    $fx_selected = [];
+    $fx_remaining = [];
+    foreach ($step_payment['inline_keyboard'] as $fx_row) {
+        $fx_callback = '';
+        if (is_array($fx_row) && isset($fx_row[0]) && is_array($fx_row[0])) {
+            $fx_callback = (string) ($fx_row[0]['callback_data'] ?? '');
+        }
+        if (array_key_exists($fx_callback, $fx_priority)) {
+            $fx_selected[$fx_callback] = $fx_row;
+        } else {
+            $fx_remaining[] = $fx_row;
+        }
+    }
+    $fx_ordered = [];
+    foreach (['frenzyex', 'iranpay2', 'nowpayment'] as $fx_callback) {
+        if (isset($fx_selected[$fx_callback])) {
+            $fx_ordered[] = $fx_selected[$fx_callback];
+        }
+    }
+    $step_payment['inline_keyboard'] = array_merge($fx_ordered, $fx_remaining);
+}
+// <<< FRENZYEX GATEWAY
 <?php
 require_once 'config.php';
 require_once __DIR__ . '/nexora_style.php';
@@ -1668,4 +1693,10 @@ function keyboard_list_text($lang)
     }
     $keyboard_text['inline_keyboard'][] = [['text' => $textbotlang['bottext']['btn_close'], 'callback_data' => 'bt_close']];
     return json_encode($keyboard_text);
+}
+require_once __DIR__ . '/frenzyex_lib.php';
+if (frenzyex_enabled()) {
+    $step_payment['inline_keyboard'][] = [
+        ['text' => $textbotlang['textbot']['frenzyEx'] ?? '🌸 کارت به کارت با FrenzyEx', 'callback_data' => "frenzyex"]
+    ];
 }
