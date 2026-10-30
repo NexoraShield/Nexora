@@ -129,6 +129,12 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('card') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['layoutSearchBoxPlaceholder'] ?></span>
           </a>
+          <a href="finance.php" class="nav-item <?= $activeNav === 'finance' ? 'active' : '' ?>"
+            title="مالی و درگاه‌های پرداخت">
+            <span class="nav-icon"><?= icon('card') ?></span><span
+              class="nav-label">مالی و درگاه‌ها</span>
+          </a>
+
           <a href="keyboard.php" class="nav-item <?= $activeNav === 'keyboard' ? 'active' : '' ?>"
             title="<?= $textbotlang['panel']['layoutPageTitleKeyboard'] ?>">
             <span class="nav-icon">
