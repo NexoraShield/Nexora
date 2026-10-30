@@ -165,7 +165,7 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="action" value="panel">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
           <td><?= nexora_btnstyle_preview($p['name_panel'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
-          <td class="cs"><?= htmlspecialchars($p['name_panel'] ?? '') ?></td>
+          <td class="cs"><?= htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?></td>
           <td><?= nexora_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($p['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>

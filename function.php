@@ -2138,7 +2138,9 @@ function containsHtmlMarkup($value)
     if (!is_string($value)) {
         return false;
     }
-    return strpos($value, '<') !== false;
+    // Allow premium emoji tags (<tg-emoji ...>) but block other HTML
+    $stripped = preg_replace('#<tg-emoji\b[^>]*>.*?</tg-emoji>#isu', '', $value);
+    return strpos($stripped, '<') !== false;
 }
 function stripCustomEmojiTags($value)
 {
