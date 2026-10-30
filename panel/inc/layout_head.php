@@ -18,6 +18,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title><?= $textbotlang['panel']['layoutBrandName'] ?></title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/nexora-glass.css?v=1">
   <script>
     (function () {
       var t = localStorage.getItem('panel-theme') || 'navy';
