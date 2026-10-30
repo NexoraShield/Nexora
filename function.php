@@ -458,6 +458,17 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
     if (isset($store['tableIndex'][$table])) {
         clearSelectCache($table);
     }
+
+    // Invalidate persistent file cache for setting table
+    if ($table === 'setting') {
+        $pcDir = __DIR__ . '/storage/cache';
+        $pcFiles = glob($pcDir . '/pc_setting_*.json');
+        if (is_array($pcFiles)) {
+            foreach ($pcFiles as $pcFile) {
+                @unlink($pcFile);
+            }
+        }
+    }
 }
 function &getSelectCacheStore()
 {
@@ -503,17 +514,24 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         $useCache = (bool) $options['cache'];
     }
 
-    $cacheKey = null;
-    if ($useCache) {
-        $cacheKey = hash('sha256', json_encode([
-            $table,
-            $field,
-            $whereField,
-            $whereValue,
-            $type,
-        ], JSON_UNESCAPED_UNICODE));
+    // Persistent file-based cache for setting table (rarely changes)
+    $persistentCacheTables = ['setting'];
+    $persistentCacheTtl = 300; // 5 minutes
+    $persistentCacheDir = __DIR__ . '/storage/cache';
+    if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache) {
+        $pcKey = 'pc_' . $table . '_' . $field . '_' . $type;
+        $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
+        if (is_file($pcFile) && (time() - filemtime($pcFile)) < $persistentCacheTtl) {
+            $pcData = @file_get_contents($pcFile);
+            if ($pcData !== false) {
+                $pcResult = @json_decode($pcData, true);
+                if ($pcResult !== null || $pcData === 'null') {
+                    return $pcResult;
+                }
+            }
+        }
+    }
 
-        $store = &getSelectCacheStore();
         if (isset($store['results'][$cacheKey])) {
             return $store['results'][$cacheKey];
         }
@@ -583,6 +601,14 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
             $store['tableIndex'][$table] = [];
         }
         $store['tableIndex'][$table][$cacheKey] = true;
+    }
+
+    // Store in persistent file cache for setting table
+    if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache && !$queryFailed) {
+        if (!is_dir($persistentCacheDir)) {
+            @mkdir($persistentCacheDir, 0775, true);
+        }
+        @file_put_contents($pcFile, json_encode($result, JSON_UNESCAPED_UNICODE), LOCK_EX);
     }
 
     return $result;
