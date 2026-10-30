@@ -6477,13 +6477,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             'chat_id' => $from_id,
             'emoji' => "🎲",
         ]);
-        sleep((int) 4.5);
+        sleep((int) 2.5);
     } else {
         $diceResponse = telegram('sendDice', [
             'chat_id' => $from_id,
             'emoji' => "🎰",
         ]);
-        sleep(2);
+        sleep(1);
     }
     if (!is_array($diceResponse) || empty($diceResponse['ok']) || !isset($diceResponse['result']['dice']['value'])) {
         $errorContext = is_array($diceResponse) ? json_encode($diceResponse) : (is_string($diceResponse) ? $diceResponse : 'empty response');

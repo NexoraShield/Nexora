@@ -400,7 +400,8 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
 
     $valueToStore = normaliseUpdateValue($newValue);
 
-    ensureColumnExistsForUpdate($table, $field, $valueToStore);
+    // Performance: skip column existence check (columns are ensured by migrate.php)
+    // ensureColumnExistsForUpdate($table, $field, $valueToStore);
 
     $executeUpdate = function ($value) use ($pdo, $table, $field, $whereField, $whereValue) {
         if ($whereField !== null) {
@@ -436,23 +437,27 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
         }
     }
 
-    $date = date("Y-m-d H:i:s");
-    if (!isset($user['step'])) {
-        $user['step'] = '';
-    }
-    $sensitiveFields = ['password', 'token', 'password_panel', 'secret_code', 'datelogin'];
-    $logValue = in_array(strtolower((string) $field), $sensitiveFields, true)
-        ? '[redacted]'
-        : (is_scalar($valueToStore) ? $valueToStore : json_encode($valueToStore, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    $logss = "{$table}_{$field}_{$logValue}_{$whereField}_{$whereValue}_{$user['step']}_$date";
-    if ($field != "message_count" && $field != "last_message_time") {
-        $logDir = __DIR__ . '/storage';
-        if (is_dir($logDir) || @mkdir($logDir, 0775, true)) {
-            @file_put_contents($logDir . '/log.txt', "\n" . $logss, @filesize($logDir . '/log.txt') > 5 * 1024 * 1024 ? 0 : FILE_APPEND);
-        }
-    }
+    // Performance: skip disk logging (was writing to log.txt on every update call)
+    // $date = date("Y-m-d H:i:s");
+    // if (!isset($user['step'])) {
+    //     $user['step'] = '';
+    // }
+    // $sensitiveFields = ['password', 'token', 'password_panel', 'secret_code', 'datelogin'];
+    // $logValue = in_array(strtolower((string) $field), $sensitiveFields, true)
+    //     ? '[redacted]'
+    //     : (is_scalar($valueToStore) ? $valueToStore : json_encode($valueToStore, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    // $logss = "{$table}_{$field}_{$logValue}_{$whereField}_{$whereValue}_{$user['step']}_$date";
+    // if ($field != "message_count" && $field != "last_message_time") {
+    //     $logDir = __DIR__ . '/storage';
+    //     if (is_dir($logDir) || @mkdir($logDir, 0775, true)) {
+    //         @file_put_contents($logDir . '/log.txt', "\n" . $logss, @filesize($logDir . '/log.txt') > 5 * 1024 * 1024 ? 0 : FILE_APPEND);
+    //     }
+    // }
 
-    clearSelectCache($table);
+    $store = &getSelectCacheStore();
+    if (isset($store['tableIndex'][$table])) {
+        clearSelectCache($table);
+    }
 }
 function &getSelectCacheStore()
 {
