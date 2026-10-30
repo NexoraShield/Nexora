@@ -264,6 +264,13 @@ if command -v php >/dev/null 2>&1; then
   php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
 fi
 
+  # Restart PHP-FPM to clear OPcache (CLI opcache_reset does not affect FPM)
+  for _svc in php8.2-fpm php8.1-fpm php8.0-fpm php7.4-fpm; do
+    if systemctl is-active --quiet "$_svc" 2>/dev/null || systemctl list-unit-files "$_svc.service" 2>/dev/null | grep -q "$_svc"; then
+      systemctl restart "$_svc" 2>/dev/null && echo "  restarted $_svc" || true
+    fi
+  done
+
 echo
 echo "NEXORA_PROGRESS:98"
 echo "==> Verifying installation completeness"
