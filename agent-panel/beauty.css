@@ -1,0 +1,48 @@
+/* Nexora beauty layer — global polish, low-risk. Loaded last. */
+::selection{background:rgba(80,160,255,.4)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:rgba(4,12,28,.5)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#1c6fb5,#5b34c7);border-radius:8px}
+/* scroll reveal (class added by beauty.js only, safe without JS) */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1!important;transform:none!important;transition:none}}
+/* headings */
+.section-heading h2,.faq-section h2{text-shadow:0 2px 14px rgba(0,0,0,.7)}
+.eyebrow,.section-heading>p{color:#65d0ff}
+/* buttons everywhere */
+.primary-button,.buy-button,.dl-btn,.auth-submit,.pf-btn{transition:transform .2s ease,box-shadow .25s ease,background-position .25s ease}
+.primary-button:hover,.buy-button:hover,.dl-btn:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(46,108,255,.5)}
+/* cards lift */
+.content-card,.contact-card,.os-row,.dl-row,.faq-item,.latest-panel,.news-card,.tutorial-card,.social-card,.about-pill{transition:transform .22s ease,border-color .22s ease,box-shadow .25s ease}
+.content-card:hover,.contact-card:hover,.os-row:hover,.dl-row:hover,.latest-panel:hover,.news-card:hover,.tutorial-card:hover,.social-card:hover{transform:translateY(-3px);border-color:rgba(140,220,255,.55)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 20px 50px rgba(0,0,0,.4),0 0 28px rgba(56,169,255,.14)!important}
+.news-card .news-thumb{transition:transform .35s ease}
+.news-card:hover .news-thumb{transform:scale(1.03)}
+/* trust strip */
+.trust-item{transition:background .2s ease}
+.trust-item:hover{background:rgba(80,180,255,.08)}
+/* inputs focus */
+input:focus,textarea:focus,select:focus{border-color:#6fd8ff!important;box-shadow:0 0 0 3px rgba(52,195,255,.13)}
+/* nav link underline sweep */
+.navigation a{position:relative}
+.navigation a:after{content:"";position:absolute;inset:auto 0 -4px;height:2px;border-radius:2px;background:linear-gradient(90deg,#34c7ff,#a855f7);transform:scaleX(0);transform-origin:center;transition:transform .25s ease}
+.navigation a:hover:after,.navigation a.active:after{transform:scaleX(1)}
+/* footer breathing room */
+footer .container.footer small{letter-spacing:1px}
+/* hero luxury CTA — services buy button only, nothing else touched */
+.hero-actions a[href="services.html"]{position:relative;overflow:hidden;background-color:#f0a832;background:linear-gradient(135deg,#f5c86e,#f0a832 35%,#e86a2f 70%,#8b5cf6 130%);background-size:220% 220%;border:1px solid #6bd4ff!important;color:#fff!important;font-family:Vazirmatn,Arial,sans-serif!important;font-size:14.5px!important;font-weight:900;letter-spacing:0;text-shadow:0 2px 10px rgba(60,20,0,.65);box-shadow:0 14px 38px rgba(14,165,233,.55),0 0 28px rgba(87,207,255,.35),inset 0 1px 0 rgba(255,255,255,.6);animation:ctaShine 3.2s ease-in-out infinite}
+.hero-actions a[href="services.html"]:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 20px 48px rgba(14,165,233,.7),0 0 36px rgba(87,207,255,.5),inset 0 1px 0 rgba(255,255,255,.6)}
+.hero-actions a[href="services.html"]::after{content:"";position:absolute;top:0;bottom:0;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:ctaSweep 2.8s ease-in-out infinite;pointer-events:none}
+.hero-actions a[href="services.html"] b{display:inline-block;animation:ctaArrow 1.4s ease-in-out infinite}
+@keyframes ctaShine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes ctaSweep{0%{transform:translateX(-160%) skewX(-18deg)}60%,100%{transform:translateX(320%) skewX(-18deg)}}
+@keyframes ctaArrow{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+@media(min-width:901px){.hero-actions a[href="#login"]{display:none}}
+/* hero polish — paint only (no layout): reseller CTA twin, glows, headline light */
+.hero-content h1{text-shadow:0 2px 12px rgba(0,0,0,.72),0 0 38px rgba(87,207,255,.38)}
+.hero-actions a[href="reseller-panel.html"]{position:relative;overflow:hidden;background:linear-gradient(135deg,#0e9488,#147d8a 40%,#5b34c7 115%);background-size:220% 220%;border:1px solid #6bd4ff!important;color:#fff!important;font-weight:900;text-shadow:0 2px 10px rgba(0,20,20,.65);box-shadow:0 14px 38px rgba(14,148,136,.5),0 0 28px rgba(91,52,199,.35),inset 0 1px 0 rgba(255,255,255,.55);animation:ctaShine 3.6s ease-in-out infinite}
+.hero-actions a[href="reseller-panel.html"]:hover{box-shadow:0 20px 48px rgba(14,148,136,.65),0 0 36px rgba(91,52,199,.5),inset 0 1px 0 rgba(255,255,255,.55)}
+.hero-actions a[href="reseller-panel.html"]::after{content:"";position:absolute;top:0;bottom:0;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);animation:ctaSweep 3s ease-in-out infinite;pointer-events:none}
+.hero-actions a[href="reseller-panel.html"] b{display:inline-block;animation:ctaArrow 1.4s ease-in-out infinite}
+.ghost-button:hover{box-shadow:inset 0 1px 0 rgba(227,249,255,.18),0 10px 30px rgba(87,207,255,.28)}
+.hero-mini-icon{box-shadow:inset 0 0 0 1px rgba(87,207,255,.35),0 0 18px rgba(87,207,255,.16)}
