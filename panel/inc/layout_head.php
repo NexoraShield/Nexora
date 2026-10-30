@@ -143,62 +143,62 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <a href="emoji_picker.php" class="nav-item <?= $activeNav === 'emoji_picker' ? 'active' : '' ?>"
             title="انتخاب‌گر ایموجی پرمیوم">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🎭 انتخاب‌گر ایموجی</span>
+              class="nav-label">انتخاب‌گر ایموجی</span>
           </a>
           <a href="maintenance.php" class="nav-item <?= $activeNav === 'maintenance' ? 'active' : '' ?>"
             title="حالت تعمیرات">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🛠️ تعمیرات</span>
+              class="nav-label">تعمیرات</span>
           </a>
           <a href="audit.php" class="nav-item <?= $activeNav === 'audit' ? 'active' : '' ?>"
             title="گزارش فعالیت">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">📜 Audit Log</span>
+              class="nav-label">Audit Log</span>
           </a>
           <a href="magic.php" class="nav-item <?= $activeNav === 'magic' ? 'active' : '' ?>"
             title="معجزه">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">✨ معجزه</span>
+              class="nav-label">معجزه</span>
           </a>
           <a href="botcolors.php" class="nav-item <?= $activeNav === 'botcolors' ? 'active' : '' ?>"
             title="رنگ تمام کلیدها">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🎨 رنگ تمام کلیدها</span>
+              class="nav-label">رنگ تمام کلیدها</span>
           </a>
           <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
             title="دکمه‌های ربات">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🔘 دکمه‌های ربات</span>
+              class="nav-label">دکمه‌های ربات</span>
           </a>
           <a href="tickets.php" class="nav-item <?= $activeNav === 'tickets' ? 'active' : '' ?>"
             title="پشتیبانی و تیکت‌ها">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🎫 پشتیبانی و تیکت‌ها</span>
+              class="nav-label">پشتیبانی و تیکت‌ها</span>
           </a>
           <a href="backup.php" class="nav-item <?= $activeNav === 'backup' ? 'active' : '' ?>"
             title="پشتیبان‌گیری">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">💾 پشتیبان‌گیری</span>
+              class="nav-label">پشتیبان‌گیری</span>
           </a>
           <a href="queue.php" class="nav-item <?= $activeNav === 'queue' ? 'active' : '' ?>"
             title="صف عملیات‌های ناقص">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">📋 صف عملیات</span>
+              class="nav-label">صف عملیات</span>
           </a>
           <a href="service_volumes.php" class="nav-item <?= $activeNav === 'service_volumes' ? 'active' : '' ?>"
             title="بررسی حجم/زمان سرویس‌ها">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">📊 بررسی حجم/زمان</span>
+              class="nav-label">بررسی حجم/زمان</span>
           </a>
           <a href="custom_apps.php" class="nav-item <?= $activeNav === 'custom_apps' ? 'active' : '' ?>"
             title="برنامه اختصاصی و آموزش اتصال">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">📱 برنامه و آموزش</span>
+              class="nav-label">برنامه و آموزش</span>
           </a>
           <a href="collab.php" class="nav-item <?= $activeNav === 'collab' ? 'active' : '' ?>"
             title="همکاری">
             <span class="nav-icon"><?= icon('settings') ?></span><span
-              class="nav-label">🤝 همکاری</span>
+              class="nav-label">همکاری</span>
           </a>
         </div>
         <div class="nav-section">
