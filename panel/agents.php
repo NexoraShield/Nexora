@@ -59,8 +59,20 @@ try {
     $stmt = $pdo->query("SELECT id, username, agent, pricediscount, maxbuyagent, Balance, number FROM user WHERE agent IS NOT NULL AND agent <> 'f' AND agent <> '' ORDER BY id LIMIT 500");
     $agents = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $e) { $agents = []; }
-?>
-<div class="page-header">
+
+$panelAccess = [];
+try {
+    $stmt = $pdo->query("SELECT id_user FROM agent_auth");
+    while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $panelAccess[$r['id_user']] = true;
+    }
+} catch (Throwable $e) {}
+
+$pageTitle = 'مدیریت نمایندگان (Agent Panel)';
+$pageLede = 'مدیریت نمایندگان، قیمت‌گذاری، دسترسی پنل و حذف.';
+$activeNav = 'agents';
+include __DIR__ . '/inc/layout_head.php';
+?><div class="page-header">
     <h1>👥 مدیریت نمایندگان</h1>
     <p class="page-lede"><?= $pageLede ?></p>
 </div>
@@ -147,20 +159,3 @@ try {
 </div>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>
-
-
-$panelAccess = [];
-try {
-    $stmt = $pdo->query("SELECT id_user FROM agent_auth");
-    while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $panelAccess[$r['id_user']] = true;
-    }
-} catch (Throwable $e) {}
-
-$pageTitle = 'مدیریت نمایندگان (Agent Panel)';
-$pageLede = 'مدیریت نمایندگان، قیمت‌گذاری، دسترسی پنل و حذف.';
-$activeNav = 'agents';
-include __DIR__ . '/inc/layout_head.php';
-?>?>
-?>
-?>
