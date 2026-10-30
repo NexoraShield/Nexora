@@ -206,6 +206,12 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('settings') ?></span><span
               class="nav-label">همکاری</span>
           </a>
+          <a href="agents.php" class="nav-item <?= $activeNav === 'agents' ? 'active' : '' ?>"
+            title="مدیریت نمایندگان">
+            <span class="nav-icon"><?= icon('users') ?></span><span
+              class="nav-label">نمایندگان</span>
+          </a>
+
         </div>
         <div class="nav-section">
           <div class="nav-heading"><?= $textbotlang['panel']['layoutSidebarToggleLabel'] ?></div>
