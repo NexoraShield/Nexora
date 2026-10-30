@@ -61,7 +61,9 @@ if [[ -z "$TARGET" ]]; then
     /var/www/html/nexorabotconfig \
     /var/www/nexorabot \
     /var/www/html/bot \
-    /var/www/html/nexorabotconfig
+    /var/www/html/nexorabotconfig \
+    /var/www/html/viranaut \
+    /var/www/html/mirzaprobotconfig
   do
     if [[ -f "$candidate/function.php" && -f "$candidate/index.php" && -f "$candidate/config.php" && -f "$candidate/keyboard.php" && -f "$candidate/botapi.php" ]]; then
       TARGET="$candidate"
@@ -205,6 +207,18 @@ cp -- "$PACKAGE_DIR/cronbot/frenzyex.php" "$TARGET/cronbot/frenzyex.php"
 cp -- "$PACKAGE_DIR/tools/nexora-indexes.php" "$TARGET/tools/nexora-indexes.php"
 cp -- "$PACKAGE_DIR/app/assets/nexora-theme.css" "$TARGET/app/assets/nexora-theme.css"
 cp -- "$PACKAGE_DIR/payment/frenzyex.php" "$TARGET/payment/frenzyex.php"
+cp -- "$PACKAGE_DIR/version" "$TARGET/version" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/frenzyex_lib.php" "$TARGET/frenzyex_lib.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/finance.php" "$TARGET/panel/finance.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/agents.php" "$TARGET/panel/agents.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/magic.php" "$TARGET/panel/magic.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/botcolors.php" "$TARGET/panel/botcolors.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/audit.php" "$TARGET/panel/audit.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/maintenance.php" "$TARGET/panel/maintenance.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/bottext.php" "$TARGET/panel/bottext.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/emoji_picker.php" "$TARGET/panel/emoji_picker.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/inc/layout_head.php" "$TARGET/panel/inc/layout_head.php" 2>/dev/null || true
+
 if [[ -f "$PACKAGE_DIR/tools/nexora" ]]; then
   cp -- "$PACKAGE_DIR/tools/nexora" /usr/local/bin/nexora 2>/dev/null && chmod +x /usr/local/bin/nexora && echo "nexora CLI installed."
 # refresh base language files so new/updated bot messages come through (user overrides in lang/override/ are preserved)
