@@ -770,7 +770,7 @@ function updatePaymentMessageId($response, $orderId)
 function nowPayments($payment, $price_amount, $order_id, $order_description)
 {
     global $domainhosts;
-    $apinowpayments = select("PaySetting", "*", "NamePay", "marchent_tronseller", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("marchent_tronseller")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://api.nowpayments.io/v1/' . $payment,
@@ -798,7 +798,7 @@ function nowPayments($payment, $price_amount, $order_id, $order_description)
 }
 function StatusPayment($paymentid)
 {
-    $apinowpayments = select("PaySetting", "*", "NamePay", "marchent_tronseller", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("marchent_tronseller")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://api.nowpayments.io/v1/payment/' . $paymentid,
@@ -851,7 +851,7 @@ function invoiceBelongsToUser($invoice, $userId)
 }
 function cubepayFeeValue()
 {
-    $raw = select("PaySetting", "ValuePay", "NamePay", "feeternado", "select")['ValuePay'] ?? '0';
+    $raw = getPaySetting("feeternado")['ValuePay'] ?? '0';
 
     return (float) str_replace([',', 'ØŒ'], '', (string) $raw);
 }
@@ -868,7 +868,7 @@ function cubepayApplyFee($base, $fee)
 }
 function cubepayPayableAmount($price)
 {
-    $status = select("PaySetting", "ValuePay", "NamePay", "feestatusternado", "select")['ValuePay'] ?? 'offfeeternado';
+    $status = getPaySetting("feestatusternado")['ValuePay'] ?? 'offfeeternado';
     if ($status !== 'onfeeternado') {
         return intval($price);
     }
@@ -929,7 +929,7 @@ function createPayiranpay4($price, $order_id)
 function cubepay($order_id, $price, $customer_user_id)
 {
     global $domainhosts;
-    $token_cubepay = select("PaySetting", "*", "NamePay", "apiternado", "select")['ValuePay'];
+    $token_cubepay = getPaySetting("apiternado")['ValuePay'];
     $amount_toman = cubepayPayableAmount($price);
     $curl = curl_init();
     curl_setopt_array($curl, array(
@@ -1477,9 +1477,9 @@ function DirectPayment($order_id, $image = 'images.jpg')
             ]
         ]);
         if ($Balance_id['agent'] == "f") {
-            $valurcashbackextend = select("shopSetting", "*", "Namevalue", "chashbackextend", "select")['value'];
+            $valurcashbackextend = getShopSetting("chashbackextend")['value'];
         } else {
-            $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'] ?? '{}', true)[$Balance_id['agent']] ?? 0;
+            $valurcashbackextend = json_decode(getShopSetting("chashbackextend_agent")['value'] ?? '{}', true)[$Balance_id['agent']] ?? 0;
         }
         if (intval($valurcashbackextend) != 0) {
             $result = ($prodcut['price_product'] * $valurcashbackextend) / 100;
@@ -1641,7 +1641,7 @@ function DirectPayment($order_id, $image = 'images.jpg')
 }
 function plisio($order_id, $price, $from_id)
 {
-    $apinowpayments = select("PaySetting", "ValuePay", "NamePay", "apinowpayment", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("apinowpayment")['ValuePay'];
     $api_key = $apinowpayments;
 
     $url = 'https://api.plisio.net/api/v1/invoices/new';
@@ -2044,8 +2044,8 @@ function activecron()
 }
 function createInvoice($amount)
 {
-    $PaySetting = select("PaySetting", "*", "NamePay", "apiiranpay", "select")['ValuePay'];
-    $walletaddress = select("PaySetting", "*", "NamePay", "walletaddress", "select")['ValuePay'];
+    $PaySetting = getPaySetting("apiiranpay")['ValuePay'];
+    $walletaddress = getPaySetting("walletaddress")['ValuePay'];
 
     $curl = curl_init();
 
@@ -2069,7 +2069,7 @@ function createInvoice($amount)
 }
 function verifpay($id)
 {
-    $PaySetting = select("PaySetting", "*", "NamePay", "apiiranpay", "select")['ValuePay'];
+    $PaySetting = getPaySetting("apiiranpay")['ValuePay'];
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
@@ -2094,7 +2094,7 @@ function verifpay($id)
 function createInvoiceiranpay1($amount, $id_invoice)
 {
     global $domainhosts;
-    $PaySetting = select("PaySetting", "*", "NamePay", "marchent_floypay", "select")['ValuePay'];
+    $PaySetting = getPaySetting("marchent_floypay")['ValuePay'];
     $curl = curl_init();
     $amount = intval($amount);
     $data = [
@@ -2685,7 +2685,7 @@ function isValidInvitationCode($setting, $fromId, $verfy_status)
 function createPayZarinpal($price, $order_id)
 {
     global $domainhosts;
-    $marchent_zarinpal = select("PaySetting", "ValuePay", "NamePay", "merchant_zarinpal", "select")['ValuePay'];
+    $marchent_zarinpal = getPaySetting("merchant_zarinpal")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://payment.zarinpal.com/pg/v4/payment/request.json',
@@ -2761,7 +2761,7 @@ function createPayVariza($price, $order_id)
 function createPayaqayepardakht($price, $order_id)
 {
     global $domainhosts;
-    $merchant_aqayepardakht = select("PaySetting", "ValuePay", "NamePay", "merchant_id_aqayepardakht", "select")['ValuePay'];
+    $merchant_aqayepardakht = getPaySetting("merchant_id_aqayepardakht")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://panel.aqayepardakht.ir/api/v2/create',
