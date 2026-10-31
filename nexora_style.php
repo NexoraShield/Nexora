@@ -60,7 +60,7 @@ if (!function_exists('nexora_ensure_style_columns')) {
         $targets = [
             'product' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NOT NULL DEFAULT 0']],
             'category' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NULL DEFAULT 0']],
-            'marzban_panel' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']],
+            'marzban_panel' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NOT NULL DEFAULT 0']],
             'invoice' => [['id_payment', 'VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL']],
             'service_other' => [['id_payment', 'VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL']],
         ];
@@ -573,6 +573,7 @@ if (!function_exists('nexora_ensure_indexes')) {
             ['product', 'idx_product_display', '`display_order`'],
             ['user', 'idx_user_agent', '`agent`(10)'],
             ['user', 'idx_user_register', '`register`(50)'],
+            ['marzban_panel', 'idx_panel_display', '`display_order`'],
         ];
         foreach ($indexes as [$table, $indexName, $columns]) {
             try {
