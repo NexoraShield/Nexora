@@ -459,8 +459,8 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
         clearSelectCache($table);
     }
 
-    // Invalidate persistent file cache for setting and admin tables
-    if (in_array($table, ['setting', 'admin'], true)) {
+    // Invalidate persistent file cache for rarely-changing tables
+    if (in_array($table, ['setting', 'admin', 'topicid', 'marzban_panel'], true)) {
         $pcDir = __DIR__ . '/storage/cache';
         $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
         if (is_array($pcFiles)) {
@@ -514,8 +514,8 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         $useCache = (bool) $options['cache'];
     }
 
-    // Persistent file-based cache for setting and admin tables (rarely change)
-    $persistentCacheTables = ['setting', 'admin'];
+    // Persistent file-based cache for rarely-changing tables
+    $persistentCacheTables = ['setting', 'admin', 'topicid', 'marzban_panel'];
     $persistentCacheTtl = 300; // 5 minutes
     $persistentCacheDir = __DIR__ . '/storage/cache';
     if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache) {
