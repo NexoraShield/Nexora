@@ -1,3 +1,4 @@
+<?php
 // >>> FRENZYEX GATEWAY
 if (!empty($step_payment['inline_keyboard']) && is_array($step_payment['inline_keyboard'])) {
     $fx_priority = ['frenzyex' => 0, 'iranpay2' => 1, 'nowpayment' => 2];
