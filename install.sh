@@ -186,9 +186,25 @@ for _rb in lang/fa.php lang/en.php lang/ru.php lang/zh.php install/checks.php in
 done
 
 echo "NEXORA_PROGRESS:45"
-echo "==> Installing new files"
-mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment"
-cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
+
+# FORCE mode: copy ALL files from package
+if [[ "$FORCE" == "1" ]]; then
+    echo "==> FORCE mode: copying ALL files"
+    cd "$PACKAGE_DIR"
+    while IFS= read -r -d '' f; do
+        rel="${f#./}"
+        mkdir -p "$TARGET/$(dirname "$rel")"
+        cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
+    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -print0)
+    cd "$TARGET"
+    echo "    All files copied (FORCE mode)"
+    fi
+
+echo "NEXORA_PROGRESS:60"
+else
+    echo "==> Installing new files (selective)"
+    mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment" "$TARGET/lang"
+    cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
 cp -- "$PACKAGE_DIR/panel/btnstyle.php" "$TARGET/panel/btnstyle.php"
 cp -- "$PACKAGE_DIR/panel/textemojis.php" "$TARGET/panel/textemojis.php"
 cp -- "$PACKAGE_DIR/panel/emojis.php" "$TARGET/panel/emojis.php"
