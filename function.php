@@ -469,6 +469,11 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
             }
         }
     }
+
+    // Invalidate global user cache on user update
+    if ($table === 'user' && isset($GLOBALS['nexora_user_cache']) && $whereValue !== null) {
+        unset($GLOBALS['nexora_user_cache'][$whereValue]);
+    }
 }
 function &getSelectCacheStore()
 {
@@ -512,6 +517,23 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     $useCache = true;
     if (is_array($options) && array_key_exists('cache', $options)) {
         $useCache = (bool) $options['cache'];
+    }
+
+    // Global request-level cache for user data (avoids re-fetching user row)
+    if ($table === 'user' && $whereField === 'id' && $whereValue !== null && $useCache) {
+        if (!isset($GLOBALS['nexora_user_cache'])) {
+            $GLOBALS['nexora_user_cache'] = [];
+        }
+        if (isset($GLOBALS['nexora_user_cache'][$whereValue])) {
+            $cached = $GLOBALS['nexora_user_cache'][$whereValue];
+            // Return only requested fields if not '*'
+            if ($field !== '*' && $field !== null) {
+                if (isset($cached[$field])) {
+                    return $cached[$field];
+                }
+            }
+            return $cached;
+        }
     }
 
     // Persistent file-based cache for rarely-changing tables
@@ -612,6 +634,14 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
             $store['tableIndex'][$table] = [];
         }
         $store['tableIndex'][$table][$cacheKey] = true;
+    }
+
+    // Store user data in global request-level cache
+    if ($table === 'user' && $whereField === 'id' && $whereValue !== null && $useCache && !$queryFailed && $field === '*') {
+        if (!isset($GLOBALS['nexora_user_cache'])) {
+            $GLOBALS['nexora_user_cache'] = [];
+        }
+        $GLOBALS['nexora_user_cache'][$whereValue] = $result;
     }
 
     // Store in persistent file cache for setting table
