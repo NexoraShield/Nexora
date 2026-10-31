@@ -579,6 +579,7 @@ if (!function_exists('nexora_ensure_indexes')) {
         }
     }
 }
+if (!function_exists('nexora_self_heal')) {
     function nexora_self_heal(): void {
         static $done = false;
         if ($done) return;
