@@ -198,9 +198,7 @@ if [[ "$FORCE" == "1" ]]; then
     done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -print0)
     cd "$TARGET"
     echo "    All files copied (FORCE mode)"
-    fi
-
-echo "NEXORA_PROGRESS:60"
+    echo "NEXORA_PROGRESS:60"
 else
     echo "==> Installing new files (selective)"
     mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment" "$TARGET/lang"
@@ -244,6 +242,8 @@ for _lf in "$PACKAGE_DIR"/lang/*.php; do
   cp -- "$_lf" "$TARGET/lang/$(basename "$_lf")"
 done
 fi
+fi
+
 echo "NEXORA_PROGRESS:60"
 
 if [[ -f "$TARGET/panel/product.php" ]]; then
