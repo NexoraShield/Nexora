@@ -24,7 +24,6 @@ if (!empty($step_payment['inline_keyboard']) && is_array($step_payment['inline_k
     $step_payment['inline_keyboard'] = array_merge($fx_ordered, $fx_remaining);
 }
 // <<< FRENZYEX GATEWAY
-<?php
 require_once 'config.php';
 require_once __DIR__ . '/nexora_style.php';
 $setting = select("setting", "*", null, null, "select");
