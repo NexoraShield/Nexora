@@ -657,8 +657,41 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     return $result;
 }
 
-function rowExists($table, $field, $value)
-{
+function getShopSetting($namevalue) {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        global $pdo;
+        try {
+            $stmt = $pdo->query("SELECT * FROM shopSetting");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $cache[$row['Namevalue']] = $row;
+            }
+        } catch (PDOException $e) {
+            error_log("getShopSetting failed: " . $e->getMessage());
+        }
+    }
+    return $cache[$namevalue] ?? null;
+}
+
+function getPaySetting($namepay) {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        global $pdo;
+        try {
+            $stmt = $pdo->query("SELECT * FROM PaySetting");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $cache[$row['NamePay']] = $row;
+            }
+        } catch (PDOException $e) {
+            error_log("getPaySetting failed: " . $e->getMessage());
+        }
+    }
+    return $cache[$namepay] ?? null;
+}
+
+function rowExists($table, $field, $value) {
     global $pdo;
 
     assertSqlIdentifier($table);
