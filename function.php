@@ -540,7 +540,7 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     $persistentCacheTables = ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'];
     $persistentCacheTtl = 300; // 5 minutes
     $persistentCacheDir = __DIR__ . '/storage/cache';
-    if (in_array($table, $persistentCacheTables, true) && $useCache) {
+    if (in_array($table, $persistentCacheTables, true) && $useCache && is_dir(dirname($persistentCacheDir)) && is_writable(dirname($persistentCacheDir))) {
         $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
         $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
         if (is_file($pcFile) && (time() - filemtime($pcFile)) < $persistentCacheTtl) {
@@ -645,13 +645,15 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     }
 
     // Store in persistent file cache for rarely-changing tables
-    if (in_array($table, $persistentCacheTables, true) && $useCache && !$queryFailed) {
+    if (in_array($table, $persistentCacheTables, true) && $useCache && !$queryFailed && is_dir(dirname($persistentCacheDir)) && is_writable(dirname($persistentCacheDir))) {
         $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
         $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
         if (!is_dir($persistentCacheDir)) {
             @mkdir($persistentCacheDir, 0775, true);
         }
-        @file_put_contents($pcFile, json_encode($result, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        if (is_dir($persistentCacheDir) && is_writable($persistentCacheDir)) {
+            @file_put_contents($pcFile, json_encode($result, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        }
     }
 
     return $result;
@@ -664,8 +666,10 @@ function getShopSetting($namevalue) {
         global $pdo;
         try {
             $stmt = $pdo->query("SELECT * FROM shopSetting");
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $cache[$row['Namevalue']] = $row;
+            if ($stmt) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cache[$row['Namevalue']] = $row;
+                }
             }
         } catch (PDOException $e) {
             error_log("getShopSetting failed: " . $e->getMessage());
@@ -681,8 +685,10 @@ function getPaySetting($namepay) {
         global $pdo;
         try {
             $stmt = $pdo->query("SELECT * FROM PaySetting");
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $cache[$row['NamePay']] = $row;
+            if ($stmt) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cache[$row['NamePay']] = $row;
+                }
             }
         } catch (PDOException $e) {
             error_log("getPaySetting failed: " . $e->getMessage());
