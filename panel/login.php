@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title><?= $textbotlang['panel']['loginPanelTitle'] ?></title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/login-lux.css">
-  <script>(function () { var t = localStorage.getItem('panel-theme') || 'navy'; document.documentElement.setAttribute('data-theme', t); var c = { navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C', sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9', linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF' }; var m = document.getElementById('mtc'); if (m && c[t]) m.content = c[t]; })();</script>
+  <script>(function () { var t = localStorage.getItem('panel-theme') || 'navy'; document.documentElement.setAttribute('data-theme', t); var c = { navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C', sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9', linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF', rose: '#1A0A14', indigo: '#0F0F2A', teal: '#0A1F1F', amber: '#1A150A', sky: '#F0F9FF', peach: '#FFF7ED' }; var m = document.getElementById('mtc'); if (m && c[t]) m.content = c[t]; })();</script>
 </head>
 
 <body>

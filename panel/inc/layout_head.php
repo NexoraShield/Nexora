@@ -18,6 +18,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title><?= $textbotlang['panel']['layoutBrandName'] ?></title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/themes-extra.css?v=1">
   <link rel="stylesheet" href="css/nexora-glass.css?v=1">
   <script>
     (function () {
@@ -25,14 +26,16 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
       var bg = {
         navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C',
         sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9',
-        linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF'
+        linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF',
+        rose: '#1A0A14', indigo: '#0F0F2A', teal: '#0A1F1F',
+        amber: '#1A150A', sky: '#F0F9FF', peach: '#FFF7ED'
       };
 
       var root = document.documentElement;
       root.style.backgroundColor = bg[t] || '#0F172A';
       root.setAttribute('data-theme', t);
 
-      root.style.colorScheme = (t === 'light' || t === 'linen' || t === 'mint' || t === 'lavender') ? 'light' : 'dark';
+      root.style.colorScheme = (t === 'light' || t === 'linen' || t === 'mint' || t === 'lavender' || t === 'sky' || t === 'peach') ? 'light' : 'dark';
       var mtc = document.getElementById('mtc');
       if (mtc && bg[t]) mtc.content = bg[t];
       if (localStorage.getItem('panel-sb-collapsed') === '1' && window.innerWidth > 768)

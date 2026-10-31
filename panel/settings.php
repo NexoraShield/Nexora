@@ -43,6 +43,12 @@ $themes = [
     'linen' => ['name' => $textbotlang['panel']['settingsThemeCreamPaper'], 'desc' => $textbotlang['panel']['settingsThemeCreamPaperDesc'], 'c' => ['#FAF7F2', '#FFFFFF', '#B87333', '#5D7C4A'], 'dark' => false],
     'mint' => ['name' => $textbotlang['panel']['settingsThemeMintGreen'], 'desc' => $textbotlang['panel']['settingsThemeMintGreenDesc'], 'c' => ['#F0FDF4', '#FFFFFF', '#166534', '#1D4ED8'], 'dark' => false],
     'lavender' => ['name' => $textbotlang['panel']['settingsThemeLavender'], 'desc' => $textbotlang['panel']['settingsThemeLavenderDesc'], 'c' => ['#FAF5FF', '#FFFFFF', '#6D28D9', '#15803D'], 'dark' => false],
+    'rose' => ['name' => $textbotlang['panel']['settingsThemeRose'], 'desc' => $textbotlang['panel']['settingsThemeRoseDesc'], 'c' => ['#1A0A14', '#2A1525', '#F43F5E', '#FB7185'], 'dark' => true],
+    'indigo' => ['name' => $textbotlang['panel']['settingsThemeIndigo'], 'desc' => $textbotlang['panel']['settingsThemeIndigoDesc'], 'c' => ['#0F0F2A', '#1A1A3E', '#6366F1', '#818CF8'], 'dark' => true],
+    'teal' => ['name' => $textbotlang['panel']['settingsThemeTeal'], 'desc' => $textbotlang['panel']['settingsThemeTealDesc'], 'c' => ['#0A1F1F', '#132E2E', '#14B8A6', '#2DD4BF'], 'dark' => true],
+    'amber' => ['name' => $textbotlang['panel']['settingsThemeAmber'], 'desc' => $textbotlang['panel']['settingsThemeAmberDesc'], 'c' => ['#1A150A', '#2A2215', '#F59E0B', '#FBBF24'], 'dark' => true],
+    'sky' => ['name' => $textbotlang['panel']['settingsThemeSky'], 'desc' => $textbotlang['panel']['settingsThemeSkyDesc'], 'c' => ['#F0F9FF', '#FFFFFF', '#0EA5E9', '#0284C7'], 'dark' => false],
+    'peach' => ['name' => $textbotlang['panel']['settingsThemePeach'], 'desc' => $textbotlang['panel']['settingsThemePeachDesc'], 'c' => ['#FFF7ED', '#FFFFFF', '#F97316', '#EA580C'], 'dark' => false],
 ];
 
 $tabs = [
