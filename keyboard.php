@@ -400,7 +400,7 @@ if (
 }
 $frenzyexStatus = getPaySettingValue("frenzyexstatus", "offfrenzyex");
 if (
-    $frenzyexStatus == "onfrenzyex"
+    ($frenzyexStatus === "onfrenzyex" || $frenzyexStatus === "1" || $frenzyexStatus === "on")
     && trim((string) getPaySettingValue("frenzyex_api_key", "")) !== ""
     && trim((string) getPaySettingValue("frenzyex_api_key", "")) !== "0"
     && trim((string) getPaySettingValue("frenzyex_callback_secret", "")) !== ""

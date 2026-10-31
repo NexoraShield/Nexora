@@ -714,7 +714,7 @@ function rowExists($table, $field, $value) {
 }
 function getPaySettingValue($name, $default = null)
 {
-    $rows = select("PaySetting", "*", null, null, "fetchAll");
+    $rows = select("PaySetting", "*", null, null, "fetchAll", ['cache' => false]);
     if (is_array($rows)) {
         foreach ($rows as $row) {
             if (isset($row['NamePay']) && strcasecmp(trim((string) $row['NamePay']), trim((string) $name)) === 0) {

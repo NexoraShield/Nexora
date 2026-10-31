@@ -31,7 +31,7 @@ if (!function_exists('frenzyex_status_is_on')) {
     function frenzyex_status_is_on($value)
     {
         $value = strtolower(trim((string) $value));
-        return $value === '1' || $value === 'onfrenzyex';
+        return $value === '1' || $value === 'on' || $value === 'onfrenzyex';
     }
 }
 
@@ -149,7 +149,7 @@ if (!function_exists('frenzyex_normalize_status_storage')) {
         global $pdo;
 
         $raw = strtolower(trim((string) frenzyex_setting('frenzyexstatus', '0')));
-        $normalized = ($raw === '1' || $raw === 'onfrenzyex') ? '1' : '0';
+        $normalized = ($raw === '1' || $raw === 'on' || $raw === 'onfrenzyex') ? 'onfrenzyex' : 'offfrenzyex';
 
         if ($raw !== $normalized && isset($pdo) && $pdo instanceof PDO) {
             try {
@@ -184,7 +184,7 @@ if (!function_exists('frenzyex_enabled')) {
     {
         // Normalize the stored representation first. Besides keeping this
         // helper safe, this repairs legacy admin.php code before it executes.
-        if (frenzyex_normalize_status_storage() !== '1') {
+        if (frenzyex_normalize_status_storage() !== 'onfrenzyex') {
             return false;
         }
 

@@ -21,6 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gateway']) && $_POST[
         }
     }
     if (function_exists('clearSelectCache')) clearSelectCache('PaySetting');
+// Also invalidate persistent file cache
+$pcDir = __DIR__ . '/../storage/cache';
+$pcFiles = glob($pcDir . '/pc_PaySetting_*.json');
+if (is_array($pcFiles)) {
+    foreach ($pcFiles as $pcFile) {
+        @unlink($pcFile);
+    }
+}
     flash('success', 'تنظیمات FrenzyEx ذخیره شد.');
     header('Location: finance.php');
     exit;
@@ -53,8 +61,8 @@ include __DIR__ . '/inc/layout_head.php';
             <div class="field">
                 <label>وضعیت</label>
                 <select name="frenzyexstatus" class="input">
-                    <option value="onfrenzyex" <?= $fx['frenzyexstatus'] === 'onfrenzyex' ? 'selected' : '' ?>>فعال</option>
-                    <option value="offfrenzyex" <?= $fx['frenzyexstatus'] !== 'onfrenzyex' ? 'selected' : '' ?>>غیرفعال</option>
+                    <option value="onfrenzyex" <?= ($fx['frenzyexstatus'] === 'onfrenzyex' || $fx['frenzyexstatus'] === '1' || $fx['frenzyexstatus'] === 'on') ? 'selected' : '' ?>>فعال</option>
+                    <option value="offfrenzyex" <?= ($fx['frenzyexstatus'] !== 'onfrenzyex' && $fx['frenzyexstatus'] !== '1' && $fx['frenzyexstatus'] !== 'on') ? 'selected' : '' ?>>غیرفعال</option>
                 </select>
             </div>
             <div class="field">
