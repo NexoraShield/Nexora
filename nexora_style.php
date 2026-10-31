@@ -550,7 +550,35 @@ if (!function_exists('nexora_apply_bb_style')) {
         } catch (Throwable $e) { return $rows; }
     }
 }
-if (!function_exists('nexora_self_heal')) {
+if (!function_exists('nexora_ensure_indexes')) {
+    function nexora_ensure_indexes(PDO $pdo): void
+    {
+        $indexes = [
+            ['invoice', 'idx_invoice_id_user', '`id_user`(100)'],
+            ['invoice', 'idx_invoice_status', '`Status`(100)'],
+            ['invoice', 'idx_invoice_time_sell', '`time_sell`(50)'],
+            ['Payment_report', 'idx_payreport_status', '`payment_Status`(100)'],
+            ['Payment_report', 'idx_payreport_time', '`time`(50)'],
+            ['product', 'idx_product_location', '`Location`(100)'],
+            ['product', 'idx_product_agent', '`agent`(50)'],
+            ['product', 'idx_product_status', '`status_product`(20)'],
+            ['product', 'idx_product_display', '`display_order`'],
+            ['user', 'idx_user_agent', '`agent`(10)'],
+            ['user', 'idx_user_register', '`register`(50)'],
+        ];
+        foreach ($indexes as [$table, $indexName, $columns]) {
+            try {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?");
+                $check->execute([$table, $indexName]);
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE `{$table}` ADD INDEX `{$indexName}` ({$columns})");
+                }
+            } catch (Throwable $e) {
+                // Index might already exist or table might not exist - skip
+            }
+        }
+    }
+}
     function nexora_self_heal(): void {
         static $done = false;
         if ($done) return;
@@ -563,6 +591,10 @@ if (!function_exists('nexora_self_heal')) {
             }
             if (function_exists('nexora_ensure_emoji_table')) {
                 nexora_ensure_emoji_table($pdo);
+            }
+            // Ensure database indexes for performance
+            if (function_exists('nexora_ensure_indexes')) {
+                nexora_ensure_indexes($pdo);
             }
             $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
             $pdo->exec('CREATE TABLE IF NOT EXISTS agent_login_attempts (ip VARCHAR(64) NOT NULL PRIMARY KEY, attempts INT UNSIGNED NOT NULL DEFAULT 0, first_attempt INT UNSIGNED NOT NULL DEFAULT 0, last_attempt INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');

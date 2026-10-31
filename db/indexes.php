@@ -6,9 +6,11 @@ return [
     ['invoice', 'idx_invoice_status', '`Status`(100)'],
     ['invoice', 'idx_invoice_location', '`Service_location`(150)'],
     ['invoice', 'idx_invoice_id_payment', '`id_payment`'],
+    ['invoice', 'idx_invoice_time_sell', '`time_sell`(50)'],
     ['Payment_report', 'idx_payreport_id_user', '`id_user`(100)'],
     ['Payment_report', 'idx_payreport_id_order', '`id_order`'],
     ['Payment_report', 'idx_payreport_status', '`payment_Status`(100)'],
+    ['Payment_report', 'idx_payreport_time', '`time`(50)'],
     ['marzban_panel', 'idx_panel_name', '`name_panel`(150)'],
     ['marzban_panel', 'idx_panel_code', '`code_panel`(100)'],
     ['product', 'idx_product_code', '`code_product`(50)'],
@@ -23,5 +25,6 @@ return [
     ['service_other', 'idx_serviceother_id_payment', '`id_payment`'],
     ['user', 'idx_user_affiliates', '`affiliates`'],
     ['user', 'idx_user_agent', '`agent`(10)'],
+    ['user', 'idx_user_register', '`register`(50)'],
     ['departman', 'uniq_departman_entry', '`idsupport`(100), `name_departman`(150)', true],
 ];
