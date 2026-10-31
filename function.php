@@ -532,6 +532,17 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         }
     }
 
+    $cacheKey = null;
+    if ($useCache) {
+        $cacheKey = hash('sha256', json_encode([
+            $table,
+            $field,
+            $whereField,
+            $whereValue,
+            $type,
+        ], JSON_UNESCAPED_UNICODE));
+
+        $store = &getSelectCacheStore();
         if (isset($store['results'][$cacheKey])) {
             return $store['results'][$cacheKey];
         }
@@ -605,6 +616,8 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
 
     // Store in persistent file cache for setting table
     if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache && !$queryFailed) {
+        $pcKey = 'pc_' . $table . '_' . $field . '_' . $type;
+        $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
         if (!is_dir($persistentCacheDir)) {
             @mkdir($persistentCacheDir, 0775, true);
         }
