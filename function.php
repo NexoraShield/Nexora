@@ -460,7 +460,7 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
     }
 
     // Invalidate persistent file cache for rarely-changing tables
-    if (in_array($table, ['setting', 'admin', 'topicid', 'marzban_panel'], true)) {
+    if (in_array($table, ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'], true)) {
         $pcDir = __DIR__ . '/storage/cache';
         $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
         if (is_array($pcFiles)) {
@@ -536,12 +536,12 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         }
     }
 
-    // Persistent file-based cache for rarely-changing tables
-    $persistentCacheTables = ['setting', 'admin', 'topicid', 'marzban_panel'];
+    // Persistent file-based cache for rarely-changing tables (including where-clause queries)
+    $persistentCacheTables = ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'];
     $persistentCacheTtl = 300; // 5 minutes
     $persistentCacheDir = __DIR__ . '/storage/cache';
-    if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache) {
-        $pcKey = 'pc_' . $table . '_' . $field . '_' . $type;
+    if (in_array($table, $persistentCacheTables, true) && $useCache) {
+        $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
         $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
         if (is_file($pcFile) && (time() - filemtime($pcFile)) < $persistentCacheTtl) {
             $pcData = @file_get_contents($pcFile);
@@ -644,9 +644,9 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         $GLOBALS['nexora_user_cache'][$whereValue] = $result;
     }
 
-    // Store in persistent file cache for setting table
-    if (in_array($table, $persistentCacheTables, true) && $whereField === null && $useCache && !$queryFailed) {
-        $pcKey = 'pc_' . $table . '_' . $field . '_' . $type;
+    // Store in persistent file cache for rarely-changing tables
+    if (in_array($table, $persistentCacheTables, true) && $useCache && !$queryFailed) {
+        $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
         $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
         if (!is_dir($persistentCacheDir)) {
             @mkdir($persistentCacheDir, 0775, true);
