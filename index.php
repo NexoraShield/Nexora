@@ -240,6 +240,9 @@ if (floor($TimeLastMessage / 60) >= 1) {
     $stmt = $pdo->prepare("UPDATE user SET last_message_time = ?, message_count = '1' WHERE id = ?");
     $stmt->execute([$timebot, $from_id]);
     clearSelectCache('user');
+    if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
+        unset($GLOBALS['nexora_user_cache'][$from_id]);
+    }
 } else {
     if (!in_array($from_id, $admin_ids)) {
         $addmessage = intval($user['message_count']) + 1;
