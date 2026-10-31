@@ -19,6 +19,14 @@ if (!function_exists('nexora_color_palette')) {
             'pink'    => ['label' => 'صورتی', 'hex' => '#ec4899', 'native' => 'danger'],
             'teal'    => ['label' => 'فیروزه‌ای', 'hex' => '#14b8a6', 'native' => 'success'],
             'gray'    => ['label' => 'خاکستری', 'hex' => '#6b7280', 'native' => ''],
+            'orange'  => ['label' => 'نارنجی تیره', 'hex' => '#ea580c', 'native' => 'danger'],
+            'yellow'  => ['label' => 'زرد', 'hex' => '#eab308', 'native' => 'warning'],
+            'indigo'  => ['label' => 'نیلی', 'hex' => '#6366f1', 'native' => 'primary'],
+            'cyan'    => ['label' => 'فیروزه', 'hex' => '#06b6d4', 'native' => 'primary'],
+            'lime'    => ['label' => 'لیمویی', 'hex' => '#84cc16', 'native' => 'success'],
+            'amber'   => ['label' => 'کهربایی', 'hex' => '#d97706', 'native' => 'warning'],
+            'rose'    => ['label' => 'رز', 'hex' => '#f43f5e', 'native' => 'danger'],
+            'violet'  => ['label' => 'بنفش کمرنگ', 'hex' => '#a78bfa', 'native' => 'primary'],
         ];
     }
 }
