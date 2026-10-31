@@ -583,6 +583,11 @@ if (!function_exists('nexora_ensure_indexes')) {
         static $done = false;
         if ($done) return;
         $done = true;
+        // Throttle: only run once per 5 minutes (file-based, works across processes)
+        $flagFile = __DIR__ . '/storage/.heal_flag';
+        if (is_file($flagFile) && (time() - filemtime($flagFile)) < 300) {
+            return;
+        }
         $pdo = $GLOBALS['pdo'] ?? null;
         if (!($pdo instanceof PDO)) return;
         try {
@@ -613,6 +618,10 @@ if (!function_exists('nexora_ensure_indexes')) {
             if (function_exists('opcache_reset')) {
                 @opcache_reset();
             }
+            // Touch flag file
+            $flagDir = dirname($flagFile);
+            if (!is_dir($flagDir)) @mkdir($flagDir, 0775, true);
+            @touch($flagFile);
         } catch (Throwable $e) {
             error_log('nexora_self_heal: ' . $e->getMessage());
         }
