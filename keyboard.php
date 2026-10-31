@@ -1694,9 +1694,4 @@ function keyboard_list_text($lang)
     $keyboard_text['inline_keyboard'][] = [['text' => $textbotlang['bottext']['btn_close'], 'callback_data' => 'bt_close']];
     return json_encode($keyboard_text);
 }
-require_once __DIR__ . '/frenzyex_lib.php';
-if (frenzyex_enabled()) {
-    $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['frenzyEx'] ?? '🌸 کارت به کارت با FrenzyEx', 'callback_data' => "frenzyex"]
-    ];
-}
+// FrenzyEx button already added above (before json_encode)
