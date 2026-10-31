@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once 'vendor/autoload.php';
 require 'config.php';
 ini_set('error_log', 'error_log');
