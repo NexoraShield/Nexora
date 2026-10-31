@@ -124,7 +124,10 @@ if (isset($update['message']['successful_payment'])) {
 }
 #-------------Variable----------#
 $otherreport = select("topicid", "idreport", "report", "otherreport", "select")['idreport'];
-if ($setting['statusnewuser'] == "onnewuser" && !rowExists("user", "id", $from_id)) {
+// Optimization: fetch user first, then check if new (avoids redundant rowExists query)
+$user = select("user", "*", "id", $from_id, "select");
+$isNewUser = ($user === null || $user === false);
+if ($setting['statusnewuser'] == "onnewuser" && $isNewUser) {
     $Response = json_encode([
         'inline_keyboard' => [
             [
@@ -162,6 +165,9 @@ if ($from_id != 0) {
     $stmt->execute();
     if ($stmt->rowCount() > 0) {
         clearSelectCache('user');
+        if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
+            unset($GLOBALS['nexora_user_cache'][$from_id]);
+        }
     }
 }
 $user = select("user", "*", "id", $from_id, "select");
