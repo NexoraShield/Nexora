@@ -315,9 +315,11 @@ function syncReportTopics($chatId, $textbotlang)
 function step($step, $from_id)
 {
     global $pdo;
+    $from_id = (string) $from_id;
     $stmt = $pdo->prepare('UPDATE user SET step = ? WHERE id = ?');
     $stmt->execute([$step, $from_id]);
     clearSelectCache('user');
+    unset($GLOBALS['nexora_user_cache'][$from_id]);
 }
 function determineColumnTypeFromValue($value)
 {
@@ -406,7 +408,7 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
     $executeUpdate = function ($value) use ($pdo, $table, $field, $whereField, $whereValue) {
         if ($whereField !== null) {
             $stmt = $pdo->prepare("UPDATE $table SET $field = ? WHERE $whereField = ?");
-            $stmt->execute([$value, $whereValue]);
+            $stmt->execute([$value, (string) $whereValue]);
         } else {
             $stmt = $pdo->prepare("UPDATE $table SET $field = ?");
             $stmt->execute([$value]);
