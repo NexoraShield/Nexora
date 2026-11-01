@@ -35,26 +35,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#141a2e">
-  <title>ورود نمایندگی — نکسورا</title>
-  <link rel="stylesheet" href="../panel/css/style.css">
-  <link rel="stylesheet" href="../panel/css/nexora-glass.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ورود پنل نمایندگی — نکسورا</title>
+<link rel="icon" href="nexora-logo-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="reseller-panel.css?v=8">
+<link rel="stylesheet" href="beauty.css?v=12">
+<link rel="stylesheet" href="mobile.css?v=13">
+<style>
+.rs-login .agent-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#0e9488,#7c3aed);color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:.3px;box-shadow:0 6px 14px rgba(14,148,136,.35);margin-bottom:12px}
+.rs-login label{display:block;margin:10px 0 4px;font-weight:700;font-size:13px}
+.rs-login input{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line,#d7e2ea);background:rgba(255,255,255,.6);font:inherit}
+.rs-login .rs-err{color:#e11d48;font-size:13px;margin:8px 0 0;min-height:18px}
+</style>
 </head>
-<body>
-<div class="card fade-up" style="max-width:380px;margin:8vh auto;padding:24px">
-  <div class="card-title">ورود پنل نمایندگی نکسورا</div>
-  <div class="card-subtitle">رمز را از مدیر اصلی (داخل ربات: <code dir="ltr">/agentpass</code>) بگیرید</div>
-  <?php if ($error !== ''): ?><p style="color:#e17076"><?= htmlspecialchars($error) ?></p><?php endif; ?>
-  <form method="POST">
-    <div class="field"><label>آیدی عددی تلگرام</label><input type="text" name="id" class="input" dir="ltr" inputmode="numeric" required></div>
-    <div class="field"><label>رمز عبور</label><input type="password" name="pass" class="input" required></div>
-    <div class="modal-foot" style="padding:12px 0 0"><button type="submit" class="btn btn-primary">ورود</button></div>
-  </form>
+<body data-theme="teal">
+<div class="rs-login-wrap" id="rs-login">
+  <div class="rs-login">
+    <img class="logo" src="nexora-logo-icon.png" alt="Nexora Shield">
+    <div class="agent-badge">🤖 پنل نمایندگی</div>
+    <h1>ورود پنل نمایندگی</h1>
+    <p>ورود مخصوص نمایندگان — رمز را از مدیر اصلی (داخل ربات: <code dir="ltr">/agentpass</code>) بگیرید.</p>
+    <?php if ($error !== ''): ?><p class="rs-err"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
+    <form method="POST" autocomplete="on">
+      <label>آیدی عددی تلگرام<input type="text" name="id" dir="ltr" inputmode="numeric" autocomplete="username" required value="<?= htmlspecialchars((string)($_POST['id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
+      <label>رمز عبور<input type="password" name="pass" autocomplete="current-password" required></label>
+      <button class="rs-btn block" type="submit" style="margin-top:14px">ورود به پنل نمایندگی</button>
+    </form>
+    <p style="margin-top:14px;font-size:11.5px;color:#9fc3d8">پنل مدیریت: <a href="../panel/" style="color:#5fd4ff">panel/</a></p>
+  </div>
 </div>
 </body>
 </html>
+

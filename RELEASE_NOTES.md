@@ -1,4 +1,13 @@
 # Nexora Bot — Release Notes
+## v1.22.42 (2026-11-01) — Agent Panel Login Redesign
+
+**Changed**
+- `agent-panel/login.php` now uses the same background/theme as the manual sales (reseller) panel login: `reseller-panel.css`, `beauty.css`, `mobile.css`, `data-theme="teal"`, `rs-login-wrap`/`rs-login` glass card.
+- Agent panel login and inside panel now visually match the Nexora reseller panel (PasarGuard-style) with Nexora glass theme.
+
+**Fixed**
+- Login page no longer uses the old dark card style; now consistent with the rest of the panel UI.
+
 
 ## Migration Guide
 
