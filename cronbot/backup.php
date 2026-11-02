@@ -10,16 +10,19 @@ require_once __DIR__ . '/../jdf.php';
 $setting = select("setting", "*");
 $textbotlang = languagechange();
 
-// Admin chat id: prefer setting admin, fallback to first admin row
+ // Admin chat id: prefer setting admin, fallback to first admin row
 $adminChatId = 0;
 try {
-    if (is_array($setting) && !empty($setting['idadmin'])) $adminChatId = (int) $setting['idadmin'];
+    if (is_array($setting) && !empty($setting['idadmin'])) $adminChatId = (string) $setting['idadmin'];
+    // Allow explicit backup group/chat override
+    if (empty($adminChatId) && is_array($setting) && !empty($setting['backup_chat_id'])) $adminChatId = (string) $setting['backup_chat_id'];
+    if (empty($adminChatId) && is_array($setting) && !empty($setting['Channel_Report'])) $adminChatId = (string) $setting['Channel_Report'];
 } catch (Throwable $e) {}
-if ($adminChatId <= 0) {
+if (empty($adminChatId)) {
     try {
         $admins = select("admin", "*", null, null, "selectall");
         if (is_array($admins) && !empty($admins)) {
-            foreach ($admins as $a) { if (!empty($a['id_admin'])) { $adminChatId = (int) $a['id_admin']; break; } }
+            foreach ($admins as $a) { if (!empty($a['id_admin'])) { $adminChatId = (string) $a['id_admin']; break; } }
         }
     } catch (Throwable $e) {}
 }
@@ -112,10 +115,13 @@ if (!$ok) {
     }
 }
 
-// Send to admin
-if ($ok && $adminChatId > 0) {
+// Send to admin / backup group (supports negative supergroup chat ids)
+if ($ok && $adminChatId !== '' && $adminChatId !== '0') {
     try {
-        sendDocument($adminChatId, $filePath, "📦 Nexora auto-backup " . date('Y-m-d H:i:s') . "\nSize: " . round(filesize($filePath)/1024, 1) . " KB");
+        $resp = sendDocument($adminChatId, $filePath, "📦 Nexora auto-backup " . date('Y-m-d H:i:s') . "\nSize: " . round(filesize($filePath)/1024, 1) . " KB");
+        if (is_array($resp) && !empty($resp['ok']) && $resp['ok'] !== true) {
+            @file_put_contents(__DIR__ . '/../error_log', "backup send failed: " . json_encode($resp) . "\n", FILE_APPEND);
+        }
     } catch (Throwable $e) {
         // fallback: message
         try { sendmessage($adminChatId, "📦 Backup ready: " . $fileName . " (" . round(filesize($filePath)/1024,1) . " KB) on server.", null, 'HTML'); } catch (Throwable $e2) {}

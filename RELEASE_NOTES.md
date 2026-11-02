@@ -1,4 +1,15 @@
 # Nexora Bot — Release Notes
+## v1.22.45 (2026-11-01) — Backup send to group fix
+
+**Fixed**
+- `cronbot/backup.php`: `$adminChatId > 0` rejected negative supergroup chat ids → backup never sent to groups. Changed to `!== '0'` and kept as string (supports `-100...` group ids).
+- Added `setting['backup_chat_id']` and `setting['Channel_Report']` as fallback targets for backup delivery.
+- Telegram send response is now logged to `error_log` when it fails (`backup send failed:`), so the error is visible.
+- `idadmin` / admin id now cast to string instead of int, preserving negative group ids.
+
+---
+
+
 ## v1.22.43 (2026-11-01) — Backup Fix
 
 **Fixed**
