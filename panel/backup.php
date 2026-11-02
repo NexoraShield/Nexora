@@ -4,8 +4,10 @@ require_once __DIR__ . '/inc/icons.php';
 require_auth();
 
 // List recent backup files (created by cronbot/backup.php or manual)
-$backupDir = dirname(__DIR__) . '/backups';
+$backupDir = dirname(__DIR__) . '/backup';
+if (!is_dir($backupDir)) @mkdir($backupDir, 0755, true);
 $backups = [];
+
 if (is_dir($backupDir)) {
     foreach (glob($backupDir . '/*') as $f) {
         if (is_file($f)) {

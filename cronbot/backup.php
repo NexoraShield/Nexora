@@ -34,20 +34,61 @@ $dbUser = $usernamedb ?? 'root';
 $dbPass = $passworddb ?? '';
 $dbHost = $dbhost ?? 'localhost';
 
-$fileName = 'backup_' . date('Y-m-d_H-i-s') . '.sql';
+
+// detect mysqldump
+$mysqldump = null;
+foreach (['mysqldump', '/usr/bin/mysqldump', '/usr/local/bin/mysqldump'] as $c) {
+    $rc = 0; $o = [];
+    @exec('command -v ' . escapeshellarg($c) . ' 2>/dev/null', $o, $rc);
+    if ($rc === 0 && !empty($o)) { $mysqldump = trim($o[0]); break; }
+}
+// also try direct
+if ($mysqldump === null && is_file('/usr/bin/mysqldump')) $mysqldump = '/usr/bin/mysqldump';
+
+$useGzip = (bool) @exec('command -v gzip 2>/dev/null');
+$ext = $useGzip ? '.sql.gz' : '.sql';
+$fileName = 'backup_' . date('Y-m-d_H-i-s') . $ext;
 $filePath = $backupDir . '/' . $fileName;
 
 $ok = false;
-// Try mysqldump
-$cmd = 'mysqldump -h ' . escapeshellarg($dbHost) . ' -u ' . escapeshellarg($dbUser);
-if ($dbPass !== '') $cmd .= ' -p' . escapeshellarg($dbPass);
-$cmd .= ' ' . escapeshellarg($dbName) . ' > ' . escapeshellarg($filePath) . ' 2>/dev/null';
-@exec($cmd, $out, $rc);
-if ($rc === 0 && is_file($filePath) && filesize($filePath) > 100) {
-    $ok = true;
-} else {
+if ($mysqldump !== null) {
+    $cmd = escapeshellarg($mysqldump) . ' -h ' . escapeshellarg($dbHost) . ' -u ' . escapeshellarg($dbUser);
+    if ($dbPass !== '') $cmd .= ' -p' . escapeshellarg($dbPass);
+    $cmd .= ' ' . escapeshellarg($dbName);
+    if ($useGzip) $cmd .= ' | gzip > ' . escapeshellarg($filePath) . ' 2>/dev/null';
+    else $cmd .= ' > ' . escapeshellarg($filePath) . ' 2>/dev/null';
+    @exec($cmd, $out, $rc);
+    if ($rc === 0 && is_file($filePath) && filesize($filePath) > 100) {
+        $ok = true;
+    }
+}
+if (!$ok) {
     // Fallback: PHP dump
     try {
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        $sql = "-- Nexora auto backup " . date('Y-m-d H:i:s') . "\nSET FOREIGN_KEY_CHECKS=0;\n";
+        foreach ($tables as $t) {
+            $create = $pdo->query("SHOW CREATE TABLE `$t`")->fetch(PDO::FETCH_ASSOC);
+            $sql .= "DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n";
+            $rows = $pdo->query("SELECT * FROM `$t`")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                $vals = [];
+                foreach ($row as $v) {
+                    if ($v === null) $vals[] = 'NULL';
+                    else $vals[] = $pdo->quote((string) $v);
+                }
+                $sql .= "INSERT INTO `$t` VALUES (" . implode(',', $vals) . ");\n";
+            }
+        }
+        $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
+        $data = $useGzip ? gzencode($sql, 9) : $sql;
+        @file_put_contents($filePath, $data, LOCK_EX);
+        if (is_file($filePath) && filesize($filePath) > 100) $ok = true;
+    } catch (Throwable $e) {
+        @file_put_contents(__DIR__ . '/../error_log', "backup error: " . $e->getMessage() . "\n", FILE_APPEND);
+    }
+}
+
         $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         $sql = "-- Nexora auto backup " . date('Y-m-d H:i:s') . "\nSET FOREIGN_KEY_CHECKS=0;\n";
         foreach ($tables as $t) {
@@ -82,7 +123,7 @@ if ($ok && $adminChatId > 0) {
 }
 
 // Cleanup old backups (keep last 7)
-$files = glob($backupDir . '/backup_*.sql');
+$files = array_merge(glob($backupDir . '/backup_*.sql') ?: [], glob($backupDir . '/backup_*.sql.gz') ?: []);
 if (is_array($files) && count($files) > 7) {
     usort($files, fn($a,$b) => filemtime($a) <=> filemtime($b));
     foreach (array_slice($files, 0, count($files) - 7) as $f) @unlink($f);

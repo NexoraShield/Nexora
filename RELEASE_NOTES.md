@@ -1,4 +1,17 @@
 # Nexora Bot — Release Notes
+## v1.22.43 (2026-11-01) — Backup Fix
+
+**Fixed**
+- `panel/backup.php`: backup directory was `backups` (plural) but `cronbot/backup.php` writes to `backup` (singular) → panel never showed backups. Aligned to `backup`.
+- `panel/backup.php`: ensure backup directory exists (mkdir).
+- `cronbot/backup.php`: detect `mysqldump` binary (PATH + common paths) instead of assuming it is available; fallback to PHP dump if missing.
+- `cronbot/backup.php`: gzip compression when `gzip` is available (reduces size, helps Telegram upload limit).
+- `cronbot/backup.php`: cleanup glob now includes both `.sql` and `.sql.gz`.
+- Added error logging for backup failures.
+
+---
+
+
 ## v1.22.42 (2026-11-01) — Agent Panel Login Redesign
 
 **Changed**
