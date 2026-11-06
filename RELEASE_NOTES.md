@@ -1,5 +1,28 @@
 # Nexora Bot — Release Notes
-## v1.22.46 (2026-11-01) — Backup PHP parse error fix
+## v1.22.48 (2026-11-01) — One-line Installer Bootstrap
+
+**Changed**
+- `install.sh`: Now a true one-line curl installer. When run via `bash <(curl -s .../install.sh)` without the full ZIP extracted, it automatically:
+  1. Detects missing PHP and installs it (apt-get / yum / dnf)
+  2. Installs unzip, curl, ca-certificates
+  3. Downloads and runs `nexora-update.sh` (self-extracting, full ZIP embedded)
+
+**Usage**
+- Install/update any Nexora bot with one command:
+  `bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/install.sh)`
+- Force update:
+  `bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/install.sh) --force`
+
+**Includes all previous fixes**
+- v1.22.42: Agent panel login redesign (reseller panel theme)
+- v1.22.43: Backup directory mismatch (`backups` → `backup`)
+- v1.22.44: nexora-update.sh repackage
+- v1.22.45: Backup send to group (negative chat_id)
+- v1.22.46: Backup PHP parse error fix
+- v1.22.47: install.sh one-line wrapper (without PHP auto-install)
+
+---
+
 
 **Fixed (Critical)**
 - `cronbot/backup.php`: Duplicate code block (lines 95-116) from a previous edit caused a **PHP parse error** → the entire backup script failed to run → no backup was ever created or sent. Removed the duplicate block.

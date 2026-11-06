@@ -50,6 +50,24 @@ if [[ ! -f "$MANIFEST" ]]; then
     echo "curl or wget is required for one-line install." >&2
     exit 1
   fi
+
+  # Ensure PHP is available (self-extracting updater needs it)
+  if ! command -v php >/dev/null 2>&1; then
+    echo "==> PHP not found — installing PHP and dependencies..."
+    if command -v apt-get >/dev/null 2>&1; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq
+      apt-get install -y -qq php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y -q php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    elif command -v dnf >/dev/null 2>&1; then
+      dnf install -y -q php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    else
+      echo "PHP is required but not installed. Please install PHP first." >&2
+      exit 1
+    fi
+  fi
+
   TMP_UPDATE="$(mktemp)"
   trap 'rm -f "$TMP_UPDATE"' EXIT
   if command -v curl >/dev/null 2>&1; then
