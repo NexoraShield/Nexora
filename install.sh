@@ -42,9 +42,24 @@ done
 
 echo "==> $UPDATE_NAME"
 
+# One-liner mode: if run via curl without the full ZIP extracted,
+# automatically fetch and run the self-extracting nexora-update.sh.
 if [[ ! -f "$MANIFEST" ]]; then
-  echo "Update payload is incomplete. Extract the entire ZIP before running install.sh." >&2
-  exit 1
+  echo "==> Install package not found locally — downloading auto-installer from GitHub..."
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+    echo "curl or wget is required for one-line install." >&2
+    exit 1
+  fi
+  TMP_UPDATE="$(mktemp)"
+  trap 'rm -f "$TMP_UPDATE"' EXIT
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$TMP_UPDATE"
+  else
+    wget -qO "$TMP_UPDATE" "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+  fi
+  chmod +x "$TMP_UPDATE"
+  echo "==> Running Nexora auto-installer..."
+  exec bash "$TMP_UPDATE" "$@"
 fi
 
 if ! command -v sha256sum >/dev/null 2>&1; then
