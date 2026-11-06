@@ -92,29 +92,6 @@ if (!$ok) {
     }
 }
 
-        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-        $sql = "-- Nexora auto backup " . date('Y-m-d H:i:s') . "\nSET FOREIGN_KEY_CHECKS=0;\n";
-        foreach ($tables as $t) {
-            $create = $pdo->query("SHOW CREATE TABLE `$t`")->fetch(PDO::FETCH_ASSOC);
-            $sql .= "DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n";
-            $rows = $pdo->query("SELECT * FROM `$t`")->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($rows as $row) {
-                $vals = [];
-                foreach ($row as $v) {
-                    if ($v === null) $vals[] = 'NULL';
-                    else $vals[] = $pdo->quote((string) $v);
-                }
-                $sql .= "INSERT INTO `$t` VALUES (" . implode(',', $vals) . ");\n";
-            }
-        }
-        $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
-        @file_put_contents($filePath, $sql, LOCK_EX);
-        if (is_file($filePath) && filesize($filePath) > 100) $ok = true;
-    } catch (Throwable $e) {
-        @file_put_contents(__DIR__ . '/../error_log', "backup error: " . $e->getMessage() . "\n", FILE_APPEND);
-    }
-}
-
 // Send to admin / backup group (supports negative supergroup chat ids)
 if ($ok && $adminChatId !== '' && $adminChatId !== '0') {
     try {

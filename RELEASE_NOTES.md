@@ -1,4 +1,20 @@
 # Nexora Bot — Release Notes
+## v1.22.46 (2026-11-01) — Backup PHP parse error fix
+
+**Fixed (Critical)**
+- `cronbot/backup.php`: Duplicate code block (lines 95-116) from a previous edit caused a **PHP parse error** → the entire backup script failed to run → no backup was ever created or sent. Removed the duplicate block.
+- This was the **root cause** of "backup gives error" — the script couldn't even parse, let alone execute.
+
+**Previous fixes (v1.22.43, v1.22.45)**
+- Directory mismatch (`backups` → `backup`)
+- mysqldump detection + PHP fallback
+- gzip compression
+- Negative group chat_id support (`> 0` → `!== '0'`)
+- Error logging for send failures
+
+---
+
+
 ## v1.22.45 (2026-11-01) — Backup send to group fix
 
 **Fixed**
