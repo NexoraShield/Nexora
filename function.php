@@ -1,6 +1,9 @@
 <?php
+error_log("DEBUG: function.php starting");
 require_once 'vendor/autoload.php';
+error_log("DEBUG: function.php vendor/autoload loaded");
 require 'config.php';
+error_log("DEBUG: function.php config loaded");
 ini_set('error_log', 'error_log');
 
 const MIN_PHP_VERSION = '8.2.0';
