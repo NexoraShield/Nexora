@@ -3,6 +3,8 @@ date_default_timezone_set('Asia/Tehran');
 ini_set('default_charset', 'UTF-8');
 ini_set('error_log', '/var/www/html/nexorabot/debug.log');
 ini_set('memory_limit', '512M');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
 error_log("DEBUG: 1-index.php started");
 
 require_once 'config.php';
