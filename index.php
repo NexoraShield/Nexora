@@ -281,8 +281,8 @@ if (floor($TimeLastMessage / 60) >= 1) {
 }
 
 
-if (strpos($text, "/start ") !== false && $user['step'] != "gettextSystemMessage") {
-    $affiliatesid = explode(" ", $text)[1];
+if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] != "gettextSystemMessage") {
+    $affiliatesid = (strpos($text, " ") !== false) ? explode(" ", $text)[1] : '';
     if (!in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
         isValidInvitationCode($setting, $from_id, $user['verify']);
         if (!check_active_btn($setting['keyboardmain'], "text_affiliates")) {
@@ -318,8 +318,6 @@ if (strpos($text, "/start ") !== false && $user['step'] != "gettextSystemMessage
             step('home', $from_id);
         }
         return;
-    } else {
-        $text = $affiliatesid;
     }
 }
 if (intval($user['verify']) == 0 && !in_array($from_id, $admin_ids) && $setting['verifystart'] == "onverify") {
