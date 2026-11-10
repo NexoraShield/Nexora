@@ -9,9 +9,11 @@ require_once 'config.php';
 error_log("DEBUG: 2-config loaded");
 
 require_once 'botapi.php';
-error_log("DEBUG: 3-botapi loaded, from_id=" . ($from_id ?? 'NOT_SET'));
+error_log("DEBUG: 3-botapi loaded, from_id=" . ($from_id ?? 'NOT_SET') . ", text=" . ($text ?? 'NOT_SET') . ", datain=" . ($datain ?? 'NOT_SET'));
 
 require_once 'jdf.php';
+error_log("DEBUG: 3a-jdf loaded");
+
 require_once 'function.php';
 error_log("DEBUG: 4-function loaded");
 
