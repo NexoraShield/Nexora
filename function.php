@@ -1,22 +1,5 @@
 <?php
-error_log("DEBUG: function.php starting");
 require_once 'vendor/autoload.php';
-error_log("DEBUG: function.php vendor/autoload loaded");
-require 'config.php';
-error_log("DEBUG: function.php config loaded");
-error_log("DEBUG: function.php before ini_set");
-ini_set('error_log', 'error_log');
-error_log("DEBUG: function.php after ini_set");
-const MIN_PHP_VERSION = '8.2.0';
-error_log("DEBUG: function.php after MIN_PHP_VERSION const");
-use Endroid\QrCode\Builder\Builder;
-error_log("DEBUG: function.php after Builder use");
-use Endroid\QrCode\Encoding\Encoding;
-error_log("DEBUG: function.php after Encoding use");
-use Endroid\QrCode\ErrorCorrectionLevel;
-error_log("DEBUG: function.php after ErrorCorrectionLevel use");
-use Endroid\QrCode\Writer\PngWriter;
-error_log("DEBUG: function.php after PngWriter use");
 
 const MIN_PHP_VERSION = '8.2.0';
 
