@@ -1,4 +1,4 @@
-# Nexora Bot 🤖
+﻿# Nexora Bot 🤖
 
 <h1 align="center"><a href="README.md"><kbd>🇬🇧 English</kbd></a><a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a><a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a><a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a></h1>
 
@@ -66,22 +66,22 @@ $usernamebot = 'your_bot_username';
 
 ## 🔄 مهاجرت از ربات‌های دیگر
 
-### از ربات Nexora
-اگر یک نصب **Nexora** موجود دارید، می‌توانید با یک دستور به Nexora مهاجرت کنید. تمام کاربران، موجودی‌ها، فاکتورها، محصولات و داده‌های پنل شما حفظ می‌شوند.
+### از ربات Mirza
+اگر یک نصب **Mirza** موجود دارید، می‌توانید با یک دستور به Nexora مهاجرت کنید. تمام کاربران، موجودی‌ها، فاکتورها، محصولات و داده‌های پنل شما حفظ می‌شوند.
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-Nexora.sh)
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-mirza.sh)
 ```
 
 اسکریپت:
-1. نصب Nexora شما را به‌صورت خودکار شناسایی می‌کند
+1. نصب Mirza شما را به‌صورت خودکار شناسایی می‌کند
 2. از دیتابیس و config بکاپ می‌گیرد
 3. آخرین نسخهٔ Nexora را دانلود می‌کند
 4. تمام فایل‌ها را جایگزین می‌کند (config.php و داده‌های شما حفظ می‌شوند)
 
-### از ربات nexorabot
+### از ربات ViraNaut
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-nexorabot.sh)
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-viranaut.sh)
 ```
 
 ## 📁 ساختار پروژه

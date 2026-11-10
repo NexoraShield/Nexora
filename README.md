@@ -1,4 +1,4 @@
-# Nexora Bot 🤖
+﻿# Nexora Bot 🤖
 
 <h1 align="center"><a href="README.md"><kbd>🇬🇧 English</kbd></a><a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a><a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a><a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a></h1>
 
@@ -77,30 +77,30 @@ https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook?url=https://your-domain.co
 
 ## 🔄 Migration from Other Bots
 
-### From Existing Installation
-If you have an existing bot installation, you can migrate to Nexora with a single command. All your users, balances, invoices, products, and panel data will be preserved.
+### From Mirza Bot
+If you have an existing **Mirza** bot installation, you can migrate to Nexora with a single command. All your users, balances, invoices, products, and panel data will be preserved.
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-Nexora.sh)
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-mirza.sh)
 ```
 
 The script will:
-1. Auto-detect your Nexora installation
+1. Auto-detect your Mirza installation
 2. Back up your database and config
 3. Download the latest Nexora
 4. Replace all files (keeping your `config.php` and database)
 5. Run database migrations and rebrand
 6. Set up the webhook
 
-### From nexorabot Bot
-If you have an existing **nexorabot** bot installation:
+### From ViraNaut Bot
+If you have an existing **ViraNaut** bot installation:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-nexorabot.sh)
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-viranaut.sh)
 ```
 
 The script will:
-1. Auto-detect your nexorabot installation
+1. Auto-detect your ViraNaut installation
 2. Back up your database and config
 3. Download the latest Nexora
 4. Replace all files (keeping your `config.php` and database)

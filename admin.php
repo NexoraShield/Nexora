@@ -98,7 +98,7 @@ if ($adminrulecheck['rule'] != "administrator") {
     $limitedRoleSteps = [
         "GetusernameconfigAndOrdedrs", "addbalancemanual", "addbalanceuser", "addbalanceusercurrent", "adddecriptionblock", "get_number_limit",
         "getlimitchangenewbyuser", "getmessageAsAdmin", "getpanelhidebotsaz", "getpricetimesrc", "getpricevolumesrc", "getremovehidepanel",
-        "gettimecustomvolomforextendadmin", "getuserhide", "getvolumecustomuserforextendadmin", "reject-dec", "descriptionsrequsts", "GetLocationEdit", "sendmessagetext",
+        "gettimecustomvolomforextendadmin", "getuserhide", "getvolumecustomuserforextendadmin", "reject-dec", "sendmessagetext",
         "sendmessagetid", "show_info",
     ];
     $isAdminButtonText = in_array($text, $textbotlang['keyboard'], true) || in_array($text, $textbotlang['Admin']['btnKeyboard'], true);

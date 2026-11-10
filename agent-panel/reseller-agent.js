@@ -521,14 +521,14 @@
     var at = $('api-token'); if(at) at.value = tk;
     var base = location.origin + '/';
     // fill bot URLs
-    var uv = $('api-url-nexora'); if(uv) uv.textContent = base + 'api/agent.php';
-    var uv2 = $('api-url-nexora2'); if(uv2) uv2.textContent = base + 'api/bot-agent.php';
+    var uv = $('api-url-vira'); if(uv) uv.textContent = base + 'api/agent.php';
+    var uv2 = $('api-url-vira2'); if(uv2) uv2.textContent = base + 'api/bot-agent.php';
     var d1=$('api-doc1'); if(d1) d1.textContent = "POST " + base + "api/agent.php   (Bot - Bearer)\nAuthorization: Bearer "+ (tk.slice(0,12)+'…') + "\nContent-Type: application/json\n\n" + JSON.stringify({ actions: 'user_create', username: 'user123', data_limit_gb: 30, expire_days: 30 }, null, 2) + "\n\n# همچنین تمپلت/دستی یکپارچه:\n" + JSON.stringify({ action: 'buy', panel: 'gaming', product_code: '۳۰ گیگ', custom_username: 'user123' }, null, 2) + "\n" + JSON.stringify({ action: 'buy_custom', panel: 'gaming', volume: 30, days: 30, custom_username: 'user123' }, null, 2);
     var d2=$('api-doc2'); if(d2) d2.textContent = "POST " + base + "api/agent.php\nAuthorization: Bearer <TOKEN>\n" + JSON.stringify({ action: 'services', q: '' }, null, 2) + "\n\nPOST " + base + "api/reseller-api.php (انسانی)\n" + JSON.stringify({ token: tk.slice(0,8)+'…', action: 'users' }, null, 2);
   }
   var ac=$('api-copy'); if(ac) ac.addEventListener('click', async function () { try { await navigator.clipboard.writeText($('api-token').value); } catch (e) {} });
-  var acv=$('api-copy-nexora'); if(acv) acv.addEventListener('click', async function(){ try{ await navigator.clipboard.writeText($('api-url-nexora').textContent); }catch(e){} });
-  var acv2=$('api-copy-nexora2'); if(acv2) acv2.addEventListener('click', async function(){ try{ await navigator.clipboard.writeText($('api-url-nexora2').textContent); }catch(e){} });
+  var acv=$('api-copy-vira'); if(acv) acv.addEventListener('click', async function(){ try{ await navigator.clipboard.writeText($('api-url-vira').textContent); }catch(e){} });
+  var acv2=$('api-copy-vira2'); if(acv2) acv2.addEventListener('click', async function(){ try{ await navigator.clipboard.writeText($('api-url-vira2').textContent); }catch(e){} });
 
   /* ---------- settings ---------- */
   function buildThemes() {
