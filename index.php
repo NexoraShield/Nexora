@@ -14,6 +14,13 @@ register_shutdown_function(function() {
 });
 error_log("DEBUG: 1-index.php started, ip=" . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 require_once 'config.php';
+error_log("DEBUG: 2-config loaded");
+require_once 'botapi.php';
+error_log("DEBUG: 3-botapi loaded");
+require_once 'jdf.php';
+error_log("DEBUG: 4-jdf loaded");
+require_once 'function.php';
+error_log("DEBUG: 5-function loaded");
 require_once 'botapi.php';
 require_once 'jdf.php';
 require_once 'function.php';
