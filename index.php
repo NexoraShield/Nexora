@@ -2,8 +2,17 @@
 
 date_default_timezone_set('Asia/Tehran');
 ini_set('default_charset', 'UTF-8');
-ini_set('error_log', 'error_log');
+ini_set('error_log', '/var/www/html/nexorabot/debug.log');
 ini_set('memory_limit', '512M');
+error_reporting(E_ALL);
+ini_set('log_errors', '1');
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR])) {
+        error_log("DEBUG: FATAL: " . $error['message'] . " in " . $error['file'] . ":" . $error['line']);
+    }
+});
+error_log("DEBUG: 1-index.php started, ip=" . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 require_once 'config.php';
 require_once 'botapi.php';
 require_once 'jdf.php';
