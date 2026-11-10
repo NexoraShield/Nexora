@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 # Nexora Bot - Self-extracting installer
-# Usage: sudo bash nexora-install.sh
-# Or one-line: bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-install.sh)
+# Usage: sudo bash nexora-update.sh
+# Or one-line: curl -sL https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh -o /tmp/nexora-install.sh && sudo bash /tmp/nexora-install.sh
 set -Eeuo pipefail
+
+# If running via pipe/stdin (e.g., bash <(curl ...)), $0 is not a real file
+# with embedded payload. Download ourselves to a temp file and re-exec there.
+if [[ ! -f "$0" ]] || ! grep -q '__PAYLOAD_BELOW__' "$0" 2>/dev/null; then
+    SCRIPT_URL="https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+    TMP_SELF=$(mktemp /tmp/nexora-update.XXXXXX)
+    echo "==> Detected pipe/stdin execution. Downloading installer to $TMP_SELF..."
+    if ! curl -fsSL "$SCRIPT_URL" -o "$TMP_SELF"; then
+        echo "==> Failed to download installer." >&2
+        exit 1
+    fi
+    chmod +x "$TMP_SELF"
+    exec bash "$TMP_SELF" "$@"
+fi
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run as root: sudo bash $0" >&2
