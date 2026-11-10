@@ -126,9 +126,11 @@ document.querySelectorAll('[data-confirm]').forEach(function (el) {
 var _THEME_BG = {
     navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C',
     sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9',
-    linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF'
+    linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF',
+    rose: '#1A0A14', indigo: '#0F0F2A', teal: '#0A1F1F',
+    amber: '#1A150A', sky: '#F0F9FF', peach: '#FFF7ED'
 };
-var _LIGHT_THEMES = ['light', 'linen', 'mint', 'lavender'];
+var _LIGHT_THEMES = ['light', 'linen', 'mint', 'lavender', 'sky', 'peach'];
 
 window.applyTheme = function (t) {
     var root = document.documentElement;

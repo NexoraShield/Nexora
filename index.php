@@ -8,7 +8,7 @@ require_once 'config.php';
 require_once 'botapi.php';
 require_once 'jdf.php';
 require_once 'function.php';
-mirzaEnsureInstallerRemoved();
+nexoraEnsureInstallerRemoved();
 require_once 'keyboard.php';
 require_once 'vendor/autoload.php';
 require_once 'panels.php';
@@ -67,7 +67,7 @@ if (intval($from_id) == 0)
     return;
 $lockWait = isset($update['pre_checkout_query']) || isset($update['message']['successful_payment']) ? 10 : 0;
 $userLock = $pdo->prepare("SELECT GET_LOCK(?, $lockWait)");
-$userLock->execute(["mirza_user_" . $from_id]);
+$userLock->execute(["nexora_user_" . $from_id]);
 if ((int) $userLock->fetchColumn() !== 1) {
     if ($callback_query_id) {
         telegram('answerCallbackQuery', ['callback_query_id' => $callback_query_id]);
@@ -103,7 +103,7 @@ if (isset($update['message']['successful_payment'])) {
     }
     update("Payment_report", "dec_not_confirmed", $Payment_report['dec_not_confirmed'] . json_encode($update['message']['successful_payment']), "id_order", $Payment_report['id_order']);
     DirectPayment($Payment_report['id_order']);
-    $pricecashback = select("PaySetting", "ValuePay", "NamePay", "chashbackstar", "select")['ValuePay'];
+    $pricecashback = getPaySetting("chashbackstar")['ValuePay'];
     $Balance_id = select("user", "*", "id", $Payment_report['id_user'], "select");
     if ($pricecashback != "0") {
         $result = ($Payment_report['price'] * $pricecashback) / 100;
@@ -124,7 +124,10 @@ if (isset($update['message']['successful_payment'])) {
 }
 #-------------Variable----------#
 $otherreport = select("topicid", "idreport", "report", "otherreport", "select")['idreport'];
-if ($setting['statusnewuser'] == "onnewuser" && !rowExists("user", "id", $from_id)) {
+// Optimization: fetch user first, then check if new (avoids redundant rowExists query)
+$user = select("user", "*", "id", $from_id, "select");
+$isNewUser = ($user === null || $user === false);
+if ($setting['statusnewuser'] == "onnewuser" && $isNewUser) {
     $Response = json_encode([
         'inline_keyboard' => [
             [
@@ -162,6 +165,9 @@ if ($from_id != 0) {
     $stmt->execute();
     if ($stmt->rowCount() > 0) {
         clearSelectCache('user');
+        if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
+            unset($GLOBALS['nexora_user_cache'][$from_id]);
+        }
     }
 }
 $user = select("user", "*", "id", $from_id, "select");
@@ -240,6 +246,9 @@ if (floor($TimeLastMessage / 60) >= 1) {
     $stmt = $pdo->prepare("UPDATE user SET last_message_time = ?, message_count = '1' WHERE id = ?");
     $stmt->execute([$timebot, $from_id]);
     clearSelectCache('user');
+    if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
+        unset($GLOBALS['nexora_user_cache'][$from_id]);
+    }
 } else {
     if (!in_array($from_id, $admin_ids)) {
         $addmessage = intval($user['message_count']) + 1;
@@ -437,6 +446,50 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value_one", "0", "id", $from_id);
     update("user", "Processing_value_tow", "0", "id", $from_id);
     update("user", "Processing_value_four", "0", "id", $from_id);
+    step('home', $from_id);
+    return;
+} elseif (preg_match('/^customapp_(\d+)/', $datain, $dataget)) {
+    deletemessage($from_id, $message_id);
+    $caid = (int)$dataget[1];
+    $ca = select("custom_apps", "*", "id", $caid, "select");
+    $back = json_encode(['inline_keyboard' => [[['text' => $textbotlang['users']['status']['backinfo'], 'callback_data' => "helpbtn"]]]]);
+    if (is_array($ca) && ($ca['status'] ?? '') === 'active') {
+        $txt = "📱 " . htmlspecialchars($ca['name'] ?? '') . "\n";
+        if (!empty($ca['platform'])) $txt .= "پلتفرم: " . htmlspecialchars($ca['platform']) . "\n";
+        if (!empty($ca['download_link'])) $txt .= "دانلود: " . htmlspecialchars($ca['download_link']) . "\n";
+        if (!empty($ca['tutorial'])) $txt .= "\n" . $ca['tutorial'];
+        sendmessage($from_id, $txt, $back, 'HTML');
+    } else {
+        sendmessage($from_id, "برنامه یافت نشد.", $back, 'HTML');
+    }
+    return;
+} elseif ($text == "/support" || $text == "support" || $text == "پشتیبانی") {
+    sendmessage($from_id, "🎫 ارسال تیکت پشتیبانی\n\nلطفاً موضوع تیکت را وارد کنید:", null, 'html');
+    step('support_subject', $from_id);
+    return;
+} elseif ($user['step'] == 'support_subject') {
+    $subj = trim($text);
+    if ($subj === '') { sendmessage($from_id, "موضوع نمی‌تواند خالی باشد.", null, 'html'); return; }
+    update("user", "Processing_value", $subj, "id", $from_id);
+    sendmessage($from_id, "پیام/توضیحات تیکت را وارد کنید:", null, 'html');
+    step('support_message', $from_id);
+    return;
+} elseif ($user['step'] == 'support_message') {
+    $subj = (string)$user['Processing_value'];
+    $msg = trim($text);
+    if ($msg === '') { sendmessage($from_id, "پیام نمی‌تواند خالی باشد.", null, 'html'); return; }
+    try {
+        $st = $pdo->prepare("INSERT INTO support_tickets (id_user, subject, message, status) VALUES (?,?,?,'open')");
+        $st->execute([$from_id, $subj, $msg]);
+        $tid = (int)$pdo->lastInsertId();
+        sendmessage($from_id, "✅ تیکت #" . $tid . " ثبت شد. پاسخ از طریق همین بات ارسال می‌شود.", null, 'html');
+        foreach ($admin_ids as $aid) {
+            sendmessage($aid, "🎫 تیکت جدید #" . $tid . " از " . $from_id . "\nموضوع: " . $subj . "\nپیام: " . $msg, null, 'html');
+        }
+    } catch (Throwable $e) {
+        sendmessage($from_id, "خطا در ثبت تیکت. لطفاً دوباره تلاش کنید.", null, 'html');
+    }
+    update("user", "Processing_value", "0", "id", $from_id);
     step('home', $from_id);
     return;
 } elseif ($text == "version") {
@@ -757,7 +810,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             ]
         ]
     ];
-    $marzbanstatusextra = select("shopSetting", "*", "Namevalue", "statusextra", "select")['value'];
+    $marzbanstatusextra = getShopSetting("statusextra")['value'];
     if ($marzbanstatusextra == "onextra") {
         $keyboardinfo['inline_keyboard'][] = [
             ['text' => $textbotlang['users']['extend']['title'], 'callback_data' => 'extends_' . $DataUserOut['username'] . "_" . $dataget[1]],
@@ -1008,12 +1061,12 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
     }
     #-----------------------------#
-    $statustimeextra = select("shopSetting", "*", "Namevalue", "statustimeextra", "select")['value'];
-    $marzbanstatusextra = select("shopSetting", "*", "Namevalue", "statusextra", "select")['value'];
-    $statusdisorder = select("shopSetting", "*", "Namevalue", "statusdisorder", "select")['value'];
-    $statuschangeservice = select("shopSetting", "*", "Namevalue", "statuschangeservice", "select")['value'];
-    $statusshowconfig = select("shopSetting", "*", "Namevalue", "configshow", "select")['value'];
-    $statusremoveserveice = select("shopSetting", "*", "Namevalue", "backserviecstatus", "select")['value'];
+    $statustimeextra = getShopSetting("statustimeextra")['value'];
+    $marzbanstatusextra = getShopSetting("statusextra")['value'];
+    $statusdisorder = getShopSetting("statusdisorder")['value'];
+    $statuschangeservice = getShopSetting("statuschangeservice")['value'];
+    $statusshowconfig = getShopSetting("configshow")['value'];
+    $statusremoveserveice = getShopSetting("backserviecstatus")['value'];
     if (!in_array($status, ["active", "on_hold", "disabled", "Unknown"])) {
         $textinfo = sprintf($textbotlang['users']['status']['infoDetailed'], $status_var, $DataUserOut['username'], $nameloc['Service_location'], $nameloc['name_product'], $lastonline, $LastTraffic, $usedTrafficGb, $RemainingVolume, $Percent, $expirationDate, $day, $nameconfig);
 
@@ -1373,7 +1426,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     ]);
     @unlink($urlimage);
 } elseif (preg_match('/changestatus_(\w+)/', $datain, $dataget)) {
-    $statuschangeservice = select("shopSetting", "*", "Namevalue", "statuschangeservice", "select")['value'];
+    $statuschangeservice = getShopSetting("statuschangeservice")['value'];
     if ($statuschangeservice == "offstatus") {
         sendmessage($from_id, $textbotlang['users']['featureUnavailable'], null, 'html');
         return;
@@ -1501,9 +1554,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             ':agent' => $user['agent'],
         ]);
         $productextend = ['inline_keyboard' => []];
-        $statusshowprice = select("shopSetting", "*", "Namevalue", "statusshowprice", "select")['value'];
+        $statusshowprice = getShopSetting("statusshowprice")['value'];
         while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $hide_panel = json_decode($result['hide_panel'], true);
+            $hide_panel = json_decode($result['hide_panel'], true) ?: [];
             if (in_array($nameloc['Service_location'], $hide_panel))
                 continue;
             if (intval($user['pricediscount']) != 0) {
@@ -1572,7 +1625,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     ]);
     $productextend = ['inline_keyboard' => []];
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $nameloc['Service_location'], "select");
-    $statusshowprice = select("shopSetting", "*", "Namevalue", "statusshowprice", "select")['value'];
+    $statusshowprice = getShopSetting("statusshowprice")['value'];
     while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
         if (intval($user['pricediscount']) != 0) {
             $resultper = ($result['price_product'] * $user['pricediscount']) / 100;
@@ -1845,10 +1898,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     $DataUserOut = $ManagePanel->DataUser($nameloc['Service_location'], $nameloc['username']);
     if ($user['Balance'] < $pricelastextend && $user['agent'] != "n2" && intval($pricelastextend) != 0) {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']];
-            $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']];
+            $minbalance = json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
+            $maxbalance = json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
             $minbalance = number_format($minbalance);
             $maxbalance = number_format($maxbalance);
             $bakinfos = json_encode([
@@ -1882,9 +1935,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
     }
     if ($user['agent'] == "f") {
-        $valurcashbackextend = select("shopSetting", "*", "Namevalue", "chashbackextend", "select")['value'];
+        $valurcashbackextend = getShopSetting("chashbackextend")['value'];
     } else {
-        $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'], true)[$user['agent']];
+        $valurcashbackextend = json_decode(getShopSetting("chashbackextend_agent")['value'] ?? '{}', true)[$user['agent']] ?? 0;
     }
     $cashbackextend = 0;
     if (intval($valurcashbackextend) != 0 and intval($pricelastextend) != 0) {
@@ -2130,10 +2183,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     if ($user['Balance'] < $volume && $user['agent'] != "n2") {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -2343,10 +2396,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $Pricechange = 0;
     }
     if ($user['Balance'] < $Pricechange && $user['agent'] != "n2" && $limitfree) {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -2684,10 +2737,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     if ($user['Balance'] < $tmieextra && $user['agent'] != "n2") {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -3215,6 +3268,23 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $helpidos['inline_keyboard'][] = [
                 ['text' => $textbotlang['keyboard']['appDownloadLink'], 'callback_data' => "linkappdownlod"],
             ];
+        }
+        // Custom apps & connection tutorials (from panel/custom_apps.php)
+        try {
+            $customApps = $pdo->query("SELECT * FROM custom_apps WHERE status = 'active' ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) { $customApps = []; }
+        foreach ($customApps as $ca) {
+            $label = trim(($ca['icon'] ?? '') . ' ' . ($ca['name'] ?? ''));
+            if ($label === '') continue;
+            if (!empty($ca['download_link'])) {
+                $helpidos['inline_keyboard'][] = [
+                    ['text' => $label, 'url' => $ca['download_link']]
+                ];
+            } else {
+                $helpidos['inline_keyboard'][] = [
+                    ['text' => $label, 'callback_data' => "customapp_{$ca['id']}"]
+                ];
+            }
         }
         $helpidos['inline_keyboard'][] = [
             ['text' => $textbotlang['users']['backmenu'], 'callback_data' => "backuser"],
@@ -3952,7 +4022,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textin, $payment, 'HTML');
     }
     step('payment', $from_id);
-} elseif ($user['step'] == "payment" && ($datain == "confirmandgetservice" || $datain == "confirmandgetserviceDiscount")) {
+} elseif (($user['step'] == "payment" || $user['step'] == "home") && ($datain == "confirmandgetservice" || $datain == "confirmandgetserviceDiscount")) {
     $userdate = json_decode($user['Processing_value'], true);
     Editmessagetext($from_id, $message_id, $text_inline, json_encode(['inline_keyboard' => []]));
     // $pats for customm service
@@ -4062,13 +4132,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $Status = "unpaid";
     $stmt->execute([$from_id, $randomString, $username_ac, $date, $marzban_list_get['name_panel'], $info_product['name_product'], $priceproduct, $info_product['Volume_constraint'], $info_product['Service_time'], $Status, $userdate['nameconfig'] ?? null, $user['affiliates'], $notifctions]);
     if ($priceproduct > $user['Balance'] && $user['agent'] != "n2" && intval($priceproduct) != 0) {
-        $marzbandirectpay = select("shopSetting", "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         $Balance_prim = $priceproduct - $user['Balance'];
         if ($Balance_prim <= 1)
             $Balance_prim = 0;
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -4391,7 +4461,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textbotlang['users']['Major']['disabled'], null, 'HTML');
         return;
     }
-    $PaySetting = select("PaySetting", "*", "NamePay", "minbalancebuybulk", "select")['ValuePay'];
+    $PaySetting = getPaySetting("minbalancebuybulk")['ValuePay'];
     if ($user['Balance'] < $PaySetting) {
         sendmessage($from_id, strtr($textbotlang['users']['Major']['minBalance'], ['{PaySetting}' => $PaySetting]), null, 'HTML');
         return;
@@ -4574,7 +4644,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $textin = sprintf($textbotlang['users']['sell']['preInvoice2'], $username_ac, $info_product['name_product'], $info_product['Service_time'], $price_product_format, $info_product['Volume_constraint'], $userbalancepish, $user['Processing_value_four']);
     sendmessage($from_id, $textin, $paymentom, 'HTML');
     step('payments', $from_id);
-} elseif ($user['step'] == "payments" && $datain == "confirmandgetservice") {
+} elseif (($user['step'] == "payments" || $user['step'] == "home") && $datain == "confirmandgetservice") {
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
     $eextraprice = json_decode($marzban_list_get['pricecustomvolume'], true);
     $custompricevalue = $eextraprice[$user['agent']];
@@ -4620,10 +4690,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     $single_price = intval($user['Processing_value_four']) != 0 ? $priceproduct / intval($user['Processing_value_four']) : $priceproduct;
     if ($priceproduct > $user['Balance'] && $user['agent'] != "n2") {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -4765,8 +4835,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     if ($user['number'] == "none" && $setting['get_number'] == "onAuthenticationphone")
         return;
-    $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-    $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+    $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+    $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
     $bakinfos = json_encode([
         'inline_keyboard' => [
             [
@@ -4781,8 +4851,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     deletemessage($from_id, $user['Processing_value']);
     if (!is_numeric($text))
         return sendmessage($from_id, $textbotlang['users']['Balance']['errorprice'], null, 'HTML');
-    $minbalance = json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']];
-    $maxbalance = json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']];
+    $minbalance = json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
+    $maxbalance = json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0;
     $balancelast = $text;
     if ($text > $maxbalance or $text < $minbalance) {
         $minbalance = number_format($minbalance);
@@ -4800,7 +4870,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value", $balancelast, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment, 'HTML');
     step('get_step_payment', $from_id);
-} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "iranpay3", "digitaltron", "startelegrams"])) {
+} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "frenzyex", "iranpay1", "iranpay2", "iranpay4", "iranpay3", "digitaltron", "startelegrams"])) {
     if ($user['step'] == "get_step_payment_buy") {
         $pending_order = select("invoice", "*", "id_invoice", $user['Processing_value_one'], "select");
         if ($pending_order == false || $pending_order['Status'] != "unpaid") {
@@ -4819,8 +4889,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $user['Processing_value'] = $pending_order['payable_amount'];
     }
     if ($datain == "cart_to_offline") {
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalancecart", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalancecart", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalancecart")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalancecart")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -4885,7 +4955,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
                 ]
             ]);
         }
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpcart", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpcart")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -4908,8 +4978,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['zarinpal'], null, 'HTML');
             return;
         }
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalanceaqayepardakht", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalanceaqayepardakht", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalanceaqayepardakht")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalanceaqayepardakht")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -4950,7 +5020,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $price_format = number_format($user['Processing_value'], 0);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['invoiceCreated'], $randomString, $price_format);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpaqayepardakht", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpaqayepardakht")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -4963,13 +5033,56 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
         $message_id = sendmessage($from_id, $textnowpayments, $paymentkeyboard, 'HTML');
         updatePaymentMessageId($message_id, $randomString);
+    } elseif ($datain == "frenzyex") {
+        require_once __DIR__ . '/frenzyex_lib.php';
+        $fx_min = frenzyex_setting('minbalancefrenzyex', '20000');
+        $fx_max = frenzyex_setting('maxbalancefrenzyex', '1000000');
+        if ($user['Processing_value'] < $fx_min || $user['Processing_value'] > $fx_max) {
+            $fx_range_tpl = $textbotlang['users']['Balance']['depositRange']
+                ?? $textbotlang['extracted']['index_php']['depositAmountRange']
+                ?? 'مبلغ باید بین {mainbalance} تا {maxbalance} تومان باشد.';
+            sendmessage($from_id, strtr($fx_range_tpl, [
+                '{mainbalance}' => number_format($fx_min),
+                '{maxbalance}' => number_format($fx_max),
+            ]), null, 'HTML');
+            return;
+        }
+        deletemessage($from_id, $message_id);
+        sendmessage($from_id, $textbotlang['users']['Balance']['linkpayments'], $keyboard, 'HTML');
+        $fx_order = bin2hex(random_bytes(5));
+        $fx_pay = createPayFrenzyEx($user['Processing_value'], $fx_order);
+        if (empty($fx_pay['pay_url'])) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            step('home', $from_id);
+            error_log('FrenzyEx: no pay_url — ' . json_encode($fx_pay));
+            return;
+        }
+        $fx_invoice = "{$user['Processing_value_tow']}|{$user['Processing_value_one']}";
+        $fx_stmt = $pdo->prepare("INSERT INTO Payment_report (id_user,id_order,time,price,payment_Status,Payment_Method,id_invoice,dec_not_confirmed) VALUES (?,?,?,?,?,?,?,?)");
+        $fx_stmt->execute([
+            $from_id, $fx_order, date('Y/m/d H:i:s'), $user['Processing_value'],
+            "Unpaid", "frenzyex", $fx_invoice, (string) ($fx_pay['request_id'] ?? ''),
+        ]);
+        $fx_created_tpl = $textbotlang['users']['Balance']['invoiceCreated2']
+            ?? $textbotlang['hardcoded']['paymentInvoiceCreated2']
+            ?? "شماره سفارش: %s\nمبلغ: %s تومان";
+        sendmessage($from_id, sprintf(
+            $fx_created_tpl,
+            $fx_order,
+            number_format($user['Processing_value'], 0)
+        ), json_encode([
+            'inline_keyboard' => [[
+                ['text' => $textbotlang['users']['Balance']['payments'], 'url' => $fx_pay['pay_url']],
+            ]]
+        ]), 'HTML');
+
     } elseif ($datain == "zarinpal") {
         if ($user['Processing_value'] < 5000) {
             sendmessage($from_id, $textbotlang['users']['Balance']['zarinpal'], null, 'HTML');
             return;
         }
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalancezarinpal", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalancezarinpal", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalancezarinpal")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalancezarinpal")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5010,7 +5123,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $price_format = number_format($user['Processing_value'], 0);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['invoiceCreated2'], $randomString, $price_format);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpzarinpal", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpzarinpal")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5028,8 +5141,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['variza'], null, 'HTML');
             return;
         }
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalancevariza", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalancevariza", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalancevariza")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalancevariza")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5070,7 +5183,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $price_format = number_format($user['Processing_value'], 0);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['invoiceCreated2'], $randomString, $price_format);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpvariza", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpvariza")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5098,8 +5211,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['nowpayments'], null, 'HTML');
             return;
         }
-        $mainbalanceplisio = select("PaySetting", "ValuePay", "NamePay", "minbalanceplisio", "select")['ValuePay'];
-        $maxbalanceplisio = select("PaySetting", "ValuePay", "NamePay", "maxbalanceplisio", "select")['ValuePay'];
+        $mainbalanceplisio = getPaySetting("minbalanceplisio")['ValuePay'];
+        $maxbalanceplisio = getPaySetting("maxbalanceplisio")['ValuePay'];
         if ($user['Processing_value'] < $mainbalanceplisio || $user['Processing_value'] > $maxbalanceplisio) {
             $mainbalanceplisio = number_format($mainbalanceplisio);
             $maxbalanceplisio = number_format($maxbalanceplisio);
@@ -5141,7 +5254,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $price_format = number_format($user['Processing_value'], 0);
         $USD = number_format($usd);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['cryptoInstruction'], $randomString, $price_format, $USD);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpplisio", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpplisio")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5165,8 +5278,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $usd = $rates['USD'];
         $trxprice = $user['Processing_value'] / $trx;
         $usdprice = $user['Processing_value'] / $usd;
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalancenowpayment", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalancenowpayment", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalancenowpayment")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalancenowpayment")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5208,7 +5321,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $price_format = number_format($user['Processing_value'], 0);
         $USD = number_format($usd);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['cryptoInstruction2'], $randomString, $price_format, $USD);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpnowpayment", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpnowpayment")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5232,8 +5345,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $usd = $rates['USD'];
         $trxprice = round($user['Processing_value'] / $trx, 2);
         $usdprice = $user['Processing_value'] / $usd;
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalanceiranpay1", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalanceiranpay1", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalanceiranpay1")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalanceiranpay1")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5275,7 +5388,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $pricetoman = number_format($user['Processing_value'], 0);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['transactionCreated'], $randomString, $pricetoman);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpiranpay1", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpiranpay1")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5289,8 +5402,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $message_id = sendmessage($from_id, $textnowpayments, $paymentkeyboard, 'HTML');
         updatePaymentMessageId($message_id, $randomString);
     } elseif ($datain == "iranpay2") {
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalanceiranpay2", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalanceiranpay2", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalanceiranpay2")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalanceiranpay2")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5331,7 +5444,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $pricetoman = number_format($user['Processing_value'], 0);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['transactionCreated2'], $randomString, $pricetoman);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpiranpay2", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpiranpay2")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5432,8 +5545,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $usd = $rates['USD'];
         $trxprice = $user['Processing_value'] / $trx;
         $usdprice = $user['Processing_value'] / $usd;
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalanceiranpay", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalanceiranpay", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalanceiranpay")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalanceiranpay")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5475,7 +5588,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             ]
         ]);
         $textnowpayments = sprintf($textbotlang['users']['Balance']['transactionCreated3'], $randomString, $pricetoman);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpiranpay3", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpiranpay3")['ValuePay'];
         if ($gethelp != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -5504,8 +5617,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['changeto'], null, 'HTML');
             return;
         }
-        $mainbalancedigitaltron = select("PaySetting", "ValuePay", "NamePay", "minbalancedigitaltron", "select")['ValuePay'];
-        $maxbalancedigitaltron = select("PaySetting", "ValuePay", "NamePay", "maxbalancedigitaltron", "select")['ValuePay'];
+        $mainbalancedigitaltron = getPaySetting("minbalancedigitaltron")['ValuePay'];
+        $maxbalancedigitaltron = getPaySetting("maxbalancedigitaltron")['ValuePay'];
         if ($user['Processing_value'] < $mainbalancedigitaltron || $user['Processing_value'] > $maxbalancedigitaltron) {
             $mainbalance = number_format($mainbalancedigitaltron);
             $maxbalance = number_format($maxbalancedigitaltron);
@@ -5521,7 +5634,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $Payment_Method = "arze digital offline";
         $stmt->execute([$from_id, $randomString, $dateacc, $user['Processing_value'], $payment_Status, $Payment_Method]);
         linkPaymentToOrder($randomString, $user);
-        $affilnecurrency = select("PaySetting", "*", "NamePay", "walletaddress", "select")['ValuePay'];
+        $affilnecurrency = getPaySetting("walletaddress")['ValuePay'];
         $paymentkeyboard = json_encode([
             'inline_keyboard' => [
                 [
@@ -5555,8 +5668,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $usdprice = round($user['Processing_value'] / $usd, 2);
         $starAmount = $usd * 0.016;
         $starAmount = intval($user['Processing_value'] / $starAmount);
-        $mainbalance = select("PaySetting", "ValuePay", "NamePay", "minbalancestar", "select")['ValuePay'];
-        $maxbalance = select("PaySetting", "ValuePay", "NamePay", "maxbalancestar", "select")['ValuePay'];
+        $mainbalance = getPaySetting("minbalancestar")['ValuePay'];
+        $maxbalance = getPaySetting("maxbalancestar")['ValuePay'];
         if ($user['Processing_value'] < $mainbalance || $user['Processing_value'] > $maxbalance) {
             $mainbalance = number_format($mainbalance);
             $maxbalance = number_format($maxbalance);
@@ -5571,7 +5684,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $payment_Status = "Unpaid";
         $Payment_Method = "Star Telegram";
         $stmt->execute([$from_id, $randomString, $dateacc, $user['Processing_value'], $payment_Status, $Payment_Method]);
-        $affilnecurrency = select("PaySetting", "*", "NamePay", "walletaddress", "select")['ValuePay'];
+        $affilnecurrency = getPaySetting("walletaddress")['ValuePay'];
         $straCreateLink = telegram('createInvoiceLink', [
             'title' => "Buy for Price {$user['Processing_value']}",
             'description' => "Buy price",
@@ -5609,7 +5722,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]);
         $formatprice = number_format($user['Processing_value'], 0);
         $textstar = sprintf($textbotlang['users']['Balance']['transactionCreatedStar'], $randomString, $starAmount, $formatprice, $formatprice);
-        $gethelp = select("PaySetting", "ValuePay", "NamePay", "helpstar", "select")['ValuePay'];
+        $gethelp = getPaySetting("helpstar")['ValuePay'];
         if (intval($gethelp) != 2) {
             $data = json_decode($gethelp, true);
             if ($data['type'] == "text") {
@@ -6092,10 +6205,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $usernamepanel = $userdata['username'];
     $location = $marzban_list_get['name_panel'];
     if ($user['Balance'] < $volume && $user['agent'] != "n2") {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [
@@ -6373,13 +6486,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             'chat_id' => $from_id,
             'emoji' => "🎲",
         ]);
-        sleep((int) 4.5);
+        sleep((int) 2.5);
     } else {
         $diceResponse = telegram('sendDice', [
             'chat_id' => $from_id,
             'emoji' => "🎰",
         ]);
-        sleep(2);
+        sleep(1);
     }
     if (!is_array($diceResponse) || empty($diceResponse['ok']) || !isset($diceResponse['result']['dice']['value'])) {
         $errorContext = is_array($diceResponse) ? json_encode($diceResponse) : (is_string($diceResponse) ? $diceResponse : 'empty response');
@@ -6771,10 +6884,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     if ($user['Balance'] < $prodcut['price_product'] && $user['agent'] != "n2") {
-        $marzbandirectpay = select('shopSetting', "*", "Namevalue", "statusdirectpabuy", "select")['value'];
+        $marzbandirectpay = getShopSetting("statusdirectpabuy")['value'];
         if ($marzbandirectpay == "offdirectbuy") {
-            $minbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "minbalance", "select")['ValuePay'], true)[$user['agent']]);
-            $maxbalance = number_format(json_decode(select("PaySetting", "*", "NamePay", "maxbalance", "select")['ValuePay'], true)[$user['agent']]);
+            $minbalance = number_format(json_decode(getPaySetting("minbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
+            $maxbalance = number_format(json_decode(getPaySetting("maxbalance")['ValuePay'] ?? '{}', true)[$user['agent']] ?? 0);
             $bakinfos = json_encode([
                 'inline_keyboard' => [
                     [

@@ -11,11 +11,11 @@ FORCE=0
 usage() {
   cat <<'USAGE'
 Usage:
-  sudo bash install.sh [MIRZABOT_DIRECTORY] [--force]
+  sudo bash install.sh [nexoraBOT_DIRECTORY] [--force]
 
 Examples:
   sudo bash install.sh
-  sudo bash install.sh /var/www/html/mirzabot
+  sudo bash install.sh /var/www/html/nexorabot
 
 Only ADDS new files/columns. Never deletes or rewrites your data.
 USAGE
@@ -32,7 +32,7 @@ for arg in "$@"; do
       ;;
     *)
       if [[ -n "$TARGET" ]]; then
-        echo "Only one Mirzabot directory may be supplied." >&2
+        echo "Only one nexorabot directory may be supplied." >&2
         exit 2
       fi
       TARGET="$arg"
@@ -40,11 +40,62 @@ for arg in "$@"; do
   esac
 done
 
+# â”€â”€ Quiet mode: keep verbose output in a log, show only a progress bar + prompts â”€â”€
+exec 3>&1
+exec 1>/tmp/nexora_install.log 2>&1
+
+nexora_progress() {
+  local pct=$1 filled=0 bar=""
+  [ "$pct" -gt 100 ] && pct=100
+  [ "$pct" -lt 0 ] && pct=0
+  filled=$(( pct * 40 / 100 ))
+  local i
+  for ((i=0; i<filled; i++)); do bar+="â–ˆ"; done
+  for ((i=filled; i<40; i++)); do bar+="â–‘"; done
+  printf '\r  [%s] %3d%%' "$bar" "$pct" >&3
+  [ "$pct" -ge 100 ] && printf '\n' >&3
+}
+
+nexora_progress 5
+echo "==> $UPDATE_NAME" >&3
 echo "==> $UPDATE_NAME"
 
+# One-liner mode: if run via curl without the full ZIP extracted,
+# automatically fetch and run the self-extracting nexora-update.sh.
 if [[ ! -f "$MANIFEST" ]]; then
-  echo "Update payload is incomplete. Extract the entire ZIP before running install.sh." >&2
-  exit 1
+  echo "==> Install package not found locally â€” downloading auto-installer from GitHub..."
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+    echo "curl or wget is required for one-line install." >&2
+    exit 1
+  fi
+
+  # Ensure PHP is available (self-extracting updater needs it)
+  if ! command -v php >/dev/null 2>&1; then
+    echo "==> PHP not found â€” installing PHP and dependencies..."
+    if command -v apt-get >/dev/null 2>&1; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq
+      apt-get install -y -qq php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y -q php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    elif command -v dnf >/dev/null 2>&1; then
+      dnf install -y -q php php-cli php-curl php-mbstring php-xml php-zip unzip curl ca-certificates
+    else
+      echo "PHP is required but not installed. Please install PHP first." >&2
+      exit 1
+    fi
+  fi
+
+  TMP_UPDATE="$(mktemp)"
+  trap 'rm -f "$TMP_UPDATE"' EXIT
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$TMP_UPDATE"
+  else
+    wget -qO "$TMP_UPDATE" "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+  fi
+  chmod +x "$TMP_UPDATE"
+  echo "==> Running Nexora auto-installer..."
+  exec bash "$TMP_UPDATE" "$@"
 fi
 
 if ! command -v sha256sum >/dev/null 2>&1; then
@@ -57,11 +108,13 @@ echo "==> Verifying update files"
 
 if [[ -z "$TARGET" ]]; then
   for candidate in \
-    /var/www/html/mirzabot \
-    /var/www/html/mirzabotconfig \
-    /var/www/mirzabot \
+    /var/www/html/nexorabot \
+    /var/www/html/nexorabotconfig \
+    /var/www/nexorabot \
     /var/www/html/bot \
-    /var/www/html/mirzaprobotconfig
+    /var/www/html/nexorabotconfig \
+    /var/www/html/nexorabot \
+    /var/www/html/nexorabotconfig
   do
     if [[ -f "$candidate/function.php" && -f "$candidate/index.php" && -f "$candidate/config.php" && -f "$candidate/keyboard.php" && -f "$candidate/botapi.php" ]]; then
       TARGET="$candidate"
@@ -71,8 +124,8 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  echo "==> No existing Mirzabot found — creating fresh installation"
-  TARGET="/var/www/html/mirzabot"
+  echo "==> No existing nexorabot found â€” creating fresh installation"
+  TARGET="/var/www/html/nexorabot"
   mkdir -p "$TARGET"
   echo "    Installing to $TARGET"
   cd "$PACKAGE_DIR"
@@ -92,7 +145,7 @@ TARGET="$(cd -- "$TARGET" 2>/dev/null && pwd)" || {
 
 for required in function.php index.php keyboard.php table.php config.php botapi.php; do
   if [[ ! -f "$TARGET/$required" ]]; then
-    echo "This does not look like a Mirzabot installation: missing $required" >&2
+    echo "This does not look like a nexorabot installation: missing $required" >&2
     exit 1
   fi
 done
@@ -109,7 +162,7 @@ fi
 PHP_BIN="$(command -v php)"
 
 echo "==> Checking PHP syntax"
-"$PHP_BIN" -l "$PACKAGE_DIR/mirza_style.php" >/dev/null
+"$PHP_BIN" -l "$PACKAGE_DIR/nexora_style.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/migrate.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/patch_keyboard.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/patch_panel.php" >/dev/null
@@ -134,17 +187,17 @@ echo "==> Checking PHP syntax"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-  backup_root="${MIRZABOT_BACKUP_DIR:-/var/backups/mirzabot}"
+  backup_root="${nexoraBOT_BACKUP_DIR:-/var/backups/nexorabot}"
 else
-  backup_root="${MIRZABOT_BACKUP_DIR:-$HOME/mirzabot_backups}"
+  backup_root="${nexoraBOT_BACKUP_DIR:-$HOME/nexorabot_backups}"
 fi
 BACKUP_DIR="$backup_root/nexora-$timestamp"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$backup_root" "$BACKUP_DIR" 2>/dev/null || true
 
 # ---- upgrade: if a previous version exists, remove it first ----
-if [[ -f "$TARGET/mirza_style.php" ]]; then
-  echo "==> Previous version detected — removing it first"
+if [[ -f "$TARGET/nexora_style.php" ]]; then
+  echo "==> Previous version detected â€” removing it first"
   prev_backup=""
   if [[ -d "$backup_root" ]]; then
     prev_backup="$(ls -td "$backup_root"/nexora-* 2>/dev/null | head -1 || true)"
@@ -156,17 +209,17 @@ if [[ -f "$TARGET/mirza_style.php" ]]; then
     [[ -f "$prev_backup/bottext.php" ]] && cp -a -- "$prev_backup/bottext.php" "$TARGET/panel/bottext.php"
     [[ -f "$prev_backup/admin.php" ]] && cp -a -- "$prev_backup/admin.php" "$TARGET/admin.php"
     [[ -f "$prev_backup/miniapp-index.php" ]] && cp -a -- "$prev_backup/miniapp-index.php" "$TARGET/app/index.php"
-    for _rb in lang/fa.php lang/en.php lang/ru.php lang/zh.php install/checks.php install/index.php api/index.html composer.json; do
+    for _rb in install/checks.php install/index.php api/index.html composer.json; do
       if [[ -f "$prev_backup/$_rb" ]]; then
         cp -a -- "$prev_backup/$_rb" "$TARGET/$_rb"
       fi
     done
     echo "    stock files restored from $prev_backup"
   fi
-  for _f in mirza_style.php panel/btnstyle.php panel/textemojis.php panel/emojis.php panel/panels.php panel/health.php panel/export.php panel/inc/emoji_picker_bar.php panel/js/emoji-insert.js panel/css/mirza-glass.css agent-panel/login.php agent-panel/index.php agent-panel/logout.php agent-panel/inc/auth.php cronbot/nudge_unpaid.php cronbot/frenzyex.php tools/nexora-indexes.php app/assets/nexora-theme.css payment/frenzyex.php; do
+  for _f in nexora_style.php panel/btnstyle.php panel/textemojis.php panel/emojis.php panel/panels.php panel/health.php panel/export.php panel/inc/emoji_picker_bar.php panel/js/emoji-insert.js panel/css/nexora-glass.css agent-panel/login.php agent-panel/index.php agent-panel/logout.php agent-panel/inc/auth.php cronbot/nudge_unpaid.php cronbot/frenzyex.php tools/nexora-indexes.php app/assets/nexora-theme.css payment/frenzyex.php; do
     rm -f -- "$TARGET/$_f"
   done
-  echo "    old files removed — fresh install follows"
+  echo "    old files removed â€” fresh install follows"
 fi
 
 echo "==> Backing up patched files to $BACKUP_DIR"
@@ -183,9 +236,24 @@ for _rb in lang/fa.php lang/en.php lang/ru.php lang/zh.php install/checks.php in
   fi
 done
 
-echo "==> Installing new files"
-mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment"
-cp -- "$PACKAGE_DIR/mirza_style.php" "$TARGET/mirza_style.php"
+nexora_progress 45
+
+# FORCE mode: copy ALL files from package
+if [[ "$FORCE" == "1" ]]; then
+    echo "==> FORCE mode: copying ALL files"
+    cd "$PACKAGE_DIR"
+    while IFS= read -r -d '' f; do
+        rel="${f#./}"
+        mkdir -p "$TARGET/$(dirname "$rel")"
+        cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
+    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -print0)
+    cd "$TARGET"
+    echo "    All files copied (FORCE mode)"
+nexora_progress 60
+else
+    echo "==> Installing new files (selective)"
+    mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment" "$TARGET/lang"
+    cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
 cp -- "$PACKAGE_DIR/panel/btnstyle.php" "$TARGET/panel/btnstyle.php"
 cp -- "$PACKAGE_DIR/panel/textemojis.php" "$TARGET/panel/textemojis.php"
 cp -- "$PACKAGE_DIR/panel/emojis.php" "$TARGET/panel/emojis.php"
@@ -194,7 +262,7 @@ cp -- "$PACKAGE_DIR/panel/health.php" "$TARGET/panel/health.php"
 cp -- "$PACKAGE_DIR/panel/export.php" "$TARGET/panel/export.php"
 cp -- "$PACKAGE_DIR/panel/inc/emoji_picker_bar.php" "$TARGET/panel/inc/emoji_picker_bar.php"
 cp -- "$PACKAGE_DIR/panel/js/emoji-insert.js" "$TARGET/panel/js/emoji-insert.js"
-cp -- "$PACKAGE_DIR/panel/css/mirza-glass.css" "$TARGET/panel/css/mirza-glass.css"
+cp -- "$PACKAGE_DIR/panel/css/nexora-glass.css" "$TARGET/panel/css/nexora-glass.css"
 cp -- "$PACKAGE_DIR/agent-panel/login.php" "$TARGET/agent-panel/login.php"
 cp -- "$PACKAGE_DIR/agent-panel/index.php" "$TARGET/agent-panel/index.php"
 cp -- "$PACKAGE_DIR/agent-panel/logout.php" "$TARGET/agent-panel/logout.php"
@@ -204,6 +272,30 @@ cp -- "$PACKAGE_DIR/cronbot/frenzyex.php" "$TARGET/cronbot/frenzyex.php"
 cp -- "$PACKAGE_DIR/tools/nexora-indexes.php" "$TARGET/tools/nexora-indexes.php"
 cp -- "$PACKAGE_DIR/app/assets/nexora-theme.css" "$TARGET/app/assets/nexora-theme.css"
 cp -- "$PACKAGE_DIR/payment/frenzyex.php" "$TARGET/payment/frenzyex.php"
+cp -- "$PACKAGE_DIR/version" "$TARGET/version" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/frenzyex_lib.php" "$TARGET/frenzyex_lib.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/finance.php" "$TARGET/panel/finance.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/agents.php" "$TARGET/panel/agents.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/magic.php" "$TARGET/panel/magic.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/botcolors.php" "$TARGET/panel/botcolors.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/audit.php" "$TARGET/panel/audit.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/maintenance.php" "$TARGET/panel/maintenance.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/bottext.php" "$TARGET/panel/bottext.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/emoji_picker.php" "$TARGET/panel/emoji_picker.php" 2>/dev/null || true
+cp -- "$PACKAGE_DIR/panel/inc/layout_head.php" "$TARGET/panel/inc/layout_head.php" 2>/dev/null || true
+
+if [[ -f "$PACKAGE_DIR/tools/nexora" ]]; then
+  cp -- "$PACKAGE_DIR/tools/nexora" /usr/local/bin/nexora 2>/dev/null && chmod +x /usr/local/bin/nexora && echo "nexora CLI installed."
+# refresh base language files so new/updated bot messages come through (user overrides in lang/override/ are preserved)
+mkdir -p "$TARGET/lang"
+for _lf in "$PACKAGE_DIR"/lang/*.php; do
+  [[ -f "$_lf" ]] || continue
+  cp -- "$_lf" "$TARGET/lang/$(basename "$_lf")"
+done
+fi
+fi
+
+nexora_progress 60
 
 if [[ -f "$TARGET/panel/product.php" ]]; then
   for _f in btnstyle.php textemojis.php emojis.php panels.php health.php export.php; do
@@ -212,15 +304,17 @@ if [[ -f "$TARGET/panel/product.php" ]]; then
   done
 fi
 
+_skipped_patches=""
 for _patch in patch_keyboard patch_panel patch_botapi patch_bottext patch_admin patch_miniapp; do
   echo "==> Patching with ${_patch} (dry run)"
   if "$PHP_BIN" "$PACKAGE_DIR/${_patch}.php" "$TARGET"; then
     echo "==> Patching with ${_patch} (apply)"
     "$PHP_BIN" "$PACKAGE_DIR/${_patch}.php" "$TARGET" --apply
   else
-    echo "WARNING: ${_patch} skipped for this Mirzabot version."
+    echo "WARNING: ${_patch} skipped for this nexorabot version."
+    _skipped_patches="$_skipped_patches $_patch"
     if [ "$_patch" = "patch_keyboard" ]; then
-      echo "FATAL: core keyboard patch failed — aborting, nothing was changed." >&2
+      echo "FATAL: core keyboard patch failed â€” aborting, nothing was changed." >&2
       exit 1
     fi
   fi
@@ -234,9 +328,11 @@ echo "==> Checking patched syntax"
 "$PHP_BIN" -l "$TARGET/admin.php" >/dev/null
 "$PHP_BIN" -l "$TARGET/app/index.php" >/dev/null
 
+nexora_progress 75
 echo "==> Running database migration (additive only)"
 "$PHP_BIN" "$PACKAGE_DIR/migrate.php" "$TARGET"
 
+nexora_progress 85
 echo "==> Applying Nexora display rebrand (exact-match only, safe)"
 "$PHP_BIN" "$PACKAGE_DIR/rebrand.php" "$TARGET" --apply || echo "WARNING: rebrand step had skips (see above)."
 
@@ -244,12 +340,43 @@ if command -v restorecon >/dev/null 2>&1; then
   restorecon -R "$TARGET" >/dev/null 2>&1 || true
 fi
 
+nexora_progress 92
 if command -v php >/dev/null 2>&1; then
   php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
 fi
 
+  # Restart PHP-FPM to clear OPcache (CLI opcache_reset does not affect FPM)
+  for _svc in php8.2-fpm php8.1-fpm php8.0-fpm php7.4-fpm; do
+    if systemctl is-active --quiet "$_svc" 2>/dev/null || systemctl list-unit-files "$_svc.service" 2>/dev/null | grep -q "$_svc"; then
+      systemctl restart "$_svc" 2>/dev/null && echo "  restarted $_svc" || true
+    fi
+  done
+
 echo
-echo "Update installed successfully."
+nexora_progress 98
+echo "==> Verifying installation completeness"
+_missing=0
+for _f in nexora_style.php keyboard.php index.php admin.php function.php panel/emojis.php panel/magic.php agent-panel/inc/auth.php migrate.php; do
+  if [[ ! -f "$TARGET/$_f" ]]; then echo "  MISSING FILE: $_f"; _missing=1; fi
+done
+if [[ $_missing -eq 1 ]]; then echo "ERROR: required files missing." >&2; exit 1; fi
+_lint_fail=0
+while IFS= read -r -d '' _f; do
+  if ! "$PHP_BIN" -l "$_f" >/dev/null 2>&1; then echo "  LINT FAIL: $_f"; _lint_fail=1; fi
+done < <(find "$TARGET" -type f -name '*.php' -print0)
+if [[ $_lint_fail -eq 1 ]]; then echo "ERROR: PHP syntax errors found in installed files." >&2; exit 1; fi
+echo "    All required files present; all PHP files syntactically valid."
+
+if [[ -n "$_skipped_patches" ]]; then
+  echo
+  echo "WARNING: the following patches were SKIPPED (some features may be missing):$_skipped_patches"
+  echo "         Review the warnings above. Re-run the update or apply the patches manually."
+  echo
+  echo "Update installed PARTIALLY. See warnings above."
+else
+  echo
+  echo "Update installed successfully."
+fi
 echo "Backup: $BACKUP_DIR"
 echo
 echo "Next:"
@@ -267,4 +394,25 @@ echo "  6. Agent panel: https://YOUR-DOMAIN/agent-panel/ (set passwords via /age
 echo "  7. FrenzyEx gateway: Finance -> Payment settings -> FrenzyEx"
 echo "  8. Optional speed: php tools/nexora-indexes.php"
 echo "     Optional unpaid reminders cron: */30 * * * * php BOTDIR/cronbot/nudge_unpaid.php"
-echo "  9. Check the bot and the panel — no restart needed."
+echo "  9. Check the bot and the panel â€” no restart needed."
+nexora_progress 100
+
+# â”€â”€ Interactive bot configuration (Nexora) â”€â”€
+echo "" >&3
+CONFIG_FILE="$TARGET/config.php"
+if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
+  echo "=== Ù¾ÛŒÚ©Ø±Ø¨Ù†Ø¯ÛŒ Ø±Ø¨Ø§Øª ===" >&3
+  read -p "  Admin numeric ID: " ADMIN_ID </dev/tty
+  read -p "  Bot token: " BOT_TOKEN </dev/tty
+  read -p "  Domain (e.g. example.com): " DOMAIN </dev/tty
+  BOT_USERNAME=""
+  if [ -n "$BOT_TOKEN" ]; then
+    _me=$(curl -fsSL "https://api.telegram.org/bot${BOT_TOKEN}/getMe" 2>/dev/null || true)
+    BOT_USERNAME=$(printf '%s' "$_me" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo (is_array($j)&&!empty($j["result"]["username"]))?$j["result"]["username"]:"";' 2>/dev/null || true)
+  fi
+  [ -z "$BOT_USERNAME" ] && BOT_USERNAME="{username_bot}"
+  sed -i "s|{API_KEY}|${BOT_TOKEN}|; s|{admin_number}|${ADMIN_ID}|; s|{domain_name}|${DOMAIN}|; s|{username_bot}|${BOT_USERNAME}|" "$CONFIG_FILE"
+  echo "  âœ“ config.php updated (admin=$ADMIN_ID, bot=@${BOT_USERNAME}, domain=$DOMAIN)" >&3
+else
+  echo "  (config.php already configured â€” skipping prompts)" >&3
+fi

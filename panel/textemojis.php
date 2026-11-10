@@ -1,9 +1,9 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
-$__mirzaStyleLib = __DIR__ . '/../mirza_style.php';
-if (is_file($__mirzaStyleLib)) {
-    require_once $__mirzaStyleLib;
+$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
+if (is_file($__nexoraStyleLib)) {
+    require_once $__nexoraStyleLib;
 }
 require_auth();
 
@@ -22,7 +22,7 @@ $MENU_KEYS = [
     'text_requestagent' => ['textbot', 'requestAgent'],
 ];
 
-function mirza_textemojis_clean($v): string
+function nexora_textemojis_clean($v): string
 {
     $v = trim((string) $v);
     if ($v === '') return '';
@@ -35,7 +35,7 @@ function mirza_textemojis_clean($v): string
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save') {
     csrf_check_post();
     $key = (string) ($_POST['btn_key'] ?? '');
-    $val = mirza_textemojis_clean($_POST['btn_emoji'] ?? '');
+    $val = nexora_textemojis_clean($_POST['btn_emoji'] ?? '');
     if (isset($MENU_KEYS[$key])) {
         try {
             $name = 'nx_emoji_' . $key;
@@ -66,11 +66,11 @@ try {
 $pageTitle = 'ایموجی دکمه‌های اصلی';
 $pageLede = 'ایموجی پرمیوم برای دکمه‌های صفحه اصلی ربات (منوی اینلاین: آیکون · منوی معمولی: کاراکتر)';
 $activeNav = 'textemojis';
-$emojiLibrary = function_exists('mirza_emoji_list') ? mirza_emoji_list() : [];
+$emojiLibrary = function_exists('nexora_emoji_list') ? nexora_emoji_list() : [];
 $msEmojiRows = [];
-if (function_exists('mirza_emoji_placeholder')) {
+if (function_exists('nexora_emoji_placeholder')) {
     foreach ($emojiLibrary as $er) {
-        $msEmojiRows[] = ['placeholder' => mirza_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
+        $msEmojiRows[] = ['placeholder' => nexora_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
     }
 }
 include __DIR__ . '/inc/layout_head.php';

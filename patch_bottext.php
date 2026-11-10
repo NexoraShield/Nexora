@@ -21,17 +21,17 @@ $check('edit form', $c, 1);
 $anchorFoot = "<?php include __DIR__ . '/inc/layout_foot.php'; ?>";
 $c = substr_count($code, $anchorFoot);
 $check('layout foot', $c, 1);
-if ($errors !== []) { fwrite(STDERR, "Anchor check FAILED:\n - " . implode("\n - ", $errors) . "\n"); fwrite(STDERR, "Nothing was changed. Your Mirzabot version differs — aborting safely.\n"); exit(1); }
+if ($errors !== []) { fwrite(STDERR, "Anchor check FAILED:\n - " . implode("\n - ", $errors) . "\n"); fwrite(STDERR, "Nothing was changed. Your nexorabot version differs — aborting safely.\n"); exit(1); }
 if (!$apply) { echo "Dry run OK — all anchors match. Re-run with --apply.\n"; exit(0); }
-$code = str_replace($anchorNav, $anchorNav . "\n\$__mirzaStyleLib = __DIR__ . '/../mirza_style.php';\n" . "if (is_file(\$__mirzaStyleLib)) {\n    require_once \$__mirzaStyleLib;\n}\n" . "\$emojiLibrary = function_exists('mirza_emoji_list') ? mirza_emoji_list() : [];", $code);
+$code = str_replace($anchorNav, $anchorNav . "\n\$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';\n" . "if (is_file(\$__nexoraStyleLib)) {\n    require_once \$__nexoraStyleLib;\n}\n" . "\$emojiLibrary = function_exists('nexora_emoji_list') ? nexora_emoji_list() : [];", $code);
 $code = str_replace($anchorArea, 'class="textarea ms-emoji-field" data-ms-max="99" dir="auto"', $code);
 $pickerBlock = <<<'PHP'
 <?php
 $msEmojiRows = [];
-if (function_exists('mirza_emoji_placeholder')) {
+if (function_exists('nexora_emoji_placeholder')) {
     foreach ($emojiLibrary as $er) {
         $msEmojiRows[] = [
-            'placeholder' => mirza_emoji_placeholder($er),
+            'placeholder' => nexora_emoji_placeholder($er),
             'label' => trim((string) ($er['emoji_name'] ?? '')),
         ];
     }

@@ -1806,7 +1806,7 @@ trojan://xyz',
                         'on' => '已开启',
                         'intro' => '📌 在下方列表中，您可以管理网关。
 
-⚠️ Mirza 团队不对网关提供任何保证，所有使用和责任由您承担',
+⚠️ nexora 团队不对网关提供任何保证，所有使用和责任由您承担',
                         'askPlisioApi' => '⚙️ 请发送您的 Plisio API 密钥。
 
 🔑 要获取 API 密钥，请访问以下网站：
@@ -2401,13 +2401,13 @@ f,n.n2',
                         'aboutBot' => '💎 | Version Bot: %s
 📌 | Version Mini App: 0.1.1
 
-<blockquote>🔹 | 此机器人完全免费，由 Mirza 团队开发</blockquote>
+<blockquote>🔹 | 此机器人完全免费，由 nexora 团队开发</blockquote>
 
 <blockquote>🔹 | 任何对此机器人的出售或收费均视为违规。</blockquote>
 
 <blockquote>🔹 | 如果您发现任何出售或收费行为，请追踪并追回您的款项。</blockquote>
 
-<blockquote>🐞 | 如需报告问题，请在 <a href="https://t.me/mirzapanel?direct">Mirza 频道私信</a> 中留言。</blockquote>',
+<blockquote>🐞 | 如需报告问题，请在 <a href="https://t.me/nexorapanel?direct">nexora 频道私信</a> 中留言。</blockquote>',
                         'gatewayRow' => '
 📌 网关名称：<code>%s</code>
  - 成功支付次数：<code>%s</code>
@@ -4180,7 +4180,7 @@ f,n.n2',
                 'zarinPalMerchant' => 'ZarinPal 商户',
                 'zeroBalance' => '0️⃣ 余额清零',
                 'panelSetting' => '🎛 面板设置',
-                'mirzaAgentPanel' => 'Mirza 代理',
+                'nexoraAgentPanel' => 'nexora 代理',
                 'setGroupName' => '🎛 设置群组名称',
                 'subLinkDomain' => '🔗 订阅链接域名',
                 'panelTypeSanaei' => 'Sanaei 单端口',
@@ -4545,10 +4545,10 @@ f,n.n2',
                 'settingsPasswordStrengthLabel' => '更改密码',
                 'settingsPhpMemory' => 'PHP 内存',
                 'settingsReportIssue' => '报告问题',
-                'settingsReportIssueLink' => 'Mirza 频道私信',
+                'settingsReportIssueLink' => 'nexora 频道私信',
                 'settingsDonate' => '支持',
                 'settingsDonateLink' => '捐赠',
-                'donatePopupTitle' => '💖 支持 Mirza',
+                'donatePopupTitle' => '💖 支持 nexora',
                 'donatePopupText' => '本机器人和面板是免费开发的。如果它们对您有帮助，一笔小额捐赠将有助于持续开发和支持。',
                 'donatePopupLater' => '稍后',
                 'settingsSaveBtn' => '当前密码',
@@ -4837,7 +4837,7 @@ f,n.n2',
 
 在升级 PHP 之前，机器人对所有用户停用。
 
-🖥 <b>服务器（VPS）：</b>运行 <code>mirza update-php</code>，或在 <code>mirza</code> 菜单中选择 “Update PHP”。
+🖥 <b>服务器（VPS）：</b>运行 <code>nexora update-php</code>，或在 <code>nexora</code> 菜单中选择 “Update PHP”。
 🌐 <b>虚拟主机：</b>在主机控制面板中打开 Select PHP Version（或 MultiPHP Manager / PHP Version），为机器人域名选择 PHP 8.5。如果主机不提供 %2$s 或更高版本，请联系主机客服升级 PHP。',
         ],
 ];

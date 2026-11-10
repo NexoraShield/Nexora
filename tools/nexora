@@ -1,0 +1,376 @@
+#!/usr/bin/env bash
+# Nexora CLI - stylish blue server menu + one-bar update
+set -Eeuo pipefail
+
+BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
+CYAN=$'\033[0;36m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; RED=$'\033[0;31m'
+BLUE=$'\033[0;34m'; MAGENTA=$'\033[0;35m'; WHITE=$'\033[1;37m'
+LIGHTBLUE=$'\033[1;34m'
+
+BOT_DIR=""
+for c in /var/www/html/nexorabot /var/www/html/nexorabotconfig /var/www/nexorabot /var/www/html/bot /var/www/html/nexorabot /var/www/html/nexorabot_backup_20261027 /var/www/html/nexorabotconfig /var/www/html/nexorabotconfig_backup_20261028; do
+    if [[ -f "$c/function.php" && -f "$c/index.php" && -f "$c/config.php" ]]; then
+        BOT_DIR="$c"; break
+    fi
+done
+
+BOT_VERSION=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/version" ]]; then
+    BOT_VERSION="$(tr -d '[:space:]' < "$BOT_DIR/version" 2>/dev/null)"
+fi
+[[ -z "$BOT_VERSION" ]] && BOT_VERSION="unknown"
+
+BOT_USER=""
+BOT_DOMAIN=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/config.php" ]]; then
+    BOT_USER=$(grep -oP "usernamebot\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    BOT_DOMAIN=$(grep -oP "domainhosts\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+fi
+[[ -z "$BOT_USER" ]] && BOT_USER="unknown"
+[[ -z "$BOT_DOMAIN" ]] && BOT_DOMAIN="unknown"
+
+DB_HOST=""
+DB_NAME=""
+DB_USER=""
+DB_PASS=""
+if [[ -n "$BOT_DIR" && -f "$BOT_DIR/config.php" ]]; then
+    DB_HOST=$(grep -oP "dbhost\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_NAME=$(grep -oP "dbname\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_USER=$(grep -oP "usernamedb\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+    DB_PASS=$(grep -oP "passworddb\s*=\s*['\"]\K[^'\"]+" "$BOT_DIR/config.php" 2>/dev/null | head -1)
+fi
+
+hr() { printf "${BLUE}  %s${RESET}\n" "──────────────────────────────────────────────────────────────"; }
+title() {
+    clear
+    printf "${BLUE}${BOLD}"
+    printf "  ${BLUE}╔══════════════════════════════════════════════════════╗${RESET}\n"
+    printf "  ${BLUE}║${RESET}                                                      ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}███╗   ██╗███████╗██╗  ██╗ ██████╗ ██████╗  █████╗  ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}████╗  ██║██╔════╝╚██╗██╔╝██╔═══██╗██╔══██╗██╔══██╗ ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║██████╔╝███████║ ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║██╔══██╗██╔══██║ ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝██║  ██║██║  ██║ ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}     ${LIGHTBLUE}╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}                                                      ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}║${RESET}        ${WHITE}Telegram VPN Sales & Management Bot${BLUE}           ║${RESET}\n"
+    printf "  ${BLUE}║${RESET}              ${DIM}https://github.com/NexoraShield/Nexora${BLUE}   ║${RESET}\n"
+    printf "  ${BLUE}║${RESET}                                                      ${BLUE}║${RESET}\n"
+    printf "  ${BLUE}╚══════════════════════════════════════════════════════╝${RESET}\n"
+    printf "${RESET}"
+    printf "\n"
+    printf "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Bot:${RESET}      Installed\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Version:${RESET}  %s\n" "$BOT_VERSION"
+    printf "  ${GREEN}●${RESET} ${BOLD}Path:${RESET}     %s\n" "${BOT_DIR:-not found}"
+    printf "  ${GREEN}●${RESET} ${BOLD}Domain:${RESET}   %s\n" "$BOT_DOMAIN"
+    printf "  ${GREEN}●${RESET} ${BOLD}Bot:${RESET}      @%s\n" "$BOT_USER"
+    printf "\n"
+    printf "  ${GREEN}●${RESET} ${BOLD}Apache:${RESET}   %s\n" "$(systemctl is-active apache2 2>/dev/null || echo 'unknown')"
+    printf "  ${GREEN}●${RESET} ${BOLD}MySQL:${RESET}    %s\n" "$(systemctl is-active mysql 2>/dev/null || (systemctl is-active mariadb 2>/dev/null || echo 'unknown'))"
+    printf "  ${GREEN}●${RESET} ${BOLD}PHP:${RESET}      %s\n" "$(php -v 2>/dev/null | head -1 || echo 'unknown')"
+    printf "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+    printf "\n"
+    printf "  ${BOLD}Main Menu:${RESET}\n"
+}
+progress_bar() {
+    local pct=${1:-0}
+    (( pct < 0 )) && pct=0
+    (( pct > 100 )) && pct=100
+    local width=46 filled=$(( pct * 46 / 100 )) empty i
+    empty=$(( 46 - filled ))
+    local bar=""
+    for ((i=0;i<filled;i++)); do bar+="█"; done
+    for ((i=0;i<empty;i++)); do bar+="░"; done
+    printf "\r  ${BLUE}[${GREEN}%s${BLUE}]${RESET} ${BOLD}%3d%%${RESET}" "$bar" "$pct"
+}
+pause() { printf "\n  ${DIM}Press Enter to continue...${RESET}"; read -r _; }
+do_update() {
+    title
+    printf "  ${BOLD}${MAGENTA}Updating Nexora Bot${RESET}\n"
+    hr
+    printf "  ${DIM}Fetching available versions...${RESET}\n"
+    local versions=()
+    while IFS= read -r t; do
+        [[ -z "$t" ]] && continue
+        versions+=("$t")
+    done < <(git ls-remote --tags https://github.com/NexoraShield/Nexora.git 2>/dev/null | sed 's#.*refs/tags/##' | grep -v '\^{}' | sort -rV | head -20)
+    printf "\n"
+    printf "  ${BOLD}Choose version to install:${RESET}\n"
+    printf "  ${BOLD}0)${RESET} ${GREEN}Latest (main)${RESET}  - newest release\n"
+    local i=1
+    for v in "${versions[@]}"; do
+        printf "  ${BOLD}%d)${RESET} %s\n" "$i" "$v"
+        i=$((i+1))
+    done
+    printf "  ${BOLD}b)${RESET} Back\n"
+    printf "\n"
+    printf "  ${BOLD}Select [0-%d/b]: ${RESET}" "${#versions[@]}"
+    read -r vchoice
+    [[ "$vchoice" == "b" || "$vchoice" == "B" ]] && return 0
+    local ref="main"
+    if [[ "$vchoice" =~ ^[0-9]+$ ]] && (( vchoice >= 1 && vchoice <= ${#versions[@]} )); then
+        ref="${versions[$((vchoice-1))]}"
+    fi
+    printf "\n  ${DIM}Selected: %s${RESET}\n" "$ref"
+    local tmpd
+    tmpd=$(mktemp -d)
+    trap 'rm -rf "$tmpd"' RETURN
+    local url
+    if [[ "$ref" == "main" ]]; then
+        url="https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+    else
+        url="https://raw.githubusercontent.com/NexoraShield/Nexora/${ref}/nexora-update.sh"
+    fi
+    printf "  ${DIM}Downloading update (%s)...${RESET}\n" "$ref"
+    if ! curl -fsSL "$url" -o "$tmpd/nexora-update.sh" 2>/dev/null; then
+        printf "  ${RED}Download failed for %s. Trying latest...${RESET}\n" "$ref"
+        curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$tmpd/nexora-update.sh" 2>/dev/null || { printf "  ${RED}Download failed.${RESET}\n"; pause; return 1; }
+    fi
+    chmod +x "$tmpd/nexora-update.sh"
+    printf "  ${DIM}Running update (single progress bar)...${RESET}\n\n"
+    local pct=0 logfile="$tmpd/update.log"
+    progress_bar 0
+    "$tmpd/nexora-update.sh" --force > "$logfile" 2>&1 &
+    local upid=$!
+    while kill -0 "$upid" 2>/dev/null; do
+        if grep -q "NEXORA_PROGRESS:" "$logfile" 2>/dev/null; then
+            pct=$(grep -o "NEXORA_PROGRESS:[0-9]*" "$logfile" | tail -1 | cut -d: -f2)
+            [[ -z "$pct" ]] && pct=0
+        else
+            pct=$(( (pct + 2) % 95 ))
+            (( pct < 5 )) && pct=5
+        fi
+        progress_bar "$pct"
+        sleep 0.3
+    done
+    wait "$upid" 2>/dev/null || true
+    if grep -q "NEXORA_PROGRESS:" "$logfile" 2>/dev/null; then
+        pct=$(grep -o "NEXORA_PROGRESS:[0-9]*" "$logfile" | tail -1 | cut -d: -f2)
+        [[ -z "$pct" ]] && pct=100
+    else
+        pct=100
+    fi
+    progress_bar "$pct"
+    printf "\n\n"
+    printf "  ${GREEN}${BOLD}Update finished.${RESET}\n"
+    printf "  ${DIM}Restarting PHP-FPM to clear OPcache...${RESET}\n"
+    for _svc in php8.2-fpm php8.1-fpm php8.0-fpm php7.4-fpm; do
+        if systemctl is-active --quiet "$_svc" 2>/dev/null || systemctl list-unit-files "$_svc.service" 2>/dev/null | grep -q "$_svc"; then
+            systemctl restart "$_svc" 2>/dev/null && printf "  ${GREEN}OK %s${RESET}\n" "$_svc" || true
+        fi
+    done
+    php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); }' 2>/dev/null || true
+    printf "  ${DIM}Restart services if needed (option 5).${RESET}\n"
+    if grep -qi "error\|fail" "$logfile" 2>/dev/null; then
+        printf "  ${YELLOW}See log: %s${RESET}\n" "$logfile"
+    fi
+    pause
+}
+
+do_update_php() {
+    title
+    printf "  ${BOLD}${MAGENTA}Updating PHP${RESET}\n"
+    hr
+    if command -v apt-get >/dev/null 2>&1; then
+        printf "  ${DIM}Running apt-get update...${RESET}\n"
+        apt-get update -qq
+        printf "  ${DIM}Installing latest PHP...${RESET}\n"
+        apt-get install -y -qq php php-cli php-mysql php-curl php-gd php-mbstring php-xml php-zip php-json 2>&1 | tail -5
+        printf "  ${GREEN}${BOLD}PHP update done.${RESET}\n"
+        php -v | head -1
+    else
+        printf "  ${RED}apt-get not found. Update PHP manually.${RESET}\n"
+    fi
+    pause
+}
+do_status() {
+    title
+    printf "  ${BOLD}${MAGENTA}Status${RESET}\n"
+    hr
+    printf "  ${BOLD}Bot dir  :${RESET} %s\n" "${BOT_DIR:-not found}"
+    printf "  ${BOLD}Version  :${RESET} %s\n" "$BOT_VERSION"
+    printf "  ${BOLD}PHP      :${RESET} %s\n" "$(php -v 2>/dev/null | head -1 || echo n/a)"
+    printf "  ${BOLD}Disk     :${RESET} %s\n" "$(df -h / 2>/dev/null | awk 'NR==2{print $4" free"}')"
+    printf "\n"
+    if [[ -n "$BOT_DIR" ]]; then
+        printf "  ${BOLD}error_log:${RESET} %s lines\n" "$(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0)"
+    fi
+    printf "\n  ${DIM}Services:${RESET}\n"
+    for s in php*-fpm nginx apache2; do
+        if systemctl is-active --quiet "$s" 2>/dev/null; then
+            printf "    ${GREEN}OK${RESET} %s\n" "$s"
+        fi
+    done
+    pause
+}
+
+do_logs() {
+    title
+    printf "  ${BOLD}${MAGENTA}Logs (last 40 lines)${RESET}\n"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/error_log" ]]; then
+        tail -40 "$BOT_DIR/error_log"
+    else
+        printf "  ${DIM}No error_log found.${RESET}\n"
+    fi
+    pause
+}
+
+do_restart() {
+    title
+    printf "  ${BOLD}${MAGENTA}Restarting services${RESET}\n"
+    hr
+    for s in php*-fpm nginx apache2; do
+        if systemctl is-active --quiet "$s" 2>/dev/null || systemctl list-unit-files "$s.service" 2>/dev/null | grep -q "$s"; then
+            printf "  restarting %s...\n" "$s"
+            systemctl restart "$s" 2>/dev/null && printf "  ${GREEN}OK %s${RESET}\n" "$s" || printf "  ${YELLOW}skip %s${RESET}\n" "$s"
+        fi
+    done
+    php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
+    printf "  ${GREEN}${BOLD}Done.${RESET}\n"
+    pause
+}
+
+do_version() {
+    title
+    printf "  ${BOLD}${MAGENTA}Version${RESET}\n"
+    hr
+    printf "  Bot version : %s\n" "$BOT_VERSION"
+    printf "  PHP version : %s\n" "$(php -v 2>/dev/null | head -1)"
+    if [[ -n "$BOT_DIR" && -d "$BOT_DIR/.git" ]]; then
+        printf "  Git HEAD    : %s\n" "$(cd "$BOT_DIR" && git log --oneline -1 2>/dev/null)"
+    fi
+    pause
+}
+
+do_magic() {
+    title
+    printf "  ${BOLD}${MAGENTA}Running Magic (auto-repair)${RESET}\n"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/panel/magic.php" ]]; then
+        php "$BOT_DIR/panel/magic.php" 2>&1 | tail -20
+    else
+        printf "  ${DIM}magic.php not found.${RESET}\n"
+    fi
+    pause
+}
+
+do_install() {
+    title
+    printf "  ${BOLD}${MAGENTA}Fresh Install${RESET}\n"
+    hr
+    if [[ -n "$BOT_DIR" && -f "$BOT_DIR/install.sh" ]]; then
+        bash "$BOT_DIR/install.sh" 2>&1 | tail -20
+    else
+        printf "  ${DIM}install.sh not found in %s${RESET}\n" "${BOT_DIR:-?}"
+    fi
+    pause
+}
+do_backup() {
+    title
+    printf "  ${BOLD}${MAGENTA}Database Backup${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    local out="/root/nexora_backup_$(date +%Y%m%d_%H%M%S).sql"
+    if mysqldump -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" > "$out" 2>/dev/null; then
+        printf "  ${GREEN}Backup saved: %s (%s bytes)${RESET}\n" "$out" "$(wc -c < "$out")"
+    else
+        printf "  ${RED}Backup failed. Check mysqldump/credentials.${RESET}\n"
+    fi
+    pause
+}
+do_reset_password() {
+    title
+    printf "  ${BOLD}${MAGENTA}Reset Admin Panel Password${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    printf "  ${DIM}Enter new admin password (min 6 chars): ${RESET}"
+    read -rs newpass; echo
+    if [[ ${#newpass} -lt 6 ]]; then
+        printf "  ${RED}Password too short.${RESET}\n"; pause; return 1
+    fi
+    local hash
+    hash=$(php -r 'echo password_hash($argv[1], PASSWORD_BCRYPT);' "$newpass" 2>/dev/null)
+    if [[ -z "$hash" ]]; then
+        printf "  ${RED}Failed to hash password.${RESET}\n"; pause; return 1
+    fi
+    if mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" \
+        -e "UPDATE admin SET password='$hash' WHERE rule='administrator';" 2>/dev/null; then
+        printf "  ${GREEN}Admin password updated. New password: %s${RESET}\n" "$newpass"
+    else
+        printf "  ${RED}Update failed.${RESET}\n"
+    fi
+    pause
+}
+do_analytics() {
+    title
+    printf "  ${BOLD}${MAGENTA}Bot Analytics${RESET}\n"
+    hr
+    if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
+        printf "  ${RED}DB credentials not found in config.php${RESET}\n"; pause; return 1
+    fi
+    local q="SELECT (SELECT COUNT(*) FROM users) AS u, (SELECT COUNT(*) FROM invoice) AS i, (SELECT COUNT(*) FROM service) AS s, (SELECT COUNT(*) FROM payments) AS p;"
+    mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -N -e "$q" 2>/dev/null | awk -F'\t' '{printf "  Users: %s   Invoices: %s   Services: %s   Payments: %s\n", $1,$2,$3,$4}'
+    printf "\n  ${DIM}error_log lines: %s${RESET}\n" "$(wc -l < "$BOT_DIR/error_log" 2>/dev/null || echo 0)"
+    printf "  ${DIM}Disk free: %s${RESET}\n" "$(df -h / 2>/dev/null | awk 'NR==2{print $4}')"
+    pause
+}
+do_optimize() {
+    title
+    printf "  ${BOLD}${MAGENTA}Optimize & Cleanup${RESET}\n"
+    hr
+    if [[ -n "$DB_NAME" && -n "$DB_USER" ]]; then
+        local tables
+        tables=$(mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -N -e "SHOW TABLES;" 2>/dev/null | tr '\n' ' ')
+        if [[ -n "$tables" ]]; then
+            mysql -h "${DB_HOST:-localhost}" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "OPTIMIZE TABLE $tables;" 2>/dev/null | tail -5
+            printf "  ${GREEN}Tables optimized.${RESET}\n"
+        fi
+    fi
+    if [[ -f "$BOT_DIR/error_log" ]]; then
+        local sz; sz=$(wc -c < "$BOT_DIR/error_log")
+        if (( sz > 5242880 )); then
+            tail -1000 "$BOT_DIR/error_log" > "$BOT_DIR/error_log.tmp" && mv "$BOT_DIR/error_log.tmp" "$BOT_DIR/error_log"
+            printf "  ${GREEN}error_log trimmed (was %s bytes).${RESET}\n" "$sz"
+        else
+            printf "  ${DIM}error_log small (%s bytes), skipped.${RESET}\n" "$sz"
+        fi
+    fi
+    printf "  ${GREEN}${BOLD}Done.${RESET}\n"
+    pause
+}
+
+while true; do
+    title
+    printf "  ${BOLD}1)${RESET}  📊 Status        - Check bot & services\n"
+    printf "  ${BOLD}2)${RESET}  📋 Logs          - View error logs\n"
+    printf "  ${BOLD}3)${RESET}  🔄 Restart       - Restart services\n"
+    printf "  ${BOLD}4)${RESET}  📥 Update        - Update from GitHub\n"
+    printf "  ${BOLD}5)${RESET}  🔧 Install       - Fresh install\n"
+    printf "  ${BOLD}6)${RESET}  📦 Backup        - Backup database\n"
+    printf "  ${BOLD}7)${RESET}  🔑 Reset Password - Reset admin panel password\n"
+    printf "  ${BOLD}8)${RESET}  📈 Analytics     - Show bot statistics\n"
+    printf "  ${BOLD}9)${RESET}  🧹 Optimize      - Clean up & optimize\n"
+    printf "  ${BOLD}0)${RESET}  ❌ Exit\n"
+    printf "\n"
+    printf "  ${BOLD}Select option [0-9]: ${RESET}"
+    read -r choice
+    case "$choice" in
+        1) do_status ;;
+        2) do_logs ;;
+        3) do_restart ;;
+        4) do_update ;;
+        5) do_install ;;
+        6) do_backup ;;
+        7) do_reset_password ;;
+        8) do_analytics ;;
+        9) do_optimize ;;
+        0) clear; printf "  ${GREEN}Goodbye!${RESET}\n"; exit 0 ;;
+        *) printf "  ${RED}Invalid option.${RESET}\n"; sleep 1 ;;
+    esac
+done

@@ -37,6 +37,7 @@ $priceAmount = $payload['price_amount'] ?? null;
 if ($priceCurrency !== 'TMN' || !is_numeric($priceAmount) || abs((float) $priceAmount - (float) $payment['price']) > 0.001) { error_log('[frenzyex-callback] amount mismatch order=' . $orderId); frenzyex_callback_response(409, ['ok' => false, 'error' => 'amount_mismatch']); }
 if (($payment['payment_Status'] ?? '') === 'paid') frenzyex_callback_response(200, ['ok' => true, 'duplicate' => true, 'order_id' => $orderId]);
 if (in_array(($payment['payment_Status'] ?? ''), ['reject', 'expire'], true)) frenzyex_callback_response(409, ['ok' => false, 'error' => 'order_closed']);
+if (!claimPaymentPaid($orderId)) { frenzyex_callback_response(200, ['ok' => true, 'duplicate' => true, 'order_id' => $orderId]); }
 $ManagePanel = new ManagePanel();
 $setting = select('setting', '*');
 $textbotlang = languagechange();

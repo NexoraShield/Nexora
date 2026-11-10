@@ -1,5 +1,7 @@
 # Nexora Bot 🤖
 
+<h1 align="center"><a href="README.md"><kbd>🇬🇧 English</kbd></a><a href="README.fa.md"><kbd>🇮🇷 فارسی</kbd></a><a href="README.ru.md"><kbd>🇷🇺 Русский</kbd></a><a href="README.zh.md"><kbd>🇨🇳 中文</kbd></a></h1>
+
 **Nexora** is a free, open-source Telegram bot for VPN sales and management. Built with PHP, it supports multiple VPN panels (Marzban, Marzneshin, X-UI, Hiddify, WGDashboard, MikroTik, IBSng, and more), premium emoji support, glass theme UI, and the FrenzyEx payment gateway.
 
 ## ✨ Features
@@ -51,12 +53,12 @@ cd Nexora
 
 2. Upload to your server:
 ```bash
-scp -r * root@YOUR_SERVER_IP:/var/www/html/mirzaprobotconfig/
+scp -r * root@YOUR_SERVER_IP:/var/www/html/nexorabotconfig/
 ```
 
 3. Run the installer:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -72,6 +74,62 @@ $usernamebot = 'your_bot_username';
 ```
 https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook?url=https://your-domain.com/index.php?secret=YOUR_SECRET
 ```
+
+## 🔄 Migration from Other Bots
+
+### From Existing Installation
+If you have an existing bot installation, you can migrate to Nexora with a single command. All your users, balances, invoices, products, and panel data will be preserved.
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-Nexora.sh)
+```
+
+The script will:
+1. Auto-detect your Nexora installation
+2. Back up your database and config
+3. Download the latest Nexora
+4. Replace all files (keeping your `config.php` and database)
+5. Run database migrations and rebrand
+6. Set up the webhook
+
+### From nexorabot Bot
+If you have an existing **nexorabot** bot installation:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/NexoraShield/Nexora/main/migrate-nexorabot.sh)
+```
+
+The script will:
+1. Auto-detect your nexorabot installation
+2. Back up your database and config
+3. Download the latest Nexora
+4. Replace all files (keeping your `config.php` and database)
+5. Run database migrations and rebrand
+6. Set up the webhook
+
+### Manual Migration
+If the auto-migration script doesn't work, you can migrate manually:
+
+1. Back up your database:
+   ```bash
+   mysqldump -u YOUR_DB_USER -p YOUR_DB_NAME > backup.sql
+   ```
+2. Back up your `config.php`
+3. Upload Nexora files to your server (overwrite existing files, but keep `config.php`)
+4. Run the migration:
+   ```bash
+   php migrate.php /var/www/html/nexorabot
+   ```
+5. Apply rebrand:
+   ```bash
+   php rebrand.php /var/www/html/nexorabot --apply
+   ```
+6. Reload Apache:
+   ```bash
+   systemctl reload apache2
+   ```
+
+---
 
 ## 🔧 CLI Commands
 
@@ -95,7 +153,7 @@ Nexora/
 ├── keyboard.php           # Keyboard generation
 ├── botapi.php             # Telegram Bot API wrapper
 ├── config.php             # Configuration
-├── mirza_style.php        # Style & emoji helpers
+├── nexora_style.php        # Style & emoji helpers
 ├── admin.php              # Admin panel bot interface
 ├── panels.php             # Panel management
 ├── panels/                # Panel drivers
@@ -164,7 +222,7 @@ nexora update
 
 Or manually:
 ```bash
-cd /var/www/html/mirzaprobotconfig
+cd /var/www/html/nexorabotconfig
 sudo bash install.sh
 ```
 
@@ -182,9 +240,10 @@ This project is licensed under the MIT License.
 
 ## 🙏 Credits
 
-- Original Mirzabot by [mahdiMGF2](https://github.com/mahdiMGF2/mirzabot)
-- ViraNaut features ported to Nexora
+- Nexora Bot developed by [NexoraShield](https://github.com/NexoraShield)
+- Based on open-source VPN bot technology
 - FrenzyEx payment gateway integration
+- Premium emoji & glass theme support
 
 ## 📞 Support
 
@@ -194,3 +253,22 @@ This project is licensed under the MIT License.
 - **Support:** @Nexora_supp
 - **Channel:** @Nexorashieeld
 - **Tutorial:** @NexoraUsersHelp
+
+## 💖 Donate
+
+If you find this project useful, please consider supporting its development:
+
+### Crypto (USDT TRC20 / TRX)
+```
+TFvvFVAxBUkUfkw7cCt38RDehmnNkDHtfr
+```
+
+### Telegram
+- **Stars/Gifts:** @Nexora_supp
+- **Website:** NexoraShield.tr
+
+### Other
+- **Email:** info@NexoraShield.tr
+- **Support:** @Nexora_supp
+
+Your support helps keep this project free and maintained! 🙏

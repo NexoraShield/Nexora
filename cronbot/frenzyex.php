@@ -10,7 +10,7 @@ $ManagePanel = new ManagePanel();
 $setting = select("setting", "*");
 $textbotlang = languagechange();
 $frenzyexStatus = getPaySettingValue('frenzyexstatus', 'offfrenzyex');
-if ($frenzyexStatus !== 'onfrenzyex') exit;
+if ($frenzyexStatus !== 'onfrenzyex' && $frenzyexStatus !== '1' && $frenzyexStatus !== 'on') exit;
 $apiKey = getPaySettingValue('frenzyex_api_key', '');
 $baseUrl = getPaySettingValue('frenzyex_base_url', 'https://frenzy.fastsnap.info');
 if ($apiKey === '' || $baseUrl === '') exit;

@@ -18,20 +18,24 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title><?= $textbotlang['panel']['layoutBrandName'] ?></title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/themes-extra.css?v=1">
+  <link rel="stylesheet" href="css/nexora-glass.css?v=1">
   <script>
     (function () {
       var t = localStorage.getItem('panel-theme') || 'navy';
       var bg = {
         navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C',
         sunset: '#1A0D0D', slate: '#080808', light: '#F1F5F9',
-        linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF'
+        linen: '#FAF7F2', mint: '#F0FDF4', lavender: '#FAF5FF',
+        rose: '#1A0A14', indigo: '#0F0F2A', teal: '#0A1F1F',
+        amber: '#1A150A', sky: '#F0F9FF', peach: '#FFF7ED'
       };
 
       var root = document.documentElement;
       root.style.backgroundColor = bg[t] || '#0F172A';
       root.setAttribute('data-theme', t);
 
-      root.style.colorScheme = (t === 'light' || t === 'linen' || t === 'mint' || t === 'lavender') ? 'light' : 'dark';
+      root.style.colorScheme = (t === 'light' || t === 'linen' || t === 'mint' || t === 'lavender' || t === 'sky' || t === 'peach') ? 'light' : 'dark';
       var mtc = document.getElementById('mtc');
       if (mtc && bg[t]) mtc.content = bg[t];
       if (localStorage.getItem('panel-sb-collapsed') === '1' && window.innerWidth > 768)
@@ -129,6 +133,12 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('card') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['layoutSearchBoxPlaceholder'] ?></span>
           </a>
+          <a href="finance.php" class="nav-item <?= $activeNav === 'finance' ? 'active' : '' ?>"
+            title="مالی و درگاه‌های پرداخت">
+            <span class="nav-icon"><?= icon('card') ?></span><span
+              class="nav-label">مالی و درگاه‌ها</span>
+          </a>
+
           <a href="keyboard.php" class="nav-item <?= $activeNav === 'keyboard' ? 'active' : '' ?>"
             title="<?= $textbotlang['panel']['layoutPageTitleKeyboard'] ?>">
             <span class="nav-icon">
@@ -140,6 +150,72 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('edit') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['bottextPageTitle'] ?></span>
           </a>
+          <a href="emoji_picker.php" class="nav-item <?= $activeNav === 'emoji_picker' ? 'active' : '' ?>"
+            title="انتخاب‌گر ایموجی پرمیوم">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">انتخاب‌گر ایموجی</span>
+          </a>
+          <a href="maintenance.php" class="nav-item <?= $activeNav === 'maintenance' ? 'active' : '' ?>"
+            title="حالت تعمیرات">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">تعمیرات</span>
+          </a>
+          <a href="audit.php" class="nav-item <?= $activeNav === 'audit' ? 'active' : '' ?>"
+            title="گزارش فعالیت">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">Audit Log</span>
+          </a>
+          <a href="magic.php" class="nav-item <?= $activeNav === 'magic' ? 'active' : '' ?>"
+            title="معجزه">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">معجزه</span>
+          </a>
+          <a href="botcolors.php" class="nav-item <?= $activeNav === 'botcolors' ? 'active' : '' ?>"
+            title="رنگ تمام کلیدها">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">رنگ تمام کلیدها</span>
+          </a>
+          <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
+            title="دکمه‌های ربات">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">دکمه‌های ربات</span>
+          </a>
+          <a href="tickets.php" class="nav-item <?= $activeNav === 'tickets' ? 'active' : '' ?>"
+            title="پشتیبانی و تیکت‌ها">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">پشتیبانی و تیکت‌ها</span>
+          </a>
+          <a href="backup.php" class="nav-item <?= $activeNav === 'backup' ? 'active' : '' ?>"
+            title="پشتیبان‌گیری">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">پشتیبان‌گیری</span>
+          </a>
+          <a href="queue.php" class="nav-item <?= $activeNav === 'queue' ? 'active' : '' ?>"
+            title="صف عملیات‌های ناقص">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">صف عملیات</span>
+          </a>
+          <a href="service_volumes.php" class="nav-item <?= $activeNav === 'service_volumes' ? 'active' : '' ?>"
+            title="بررسی حجم/زمان سرویس‌ها">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">بررسی حجم/زمان</span>
+          </a>
+          <a href="custom_apps.php" class="nav-item <?= $activeNav === 'custom_apps' ? 'active' : '' ?>"
+            title="برنامه اختصاصی و آموزش اتصال">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">برنامه و آموزش</span>
+          </a>
+          <a href="collab.php" class="nav-item <?= $activeNav === 'collab' ? 'active' : '' ?>"
+            title="همکاری">
+            <span class="nav-icon"><?= icon('settings') ?></span><span
+              class="nav-label">همکاری</span>
+          </a>
+          <a href="agents.php" class="nav-item <?= $activeNav === 'agents' ? 'active' : '' ?>"
+            title="مدیریت نمایندگان">
+            <span class="nav-icon"><?= icon('users') ?></span><span
+              class="nav-label">نمایندگان</span>
+          </a>
+
         </div>
         <div class="nav-section">
           <div class="nav-heading"><?= $textbotlang['panel']['layoutSidebarToggleLabel'] ?></div>
@@ -171,9 +247,9 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <button class="icon-btn menu-toggle" onclick="openSidebar()"><?= icon('menu', 18) ?></button>
           <button class="icon-btn sb-toggle" onclick="toggleSidebar()"><?= icon('menu', 17) ?></button>
           <div>
-            <div class="topbar-title"><?= htmlspecialchars($pageTitle) ?></div>
+            <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? '') ?></div>
             <div class="crumb"><span><?= $textbotlang['panel']['layoutPageTitleSuffix'] ?></span><span
-                style="opacity:.4;margin:0 3px">/</span><span><?= htmlspecialchars($pageTitle) ?></span></div>
+                style="opacity:.4;margin:0 3px">/</span><span><?= htmlspecialchars($pageTitle ?? '') ?></span></div>
           </div>
         </div>
         <div class="topbar-tools">
@@ -196,7 +272,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <div class="notice notice-warn"><?= htmlspecialchars($w) ?></div><?php endif;
         if ($showPageHead): ?>
           <div class="page-head fade-up">
-            <h1><?= htmlspecialchars($pageTitle) ?></h1>
+            <h1><?= htmlspecialchars($pageTitle ?? '') ?></h1>
             <?php if ($pageLede): ?>
               <p><?= htmlspecialchars($pageLede) ?></p><?php endif; ?>
           </div>

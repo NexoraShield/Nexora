@@ -58,7 +58,7 @@ if ($flashErr) { echo '<div class="card fade-up" style="margin-bottom:14px"><div
         $isActive = (($p['status'] ?? '') === 'active');
       ?>
       <tr>
-        <td class="cs"><?= htmlspecialchars($p['name_panel'] ?? '') ?></td>
+        <td class="cs"><?= htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?></td>
         <td><?= htmlspecialchars($p['type'] ?? '') ?></td>
         <td><?= $isActive ? '<span class="tag tag-ok">فعال</span>' : '<span class="tag tag-no">غیرفعال</span>' ?></td>
         <td><?= $probe['ok'] ? '<span class="tag tag-ok">سالم</span>' : '<span class="tag tag-no">' . htmlspecialchars($probe['info']) . '</span>' ?></td>

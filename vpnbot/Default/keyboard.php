@@ -2,7 +2,7 @@
 
 $botinfo = select("botsaz", "*", "bot_token", $ApiToken, "select");
 $userbot = select("user", "*", "id", $botinfo['id_user'], "select");
-$hide_panel = json_decode($botinfo['hide_panel'], true);
+$hide_panel = json_decode($botinfo['hide_panel'], true) ?: [];
 $text_bot_var =  json_decode(file_get_contents('text.json'), true);
 // keyboard bot 
 $keyboarddate = array(
@@ -191,7 +191,7 @@ function KeyboardProduct($location, $query, $pricediscount, $datakeyboard, $stat
         $productlist_name = readJsonFileIfExists('product_name.json');
         if (isset($productlist[$result['code_product']])) $result['price_product'] = $productlist[$result['code_product']];
         $result['name_product'] = empty($productlist_name[$result['code_product']]) ? $result['name_product'] : $productlist_name[$result['code_product']];
-        $hide_panel = json_decode($result['hide_panel'], true);
+        $hide_panel = json_decode($result['hide_panel'], true) ?: [];
         if (in_array($location, $hide_panel)) continue;
         if (intval($pricediscount) != 0) {
             $resultper = ($result['price_product'] * $pricediscount) / 100;

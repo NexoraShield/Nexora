@@ -3,7 +3,7 @@ require_once 'vendor/autoload.php';
 require 'config.php';
 ini_set('error_log', 'error_log');
 
-const MIN_PHP_VERSION = '8.5.12';
+const MIN_PHP_VERSION = '8.2.0';
 
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
@@ -315,9 +315,11 @@ function syncReportTopics($chatId, $textbotlang)
 function step($step, $from_id)
 {
     global $pdo;
+    $from_id = (string) $from_id;
     $stmt = $pdo->prepare('UPDATE user SET step = ? WHERE id = ?');
     $stmt->execute([$step, $from_id]);
     clearSelectCache('user');
+    unset($GLOBALS['nexora_user_cache'][$from_id]);
 }
 function determineColumnTypeFromValue($value)
 {
@@ -400,12 +402,13 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
 
     $valueToStore = normaliseUpdateValue($newValue);
 
-    ensureColumnExistsForUpdate($table, $field, $valueToStore);
+    // Performance: skip column existence check (columns are ensured by migrate.php)
+    // ensureColumnExistsForUpdate($table, $field, $valueToStore);
 
     $executeUpdate = function ($value) use ($pdo, $table, $field, $whereField, $whereValue) {
         if ($whereField !== null) {
             $stmt = $pdo->prepare("UPDATE $table SET $field = ? WHERE $whereField = ?");
-            $stmt->execute([$value, $whereValue]);
+            $stmt->execute([$value, (string) $whereValue]);
         } else {
             $stmt = $pdo->prepare("UPDATE $table SET $field = ?");
             $stmt->execute([$value]);
@@ -436,23 +439,43 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
         }
     }
 
-    $date = date("Y-m-d H:i:s");
-    if (!isset($user['step'])) {
-        $user['step'] = '';
+    // Performance: skip disk logging (was writing to log.txt on every update call)
+    // $date = date("Y-m-d H:i:s");
+    // if (!isset($user['step'])) {
+    //     $user['step'] = '';
+    // }
+    // $sensitiveFields = ['password', 'token', 'password_panel', 'secret_code', 'datelogin'];
+    // $logValue = in_array(strtolower((string) $field), $sensitiveFields, true)
+    //     ? '[redacted]'
+    //     : (is_scalar($valueToStore) ? $valueToStore : json_encode($valueToStore, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    // $logss = "{$table}_{$field}_{$logValue}_{$whereField}_{$whereValue}_{$user['step']}_$date";
+    // if ($field != "message_count" && $field != "last_message_time") {
+    //     $logDir = __DIR__ . '/storage';
+    //     if (is_dir($logDir) || @mkdir($logDir, 0775, true)) {
+    //         @file_put_contents($logDir . '/log.txt', "\n" . $logss, @filesize($logDir . '/log.txt') > 5 * 1024 * 1024 ? 0 : FILE_APPEND);
+    //     }
+    // }
+
+    $store = &getSelectCacheStore();
+    if (isset($store['tableIndex'][$table])) {
+        clearSelectCache($table);
     }
-    $sensitiveFields = ['password', 'token', 'password_panel', 'secret_code', 'datelogin'];
-    $logValue = in_array(strtolower((string) $field), $sensitiveFields, true)
-        ? '[redacted]'
-        : (is_scalar($valueToStore) ? $valueToStore : json_encode($valueToStore, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    $logss = "{$table}_{$field}_{$logValue}_{$whereField}_{$whereValue}_{$user['step']}_$date";
-    if ($field != "message_count" && $field != "last_message_time") {
-        $logDir = __DIR__ . '/storage';
-        if (is_dir($logDir) || @mkdir($logDir, 0775, true)) {
-            @file_put_contents($logDir . '/log.txt', "\n" . $logss, @filesize($logDir . '/log.txt') > 5 * 1024 * 1024 ? 0 : FILE_APPEND);
+
+    // Invalidate persistent file cache for rarely-changing tables
+    if (in_array($table, ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'], true)) {
+        $pcDir = __DIR__ . '/storage/cache';
+        $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
+        if (is_array($pcFiles)) {
+            foreach ($pcFiles as $pcFile) {
+                @unlink($pcFile);
+            }
         }
     }
 
-    clearSelectCache($table);
+    // Invalidate global user cache on user update
+    if ($table === 'user' && isset($GLOBALS['nexora_user_cache']) && $whereValue !== null) {
+        unset($GLOBALS['nexora_user_cache'][$whereValue]);
+    }
 }
 function &getSelectCacheStore()
 {
@@ -496,6 +519,41 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     $useCache = true;
     if (is_array($options) && array_key_exists('cache', $options)) {
         $useCache = (bool) $options['cache'];
+    }
+
+    // Global request-level cache for user data (avoids re-fetching user row)
+    if ($table === 'user' && $whereField === 'id' && $whereValue !== null && $useCache) {
+        if (!isset($GLOBALS['nexora_user_cache'])) {
+            $GLOBALS['nexora_user_cache'] = [];
+        }
+        if (isset($GLOBALS['nexora_user_cache'][$whereValue])) {
+            $cached = $GLOBALS['nexora_user_cache'][$whereValue];
+            // Return only requested fields if not '*'
+            if ($field !== '*' && $field !== null) {
+                if (isset($cached[$field])) {
+                    return $cached[$field];
+                }
+            }
+            return $cached;
+        }
+    }
+
+    // Persistent file-based cache for rarely-changing tables (including where-clause queries)
+    $persistentCacheTables = ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'];
+    $persistentCacheTtl = 300; // 5 minutes
+    $persistentCacheDir = __DIR__ . '/storage/cache';
+    if (in_array($table, $persistentCacheTables, true) && $useCache && is_dir(dirname($persistentCacheDir)) && is_writable(dirname($persistentCacheDir))) {
+        $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
+        $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
+        if (is_file($pcFile) && (time() - filemtime($pcFile)) < $persistentCacheTtl) {
+            $pcData = @file_get_contents($pcFile);
+            if ($pcData !== false) {
+                $pcResult = @json_decode($pcData, true);
+                if ($pcResult !== null || $pcData === 'null') {
+                    return $pcResult;
+                }
+            }
+        }
     }
 
     $cacheKey = null;
@@ -580,11 +638,68 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
         $store['tableIndex'][$table][$cacheKey] = true;
     }
 
+    // Store user data in global request-level cache
+    if ($table === 'user' && $whereField === 'id' && $whereValue !== null && $useCache && !$queryFailed && $field === '*') {
+        if (!isset($GLOBALS['nexora_user_cache'])) {
+            $GLOBALS['nexora_user_cache'] = [];
+        }
+        $GLOBALS['nexora_user_cache'][$whereValue] = $result;
+    }
+
+    // Store in persistent file cache for rarely-changing tables
+    if (in_array($table, $persistentCacheTables, true) && $useCache && !$queryFailed && is_dir(dirname($persistentCacheDir)) && is_writable(dirname($persistentCacheDir))) {
+        $pcKey = 'pc_' . $table . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $field . '_' . ($whereField ?? 'null') . '_' . ($whereValue ?? 'null') . '_' . $type);
+        $pcFile = $persistentCacheDir . '/' . $pcKey . '.json';
+        if (!is_dir($persistentCacheDir)) {
+            @mkdir($persistentCacheDir, 0775, true);
+        }
+        if (is_dir($persistentCacheDir) && is_writable($persistentCacheDir)) {
+            @file_put_contents($pcFile, json_encode($result, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        }
+    }
+
     return $result;
 }
 
-function rowExists($table, $field, $value)
-{
+function getShopSetting($namevalue) {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        global $pdo;
+        try {
+            $stmt = $pdo->query("SELECT * FROM shopSetting");
+            if ($stmt) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cache[$row['Namevalue']] = $row;
+                }
+            }
+        } catch (PDOException $e) {
+            error_log("getShopSetting failed: " . $e->getMessage());
+        }
+    }
+    return $cache[$namevalue] ?? null;
+}
+
+function getPaySetting($namepay) {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        global $pdo;
+        try {
+            $stmt = $pdo->query("SELECT * FROM PaySetting");
+            if ($stmt) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cache[$row['NamePay']] = $row;
+                }
+            }
+        } catch (PDOException $e) {
+            error_log("getPaySetting failed: " . $e->getMessage());
+        }
+    }
+    return $cache[$namepay] ?? null;
+}
+
+function rowExists($table, $field, $value) {
     global $pdo;
 
     assertSqlIdentifier($table);
@@ -601,7 +716,7 @@ function rowExists($table, $field, $value)
 }
 function getPaySettingValue($name, $default = null)
 {
-    $rows = select("PaySetting", "*", null, null, "fetchAll");
+    $rows = select("PaySetting", "*", null, null, "fetchAll", ['cache' => false]);
     if (is_array($rows)) {
         foreach ($rows as $row) {
             if (isset($row['NamePay']) && strcasecmp(trim((string) $row['NamePay']), trim((string) $name)) === 0) {
@@ -624,7 +739,7 @@ function generateUUID()
 }
 function rate_arze()
 {
-    $ch = curl_init('https://demo.mirzabot.com/b.php');
+    $ch = curl_init('https://demo.nexorabot.com/b.php');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
@@ -663,7 +778,7 @@ function updatePaymentMessageId($response, $orderId)
 function nowPayments($payment, $price_amount, $order_id, $order_description)
 {
     global $domainhosts;
-    $apinowpayments = select("PaySetting", "*", "NamePay", "marchent_tronseller", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("marchent_tronseller")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://api.nowpayments.io/v1/' . $payment,
@@ -691,7 +806,7 @@ function nowPayments($payment, $price_amount, $order_id, $order_description)
 }
 function StatusPayment($paymentid)
 {
-    $apinowpayments = select("PaySetting", "*", "NamePay", "marchent_tronseller", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("marchent_tronseller")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://api.nowpayments.io/v1/payment/' . $paymentid,
@@ -744,9 +859,9 @@ function invoiceBelongsToUser($invoice, $userId)
 }
 function cubepayFeeValue()
 {
-    $raw = select("PaySetting", "ValuePay", "NamePay", "feeternado", "select")['ValuePay'] ?? '0';
+    $raw = getPaySetting("feeternado")['ValuePay'] ?? '0';
 
-    return (float) str_replace([',', '،'], '', (string) $raw);
+    return (float) str_replace([',', 'ØŒ'], '', (string) $raw);
 }
 function cubepayApplyFee($base, $fee)
 {
@@ -761,7 +876,7 @@ function cubepayApplyFee($base, $fee)
 }
 function cubepayPayableAmount($price)
 {
-    $status = select("PaySetting", "ValuePay", "NamePay", "feestatusternado", "select")['ValuePay'] ?? 'offfeeternado';
+    $status = getPaySetting("feestatusternado")['ValuePay'] ?? 'offfeeternado';
     if ($status !== 'onfeeternado') {
         return intval($price);
     }
@@ -822,7 +937,7 @@ function createPayiranpay4($price, $order_id)
 function cubepay($order_id, $price, $customer_user_id)
 {
     global $domainhosts;
-    $token_cubepay = select("PaySetting", "*", "NamePay", "apiternado", "select")['ValuePay'];
+    $token_cubepay = getPaySetting("apiternado")['ValuePay'];
     $amount_toman = cubepayPayableAmount($price);
     $curl = curl_init();
     curl_setopt_array($curl, array(
@@ -1021,7 +1136,11 @@ function paymentOrder($order_id): array
 function claimPaymentPaid($order_id)
 {
     global $pdo;
-    $stmt = $pdo->prepare("UPDATE Payment_report SET payment_Status = 'paid' WHERE id_order = :id_order AND payment_Status <> 'paid'");
+    // Defense-in-depth idempotency lock. Mirrors admin.php Confirm_pay claim (NOT IN ('paid','reject'))
+    // so a stale/replayed gateway webhook cannot re-claim a payment the admin already rejected ('reject')
+    // and thereby re-trigger DirectPayment. Downstream guards (DirectPayment re-entrant check + per-invoice
+    // Status claim) already prevent double delivery; this keeps the claim itself consistent with the manual path.
+    $stmt = $pdo->prepare("UPDATE Payment_report SET payment_Status = 'paid' WHERE id_order = :id_order AND payment_Status NOT IN ('paid', 'reject')");
     $stmt->bindValue(':id_order', $order_id);
     $stmt->execute();
     clearSelectCache('Payment_report');
@@ -1045,8 +1164,15 @@ function DirectPayment($order_id, $image = 'images.jpg')
     $get_invoice = $linkedOrder['invoice'];
     $service_order = $linkedOrder['service'];
     if (($get_invoice && $get_invoice['Status'] == "active") || (!$get_invoice && $service_order && $service_order['status'] == "paid")) {
-        addBalance($Balance_id['id'], intval($Payment_report['price']));
-        sendmessage($Balance_id['id'], sprintf($textbotlang['users']['Balance']['addedNotice5'], number_format(intval($Payment_report['price']))), $keyboard, 'HTML');
+        // Idempotency / replay safety: this order was already settled
+        // (invoice already 'active' or service already 'paid'). The user's
+        // balance was credited on the first DirectPayment pass (line ~1066),
+        // so crediting again here would double-count the payment if this
+        // function were ever re-entered on a settled order (e.g. under a
+        // narrow concurrency window). Suppress the re-entrant credit and bail.
+        // Upstream claimPaymentPaid() makes this path rare; this guard keeps
+        // it safe whenever it is reached.
+        error_log('[DirectPayment] re-entrant call on already-settled order id_order=' . $order_id . '; suppressed balance re-credit');
         return;
     }
     $orderType = "topup";
@@ -1117,6 +1243,7 @@ function DirectPayment($order_id, $image = 'images.jpg')
         }
         $dataoutput = $ManagePanel->createUser($marzban_list_get['name_panel'], $info_product['code_product'], $username_ac, $datac);
         if (!is_array($dataoutput) || empty($dataoutput['username'])) {
+            enqueue_op($pdo, $get_invoice['id_user'], $get_invoice['id_invoice'], 'create_user', ['panel' => $marzban_list_get['name_panel'], 'code_product' => $info_product['code_product'], 'username' => $username_ac, 'datac' => $datac]);
             update("invoice", "Status", $invoiceStatusBefore, "id_invoice", $get_invoice['id_invoice']);
             $dataoutput['msg'] = json_encode($dataoutput['msg'] ?? $dataoutput ?? 'unknown error');
             addBalance($Balance_id['id'], $orderPrice);
@@ -1358,9 +1485,9 @@ function DirectPayment($order_id, $image = 'images.jpg')
             ]
         ]);
         if ($Balance_id['agent'] == "f") {
-            $valurcashbackextend = select("shopSetting", "*", "Namevalue", "chashbackextend", "select")['value'];
+            $valurcashbackextend = getShopSetting("chashbackextend")['value'];
         } else {
-            $valurcashbackextend = json_decode(select("shopSetting", "*", "Namevalue", "chashbackextend_agent", "select")['value'], true)[$Balance_id['agent']];
+            $valurcashbackextend = json_decode(getShopSetting("chashbackextend_agent")['value'] ?? '{}', true)[$Balance_id['agent']] ?? 0;
         }
         if (intval($valurcashbackextend) != 0) {
             $result = ($prodcut['price_product'] * $valurcashbackextend) / 100;
@@ -1522,7 +1649,7 @@ function DirectPayment($order_id, $image = 'images.jpg')
 }
 function plisio($order_id, $price, $from_id)
 {
-    $apinowpayments = select("PaySetting", "ValuePay", "NamePay", "apinowpayment", "select")['ValuePay'];
+    $apinowpayments = getPaySetting("apinowpayment")['ValuePay'];
     $api_key = $apinowpayments;
 
     $url = 'https://api.plisio.net/api/v1/invoices/new';
@@ -1559,7 +1686,7 @@ function savedata($type, $namefiled, $valuefiled)
     } elseif ($type == "save") {
         $userdata = select("user", "*", "id", $from_id, "select");
         // Processing_value must be a JSON object string. It can also be null, "", or a
-        // plain scalar left over from older flows — those decode to null/int/string.
+        // plain scalar left over from older flows â€” those decode to null/int/string.
         $dataperevieos = json_decode((string) ($userdata['Processing_value'] ?? ''), true);
         if (!is_array($dataperevieos)) {
             $dataperevieos = [];
@@ -1617,7 +1744,7 @@ function finishAddPanel()
     $stmt->execute($panelData);
     $pdo->prepare("UPDATE marzban_panel SET display_order = id WHERE id = ?")->execute([$pdo->lastInsertId()]);
     step("home", $from_id);
-    sendmessage($from_id, $textbotlang['Admin']['managepanel']['addedPanel'] . " 🥳", $keyboardadmin, 'HTML');
+    sendmessage($from_id, $textbotlang['Admin']['managepanel']['addedPanel'] . " ðŸ¥³", $keyboardadmin, 'HTML');
     $panelNotes = [
         "x-ui_single" => "noteSetInboundAndDomain",
         "marzban" => "noteSetProtocolInbound",
@@ -1875,7 +2002,7 @@ function addCronIfNotExists($cronCommand)
         return false;
     }
 
-    $applyMarker = 'MIRZA_CRON_OK';
+    $applyMarker = 'nexora_CRON_OK';
     $applyOutput = runShellCommand(sprintf(
         '%s %s >/dev/null 2>&1 && echo %s',
         escapeshellarg($crontabBinary),
@@ -1921,12 +2048,12 @@ function activecron()
     removeCron("https://$domainhosts/cronbot/");
     removeCron(__DIR__ . '/cronbot/');
 
-    addCronIfNotExists(mirza_cron_dispatcher_command($domainhosts));
+    addCronIfNotExists(nexora_cron_dispatcher_command($domainhosts));
 }
 function createInvoice($amount)
 {
-    $PaySetting = select("PaySetting", "*", "NamePay", "apiiranpay", "select")['ValuePay'];
-    $walletaddress = select("PaySetting", "*", "NamePay", "walletaddress", "select")['ValuePay'];
+    $PaySetting = getPaySetting("apiiranpay")['ValuePay'];
+    $walletaddress = getPaySetting("walletaddress")['ValuePay'];
 
     $curl = curl_init();
 
@@ -1950,7 +2077,7 @@ function createInvoice($amount)
 }
 function verifpay($id)
 {
-    $PaySetting = select("PaySetting", "*", "NamePay", "apiiranpay", "select")['ValuePay'];
+    $PaySetting = getPaySetting("apiiranpay")['ValuePay'];
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
@@ -1975,7 +2102,7 @@ function verifpay($id)
 function createInvoiceiranpay1($amount, $id_invoice)
 {
     global $domainhosts;
-    $PaySetting = select("PaySetting", "*", "NamePay", "marchent_floypay", "select")['ValuePay'];
+    $PaySetting = getPaySetting("marchent_floypay")['ValuePay'];
     $curl = curl_init();
     $amount = intval($amount);
     $data = [
@@ -2126,7 +2253,9 @@ function containsHtmlMarkup($value)
     if (!is_string($value)) {
         return false;
     }
-    return strpos($value, '<') !== false;
+    // Allow premium emoji tags (<tg-emoji ...>) but block other HTML
+    $stripped = preg_replace('#<tg-emoji\b[^>]*>.*?</tg-emoji>#isu', '', $value);
+    return strpos($stripped, '<') !== false;
 }
 function stripCustomEmojiTags($value)
 {
@@ -2377,7 +2506,7 @@ function createqrcode($contents)
 }
 function qrTempPath($filename)
 {
-    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mirzabot_qr';
+    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'nexorabot_qr';
     if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
         $dir = sys_get_temp_dir();
     }
@@ -2564,7 +2693,7 @@ function isValidInvitationCode($setting, $fromId, $verfy_status)
 function createPayZarinpal($price, $order_id)
 {
     global $domainhosts;
-    $marchent_zarinpal = select("PaySetting", "ValuePay", "NamePay", "merchant_zarinpal", "select")['ValuePay'];
+    $marchent_zarinpal = getPaySetting("merchant_zarinpal")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://payment.zarinpal.com/pg/v4/payment/request.json',
@@ -2618,7 +2747,7 @@ function createPayVariza($price, $order_id)
         CURLOPT_POSTFIELDS => json_encode([
             'amount' => (int) $price,
             'return_url' => 'https://' . $domainhosts . '/payment/variza.php?order=' . $order_id,
-            'title' => 'Mirza order ' . $order_id,
+            'title' => 'nexora order ' . $order_id,
             'expires_in' => '1h',
         ], JSON_UNESCAPED_UNICODE),
     ]);
@@ -2640,7 +2769,7 @@ function createPayVariza($price, $order_id)
 function createPayaqayepardakht($price, $order_id)
 {
     global $domainhosts;
-    $merchant_aqayepardakht = select("PaySetting", "ValuePay", "NamePay", "merchant_id_aqayepardakht", "select")['ValuePay'];
+    $merchant_aqayepardakht = getPaySetting("merchant_id_aqayepardakht")['ValuePay'];
     $curl = curl_init();
     curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://panel.aqayepardakht.ir/api/v2/create',
@@ -2701,7 +2830,7 @@ function parseConfigs($input)
     return $configs;
 }
 
-function mirzaRemoveInstallerPath($path)
+function nexoraRemoveInstallerPath($path)
 {
     if (is_link($path) || is_file($path)) {
         return @unlink($path);
@@ -2720,13 +2849,13 @@ function mirzaRemoveInstallerPath($path)
         if ($entry === '.' || $entry === '..') {
             continue;
         }
-        $removed = mirzaRemoveInstallerPath($path . '/' . $entry) && $removed;
+        $removed = nexoraRemoveInstallerPath($path . '/' . $entry) && $removed;
     }
 
     return @rmdir($path) && $removed;
 }
 
-function mirzaInstallerNoticeTexts()
+function nexoraInstallerNoticeTexts()
 {
     global $textbotlang;
     $lang = is_array($textbotlang) && !empty($textbotlang) ? $textbotlang : null;
@@ -2740,7 +2869,7 @@ function mirzaInstallerNoticeTexts()
     ];
 }
 
-function mirzaShouldAlertInstallerAdmin($cooldown = 3600)
+function nexoraShouldAlertInstallerAdmin($cooldown = 3600)
 {
     $cacheDir = __DIR__ . '/storage/cache';
     if (!is_dir($cacheDir) && !@mkdir($cacheDir, 0775, true) && !is_dir($cacheDir)) {
@@ -2755,28 +2884,28 @@ function mirzaShouldAlertInstallerAdmin($cooldown = 3600)
     return true;
 }
 
-function mirzaNotifyInstallerBlocked()
+function nexoraNotifyInstallerBlocked()
 {
     global $from_id, $adminnumber;
     if (!function_exists('sendmessage')) {
         return;
     }
-    $texts = mirzaInstallerNoticeTexts();
+    $texts = nexoraInstallerNoticeTexts();
     $adminId = isset($adminnumber) ? trim((string) $adminnumber) : '';
     $userId = isset($from_id) ? trim((string) $from_id) : '';
     $userIsAdmin = $adminId !== '' && $userId === $adminId;
     if ($userId !== '' && !isTelegramChatIdEmpty($userId)) {
         sendmessage($userId, $userIsAdmin ? $texts['admin'] : $texts['user'], null, 'HTML');
     }
-    if (!$userIsAdmin && $adminId !== '' && mirzaShouldAlertInstallerAdmin()) {
+    if (!$userIsAdmin && $adminId !== '' && nexoraShouldAlertInstallerAdmin()) {
         sendmessage($adminId, $texts['admin'], null, 'HTML');
     }
 }
 
-function mirzaStopForInstaller($message)
+function nexoraStopForInstaller($message)
 {
     error_log($message);
-    mirzaNotifyInstallerBlocked();
+    nexoraNotifyInstallerBlocked();
     if (!headers_sent()) {
         http_response_code(200);
         header('Content-Type: text/plain; charset=utf-8');
@@ -2786,14 +2915,24 @@ function mirzaStopForInstaller($message)
     exit;
 }
 
-function mirzaEnsureInstallerRemoved()
+function nexoraEnsureInstallerRemoved()
 {
     $installerDirectory = __DIR__ . '/install';
     if (!is_dir($installerDirectory)) {
         return;
     }
 
-    if (!mirzaRemoveInstallerPath($installerDirectory)) {
-        mirzaStopForInstaller('Mirza install folder still exists and could not be removed automatically; delete it manually to enable the bot.');
+    if (!nexoraRemoveInstallerPath($installerDirectory)) {
+        nexoraStopForInstaller('nexora install folder still exists and could not be removed automatically; delete it manually to enable the bot.');
+    }
+}
+if (!function_exists('enqueue_op')) {
+    function enqueue_op($pdo, $id_user, $id_invoice, $op_type, $payload = []) {
+        if (!($pdo instanceof PDO)) return false;
+        try {
+            $st = $pdo->prepare("INSERT INTO op_queue (id_user, id_invoice, op_type, payload, status) VALUES (?,?,?,?, 'pending')");
+            $st->execute([$id_user, $id_invoice, $op_type, json_encode($payload, JSON_UNESCAPED_UNICODE)]);
+            return (int)$pdo->lastInsertId();
+        } catch (Throwable $e) { error_log('enqueue_op: ' . $e->getMessage()); return false; }
     }
 }
