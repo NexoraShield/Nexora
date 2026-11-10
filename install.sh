@@ -249,50 +249,23 @@ if [[ "$FORCE" == "1" ]]; then
     done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -print0)
     cd "$TARGET"
     echo "    All files copied (FORCE mode)"
-nexora_progress 60
 else
-    echo "==> Installing new files (selective)"
-    mkdir -p "$TARGET/panel" "$TARGET/panel/inc" "$TARGET/panel/js" "$TARGET/panel/css" "$TARGET/agent-panel/inc" "$TARGET/cronbot" "$TARGET/tools" "$TARGET/app/assets" "$TARGET/payment" "$TARGET/lang"
-    cp -- "$PACKAGE_DIR/nexora_style.php" "$TARGET/nexora_style.php"
-cp -- "$PACKAGE_DIR/panel/btnstyle.php" "$TARGET/panel/btnstyle.php"
-cp -- "$PACKAGE_DIR/panel/textemojis.php" "$TARGET/panel/textemojis.php"
-cp -- "$PACKAGE_DIR/panel/emojis.php" "$TARGET/panel/emojis.php"
-cp -- "$PACKAGE_DIR/panel/panels.php" "$TARGET/panel/panels.php"
-cp -- "$PACKAGE_DIR/panel/health.php" "$TARGET/panel/health.php"
-cp -- "$PACKAGE_DIR/panel/export.php" "$TARGET/panel/export.php"
-cp -- "$PACKAGE_DIR/panel/inc/emoji_picker_bar.php" "$TARGET/panel/inc/emoji_picker_bar.php"
-cp -- "$PACKAGE_DIR/panel/js/emoji-insert.js" "$TARGET/panel/js/emoji-insert.js"
-cp -- "$PACKAGE_DIR/panel/css/nexora-glass.css" "$TARGET/panel/css/nexora-glass.css"
-cp -- "$PACKAGE_DIR/agent-panel/login.php" "$TARGET/agent-panel/login.php"
-cp -- "$PACKAGE_DIR/agent-panel/index.php" "$TARGET/agent-panel/index.php"
-cp -- "$PACKAGE_DIR/agent-panel/logout.php" "$TARGET/agent-panel/logout.php"
-cp -- "$PACKAGE_DIR/agent-panel/inc/auth.php" "$TARGET/agent-panel/inc/auth.php"
-cp -- "$PACKAGE_DIR/cronbot/nudge_unpaid.php" "$TARGET/cronbot/nudge_unpaid.php"
-cp -- "$PACKAGE_DIR/cronbot/frenzyex.php" "$TARGET/cronbot/frenzyex.php"
-cp -- "$PACKAGE_DIR/tools/nexora-indexes.php" "$TARGET/tools/nexora-indexes.php"
-cp -- "$PACKAGE_DIR/app/assets/nexora-theme.css" "$TARGET/app/assets/nexora-theme.css"
-cp -- "$PACKAGE_DIR/payment/frenzyex.php" "$TARGET/payment/frenzyex.php"
-cp -- "$PACKAGE_DIR/version" "$TARGET/version" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/frenzyex_lib.php" "$TARGET/frenzyex_lib.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/finance.php" "$TARGET/panel/finance.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/agents.php" "$TARGET/panel/agents.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/magic.php" "$TARGET/panel/magic.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/botcolors.php" "$TARGET/panel/botcolors.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/audit.php" "$TARGET/panel/audit.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/maintenance.php" "$TARGET/panel/maintenance.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/bottext.php" "$TARGET/panel/bottext.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/emoji_picker.php" "$TARGET/panel/emoji_picker.php" 2>/dev/null || true
-cp -- "$PACKAGE_DIR/panel/inc/layout_head.php" "$TARGET/panel/inc/layout_head.php" 2>/dev/null || true
-
-if [[ -f "$PACKAGE_DIR/tools/nexora" ]]; then
-  cp -- "$PACKAGE_DIR/tools/nexora" /usr/local/bin/nexora 2>/dev/null && chmod +x /usr/local/bin/nexora && echo "nexora CLI installed."
-# refresh base language files so new/updated bot messages come through (user overrides in lang/override/ are preserved)
-mkdir -p "$TARGET/lang"
-for _lf in "$PACKAGE_DIR"/lang/*.php; do
-  [[ -f "$_lf" ]] || continue
-  cp -- "$_lf" "$TARGET/lang/$(basename "$_lf")"
-done
-fi
+    echo "==> Installing new files (all files from package)"
+    cd "$PACKAGE_DIR"
+    while IFS= read -r -d '' f; do
+        rel="${f#./}"
+        mkdir -p "$TARGET/$(dirname "$rel")"
+        cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
+    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -name 'nexora-update.sh' -print0)
+    cd "$TARGET"
+    echo "    All files copied"
+    # Set permissions
+    if [[ -f "$TARGET/panel/product.php" ]]; then
+        for _f in "$TARGET"/panel/*.php; do
+            chmod --reference="$TARGET/panel/product.php" "$_f" 2>/dev/null || chmod 0644 "$_f"
+            chown --reference="$TARGET/panel/product.php" "$_f" 2>/dev/null || true
+        done
+    fi
 fi
 
 nexora_progress 60
