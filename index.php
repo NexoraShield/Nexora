@@ -2,8 +2,9 @@
 
 date_default_timezone_set('Asia/Tehran');
 ini_set('default_charset', 'UTF-8');
-ini_set('error_log', 'error_log');
+ini_set('error_log', '/var/www/html/nexorabot/debug.log');
 ini_set('memory_limit', '512M');
+error_log("DEBUG: index.php started, update received");
 require_once 'config.php';
 require_once 'botapi.php';
 require_once 'jdf.php';
@@ -17,6 +18,7 @@ $text = restoreCustomEmojiLabel($text);
 #-----------telegram_ip_ranges------------#
 if (!checktelegramip())
     die("Unauthorized access");
+error_log("DEBUG: IP check passed");
 #-----------end telegram_ip_ranges------------#
 $webhookSecret = ensureWebhookSecret();
 if (!$webhookSecret['created'] && $webhookSecret['secret'] !== '' && !webhookSecretMatches($webhookSecret['secret']))
@@ -282,6 +284,7 @@ if (floor($TimeLastMessage / 60) >= 1) {
 
 
 if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] != "gettextSystemMessage") {
+    error_log("DEBUG: /start handler reached, from_id=$from_id, text=$text");
     $affiliatesid = (strpos($text, " ") !== false) ? explode(" ", $text)[1] : '';
     if (!in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
         isValidInvitationCode($setting, $from_id, $user['verify']);
@@ -329,6 +332,7 @@ if (intval($user['verify']) == 0 && !in_array($from_id, $admin_ids) && $setting[
 
 #-----------roll------------#
 if ($setting['roll_Status'] == "rolleon" && $user['roll_Status'] == 0 && ($text != $textbotlang['keyboard']['acceptRulesButton'] and $datain != "acceptrule") && !in_array($from_id, $admin_ids)) {
+    error_log("DEBUG: roll check triggered, sending rules");
     sendmessage($from_id, $textbotlang['textbot']['rules'], $confrimrolls, 'html');
     return;
 }
