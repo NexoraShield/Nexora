@@ -2011,7 +2011,7 @@ function nexora_user_panels($from_id, $shop = 'agentshop'): array
     try {
         $active = "('active','end_of_time','end_of_volume','sendedwarn','send_on_hold')";
         if ($shop === 'agentpanelshop') {
-            $stmt = $pdo->prepare("SELECT DISTINCT name_product FROM invoice WHERE id_user = ? AND name_product <> '' AND Status IN $active ORDER BY time_sell DESC LIMIT 50");
+            $stmt = $pdo->prepare("SELECT name_product, MAX(time_sell) AS last_time FROM invoice WHERE id_user = ? AND name_product <> '' AND Status IN $active GROUP BY name_product ORDER BY last_time DESC LIMIT 50");
             $stmt->execute([$from_id]);
             foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row) {
                 $name = trim((string) $row[0]);
