@@ -193,6 +193,39 @@ To enable it, the bot owner needs a Telegram Premium subscription, or the bot mu
                 'invalidVolume' => 'The volume is invalid',
         ],
         'users' => [
+                'topUp' => [
+                        'intro' => '💳 <b>Top up the panel</b>
+
+Choose one of the top up options:',
+                        'empty' => '⭕️ There is no top up option yet.',
+                        'details' => '💳 <b>{name}</b>
+
+{description}
+
+💰 Amount: <b>{price}</b> Toman
+🎁 Credit added: <b>{credit}</b> Toman',
+                        'buyBtn' => '🛒 Top up and pay',
+                        'backBtn' => '🔙 Back',
+                        'success' => '✅ The panel was topped up
+
+💳 Paid: <b>{price}</b> Toman
+🎁 Credit added: <b>{credit}</b> Toman
+💰 Your balance: <b>{balance}</b> Toman',
+                ],
+                'testService' => [
+                        'intro' => '🧪 <b>Test service</b>
+
+Choose one of the test services:',
+                        'empty' => '⭕️ There is no test service yet.',
+                        'details' => '🧪 <b>{name}</b>
+
+{description}
+
+💾 Volume: <b>{volume}</b> GB
+⏳ Duration: <b>{time}</b> hours
+📍 Panel: <b>{location}</b>',
+                        'buyBtn' => '🧪 Get the test service',
+                ],
                 'agentPanelShop' => [
                         'intro' => '🖥 <b>Agent panel shop</b>
 
@@ -3606,6 +3639,7 @@ Follow the steps above, then send the address below:
                 ],
         ],
         'textbot' => [
+                'topUpButton' => '💳 Top up the panel',
                 'agentPanelShop' => '🖥 Buy agent panel',
                 'agentShop' => '🛒 Buy agent panel',
                 'accountWallet' => '🏦 Wallet + Top-up',

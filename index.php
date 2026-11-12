@@ -27,6 +27,13 @@ $admin_ids = select("admin", "id_admin", null, null, "FETCH_COLUMN");
 if (!is_array($admin_ids)) {
     $admin_ids = [];
 }
+// An administrator must never stay trapped in a user step. Some steps (for
+// example "statusnamecustom") react to every message and would swallow the
+// admin menu button, so the step is reset when an admin opens the admin panel.
+if (in_array($from_id, $admin_ids) && ($text === ($textbotlang['Admin']['panelAdmin'] ?? '') || $datain === 'admin')) {
+    step('home', $from_id);
+    $user['step'] = 'home';
+}
 if (version_compare(PHP_VERSION, MIN_PHP_VERSION, '<')) {
     if ($callback_query_id)
         telegram('answerCallbackQuery', ['callback_query_id' => $callback_query_id]);
@@ -3070,6 +3077,23 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textbotlang['users']['usertest']['unavailable'], null, 'HTML');
         return;
     }
+    // Test services can be defined as products (with their own name, volume,
+    // duration and inbound). When they exist they are offered first, otherwise
+    // the classic panel based test service is used.
+    $testProducts = nexora_test_products(true);
+    if ($testProducts && $user['step'] != "createusertest" && !isset($dataget[1])) {
+        $testRows = [];
+        foreach ($testProducts as $testProduct) {
+            $testLabel = (string) $testProduct['name_product'];
+            if (floatval($testProduct['Volume_constraint']) > 0) {
+                $testLabel .= ' - ' . rtrim(rtrim(number_format((float) $testProduct['Volume_constraint'], 1), '0'), '.') . ' GB';
+            }
+            $testRows[] = [nexora_style_btn($testLabel, "testproduct_" . $testProduct['code_product'], $testProduct)];
+        }
+        $testRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
+        sendmessage($from_id, $textbotlang['users']['testService']['intro'], json_encode(['inline_keyboard' => $testRows]), 'HTML');
+        return;
+    }
     $userlimit = select("user", "*", "id", $from_id, "select");
     if ($userlimit['limit_usertest'] <= 0 && !in_array($from_id, $admin_ids)) {
         sendmessage($from_id, $textbotlang['users']['usertest']['limitwarning'], $keyboard_buy, 'html');
@@ -3573,7 +3597,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     step("statusnamecustom", $from_id);
     return;
-} elseif ($text == $textbotlang['textbot']['sell'] || $datain == "buy" || $datain == "buybacktow" || $datain == "buyback" || $text == "/buy" || $text == "buy" || $user['step'] == "statusnamecustom") {
+} elseif ($text == $textbotlang['textbot']['sell'] || $datain == "buy" || $datain == "buybacktow" || $datain == "buyback" || $text == "/buy" || $text == "buy" || ($user['step'] == "statusnamecustom" && !in_array($from_id, $admin_ids))) {
     if (!check_active_btn($setting['keyboardmain'], "text_sell")) {
         sendmessage($from_id, $textbotlang['users']['buttonDisabled'], null, 'HTML');
         return;
@@ -6482,6 +6506,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $agentRows[] = [nexora_style_btn($agentLabel, "agentshop_select_" . $agentItem['code_product'], $agentItem)];
     }
     $agentRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
+    $agentTopup = nexora_topup_button('agentshop');
+    $agentRows[] = [nexora_style_btn($agentTopup['label'], "topup_agentshop", ['btn_style' => $agentTopup['style']])];
     $agentKeyboard = json_encode(['inline_keyboard' => $agentRows]);
     $agentIntro = $textbotlang['users']['agentShop']['intro'] . "\n\n" . $textbotlang['users']['agentShop']['steps'];
     if ($datain == "agentshop") {
@@ -6591,6 +6617,8 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $agentPanelRows[] = [nexora_style_btn($agentPanelLabel, "agentpanelshop_select_" . (int) $agentPanelItem['id'], $agentPanelItem)];
     }
     $agentPanelRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
+    $agentPanelTopup = nexora_topup_button('agentpanelshop');
+    $agentPanelRows[] = [nexora_style_btn($agentPanelTopup['label'], "topup_agentpanelshop", ['btn_style' => $agentPanelTopup['style']])];
     $agentPanelKeyboard = json_encode(['inline_keyboard' => $agentPanelRows]);
     $agentPanelIntro = $textbotlang['users']['agentPanelShop']['intro'] . "\n\n" . $textbotlang['users']['agentPanelShop']['steps'];
     if ($datain == "agentpanelshop") {
@@ -6672,6 +6700,192 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("invoice", "payable_amount", $agentPanelPrice, "id_invoice", $agentPanelRandom);
     update("user", "Processing_value", $agentPanelPrice, "id", $from_id);
     update("user", "Processing_value_one", $agentPanelRandom, "id", $from_id);
+    sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+    step('get_step_payment_buy', $from_id);
+} elseif (preg_match('/^testproduct_([A-Za-z0-9_\-]+)$/', $datain, $dataget)) {
+    $testProduct = select("product", "*", "code_product", (string) $dataget[1], "select");
+    if (!$testProduct || (int) $testProduct['is_test'] !== 1 || $testProduct['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['testService']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $testDetails = strtr($textbotlang['users']['testService']['details'], [
+        '{name}' => (string) $testProduct['name_product'],
+        '{description}' => (string) ($testProduct['note'] ?? ''),
+        '{volume}' => (string) $testProduct['Volume_constraint'],
+        '{time}' => (string) $testProduct['Service_time'],
+        '{location}' => (string) $testProduct['Location'],
+    ]);
+    $testKeyboard = json_encode([
+        'inline_keyboard' => [
+            [nexora_style_btn($textbotlang['users']['testService']['buyBtn'], "testproduct_get_" . $testProduct['code_product'], $testProduct)],
+            [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "usertestbtn"]],
+        ]
+    ]);
+    sendmessage($from_id, $testDetails, $testKeyboard, 'HTML');
+    update("user", "Processing_value_one", (string) $testProduct['code_product'], "id", $from_id);
+    step('testproduct', $from_id);
+} elseif (preg_match('/^testproduct_get_([A-Za-z0-9_\-]+)$/', $datain, $dataget)) {
+    $testProduct = select("product", "*", "code_product", (string) $dataget[1], "select");
+    if (!$testProduct || (int) $testProduct['is_test'] !== 1 || $testProduct['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['testService']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $testPanel = select("marzban_panel", "*", "name_panel", $testProduct['Location'], "select");
+    if (!$testPanel) {
+        sendmessage($from_id, $textbotlang['users']['sell']['nullPanel'], $backuser, 'HTML');
+        return;
+    }
+    $testUserLimit = select("user", "*", "id", $from_id, "select");
+    if (intval($testUserLimit['limit_usertest'] ?? 0) <= 0 && !in_array($from_id, $admin_ids)) {
+        sendmessage($from_id, $textbotlang['users']['usertest']['limitwarning'], $backuser, 'HTML');
+        return;
+    }
+    $testRandom = bin2hex(random_bytes(4));
+    $testUsername = generateUsername($from_id, $testPanel['MethodUsername'], $user['username'], $testRandom, '', $testPanel['namecustom'], $user['namecustom']);
+    $testUsername = strtolower((string) $testUsername);
+    $testDataOut = $ManagePanel->DataUser($testPanel['name_panel'], $testUsername);
+    if (isset($testDataOut['username']) || rowExists("invoice", "username", $testUsername)) {
+        $testUsername = rand(1000000, 9999999) . "_" . $testUsername;
+    }
+    $testVolumeGb = (float) $testProduct['Volume_constraint'];
+    $testHours = intval($testProduct['Service_time']);
+    $testDatac = [
+        'expire' => strtotime(date("Y-m-d H:i:s", strtotime("+" . $testHours . "hours"))),
+        'data_limit' => $testVolumeGb * 1073741824,
+        'from_id' => $from_id,
+        'username' => $username,
+        'type' => 'usertest'
+    ];
+    update("user", "limit_usertest", intval($testUserLimit['limit_usertest']) - 1, "id", $from_id);
+    $testOutput = $ManagePanel->createUser($testPanel['name_panel'], (string) $testProduct['code_product'], $testUsername, $testDatac);
+    if (!is_array($testOutput) || empty($testOutput['username'])) {
+        $testOutput['msg'] = json_encode($testOutput['msg'] ?? $testOutput ?? 'unknown error');
+        sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $backuser, 'html');
+        $testError = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $testOutput['msg'], $from_id, $username, $testPanel['name_panel']);
+        if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
+            telegram('sendmessage', [
+                'chat_id' => $setting['Channel_Report'],
+                'message_thread_id' => $errorreport,
+                'text' => $testError,
+                'parse_mode' => "HTML"
+            ]);
+        }
+        step('home', $from_id);
+        update("user", "limit_usertest", intval($testUserLimit['limit_usertest']), "id", $from_id);
+        return;
+    }
+    $testInvoice = bin2hex(random_bytes(4));
+    $testNotif = json_encode(['volume' => false, 'time' => false]);
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username,time_sell, Service_location, name_product, price_product, Volume, Service_time,Status,notifctions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $from_id,
+        $testInvoice,
+        $testUsername,
+        time(),
+        $testProduct['Location'],
+        $testProduct['name_product'],
+        0,
+        $testVolumeGb,
+        $testHours,
+        'active',
+        $testNotif,
+    ]);
+    $testConfigLink = '';
+    $testConfigs = '';
+    if ($testPanel['config'] == "onconfig" && is_array($testOutput['configs'])) {
+        foreach ($testOutput['configs'] as $testConfigItem) {
+            $testConfigLink .= (string) $testConfigItem;
+        }
+    }
+    $testText = strtr($textbotlang['textbot']['afterText'], [
+        '{username}' => '<code>' . $testOutput['username'] . '</code>',
+        '{name_service}' => (string) $testProduct['name_product'],
+        '{location}' => (string) $testPanel['name_panel'],
+        '{day}' => (string) $testHours,
+        '{volume}' => (string) $testVolumeGb,
+        '{config}' => '<code>' . $testConfigLink . '</code>',
+        '{links}' => $testConfigs,
+    ]);
+    sendmessage($from_id, $testText, null, 'HTML');
+    step('home', $from_id);
+    update("user", "Processing_value_one", '', "id", $from_id);
+} elseif ($datain == "topup_agentshop" || $datain == "topup_agentpanelshop") {
+    // ---------------- [ panel top up ] ----------------
+    $topupShop = $datain === "topup_agentpanelshop" ? 'agentpanelshop' : 'agentshop';
+    $topupItems = nexora_topup_products($topupShop);
+    if (!$topupItems) {
+        sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $topupRows = [];
+    foreach ($topupItems as $topupItem) {
+        $topupLabel = (string) $topupItem['name'];
+        $topupRows[] = [nexora_style_btn($topupLabel, "topup_buy_" . $topupShop . "_" . (int) $topupItem['id'], $topupItem)];
+    }
+    $topupRows[] = [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => $topupShop === 'agentshop' ? "agentshop" : "agentpanelshop"]];
+    sendmessage($from_id, $textbotlang['users']['topUp']['intro'], json_encode(['inline_keyboard' => $topupRows]), 'HTML');
+    step('topup_list', $from_id);
+} elseif (preg_match('/^topup_buy_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
+    $topupShop = nexora_topup_shop_key($topupMatch[1]);
+    $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
+    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $topupDetails = strtr($textbotlang['users']['topUp']['details'], [
+        '{name}' => (string) $topupItem['name'],
+        '{description}' => (string) ($topupItem['description'] ?? ''),
+        '{price}' => number_format($topupItem['price']),
+        '{credit}' => number_format($topupItem['credit']),
+    ]);
+    $topupKeyboard = json_encode([
+        'inline_keyboard' => [
+            [nexora_style_btn($textbotlang['users']['topUp']['buyBtn'], "topup_pay_" . $topupShop . "_" . (int) $topupItem['id'], $topupItem)],
+            [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => "topup_" . $topupShop]],
+        ]
+    ]);
+    sendmessage($from_id, $topupDetails, $topupKeyboard, 'HTML');
+    update("user", "Processing_value_one", $topupShop . ':' . (int) $topupItem['id'], "id", $from_id);
+    step('topup_buy', $from_id);
+} elseif (preg_match('/^topup_pay_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
+    $topupShop = nexora_topup_shop_key($topupMatch[1]);
+    $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
+    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $topupPrice = floatval($topupItem['price']);
+    if (intval($user['pricediscount']) != 0) {
+        $topupPrice = $topupPrice - (($topupPrice * $user['pricediscount']) / 100);
+    }
+    if ($topupPrice <= 0) {
+        sendmessage($from_id, $textbotlang['users']['common']['invalidInput'], $backuser, 'HTML');
+        return;
+    }
+    $topupRandom = bin2hex(random_bytes(4));
+    if (rowExists("invoice", "id_invoice", $topupRandom)) {
+        $topupRandom = rand(1000000, 9999999) . $topupRandom;
+    }
+    $topupNotif = json_encode(['volume' => false, 'time' => false]);
+    // the note carries the marker so the payment handler knows it is a top up
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->execute([
+        $from_id,
+        $topupRandom,
+        $username,
+        date('Y/m/d H:i:s'),
+        '',
+        $topupItem['name'],
+        $topupPrice,
+        0,
+        0,
+        'unpaid',
+        'topup:' . $topupShop . ':' . (int) $topupItem['id'],
+        $topupNotif,
+    ]);
+    update("invoice", "payable_amount", $topupPrice, "id_invoice", $topupRandom);
+    update("user", "Processing_value", $topupPrice, "id", $from_id);
+    update("user", "Processing_value_one", $topupRandom, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
     step('get_step_payment_buy', $from_id);
 } elseif ($text == "/privacy") {

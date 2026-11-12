@@ -189,11 +189,13 @@ if ($datain == "paygwback") {
         [['text' => '🖥 فروش پنل به نمایندگان', 'callback_data' => "adv_agentpanel"]],
         [['text' => '🤖 برنامه‌های آماده', 'callback_data' => "adv_apps"]],
         [['text' => '🤝 یادداشت‌های همکاری', 'callback_data' => "adv_collab"]],
+        [['text' => '🧪 سرویس تست', 'callback_data' => "adv_testservices"]],
+        [['text' => '💳 شارژ پنل', 'callback_data' => "adv_topup"]],
         [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "admin"]],
     ];
     $advancedKeyboard = json_encode(['inline_keyboard' => $advancedRows]);
     sendmessage($from_id, "🚀 <b>قابلیت‌های پیشرفته</b>\n\nهمان امکاناتی که در پنل تحت وب دارید، مستقیم داخل ربات:\nیکی از گزینه‌ها را انتخاب کنید:", $advancedKeyboard, 'HTML');
-} elseif (preg_match('/^adv_(products|categories|panels|gateways|tickets|queue|health|token|colors|agentshop|agentpanel|apps|collab)$/', $datain, $advancedMatch) && $adminrulecheck['rule'] == "administrator") {
+} elseif (preg_match('/^adv_(products|categories|panels|gateways|tickets|queue|health|token|colors|agentshop|agentpanel|apps|collab|testservices|topup)$/', $datain, $advancedMatch) && $adminrulecheck['rule'] == "administrator") {
     // ---------------- [ advanced features: details ] ----------------
     $advancedTopic = (string) $advancedMatch[1];
     $advancedTitle = '';
@@ -331,6 +333,34 @@ if ($datain == "paygwback") {
                     $advancedLines[] = 'هنوز یادداشتی ثبت نشده است.';
                 }
                 break;
+            case 'testservices':
+                $advancedTitle = '🧪 سرویس تست';
+                $advancedActions = [];
+                foreach (nexora_test_products(false) as $row) {
+                    $inbounds = json_decode((string) ($row['inbounds'] ?? ''), true);
+                    $advancedLines[] = '• <b>' . $row['name_product'] . '</b> | ' . $row['Volume_constraint'] . ' GB | ' . $row['Service_time'] . ' ساعت | ' . $row['Location']
+                        . ' | inbound: ' . (is_array($inbounds) && $inbounds ? implode(',', $inbounds) : 'پیش‌فرض پنل')
+                        . ' | ' . $row['status_product'];
+                    $advancedActions[] = [['text' => '✏️ ویرایش نام: ' . $row['name_product'], 'callback_data' => "adv_edit_test_" . (int) $row['id']]];
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز سرویس تستی تعریف نشده است.';
+                }
+                break;
+            case 'topup':
+                $advancedTitle = '💳 شارژ پنل';
+                $advancedActions = [];
+                foreach (['agentshop' => 'فروشگاه نمایندگی', 'agentpanelshop' => 'فروش پنل به نمایندگان'] as $shopKey => $shopTitle) {
+                    $shopButton = nexora_topup_button($shopKey);
+                    $advancedLines[] = '🔸 ' . $shopTitle . ' — دکمه: «' . $shopButton['label'] . '»' . ($shopButton['style'] !== '' ? ' (' . $shopButton['style'] . ')' : '');
+                    $advancedActions[] = [['text' => '✏️ نام دکمه شارژ: ' . $shopTitle, 'callback_data' => "adv_topup_rename_" . $shopKey]];
+                    $advancedActions[] = [['text' => '🎨 رنگ دکمه شارژ: ' . $shopTitle, 'callback_data' => "adv_topup_color_" . $shopKey]];
+                    foreach (nexora_topup_products($shopKey, false) as $row) {
+                        $advancedLines[] = '   • <b>' . $row['name'] . '</b> — ' . number_format((float) $row['price']) . ' تومان | اعتبار: ' . number_format((float) $row['credit']) . ' | ' . $row['status_product'];
+                        $advancedActions[] = [['text' => '   ✏️ ویرایش: ' . $row['name'], 'callback_data' => "adv_edit_topup_" . (int) $row['id']]];
+                    }
+                }
+                break;
         }
     } catch (Throwable $e) {
         error_log('advanced features (' . $advancedTopic . '): ' . $e->getMessage());
@@ -340,9 +370,110 @@ if ($datain == "paygwback") {
     if (count($advancedLines) > 40) {
         $advancedLines = array_slice($advancedLines, 0, 40);
     }
-    $advancedBack = json_encode(['inline_keyboard' => [[['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "admin"]]]]);
+    $advancedBackRows = [];
+    if (!empty($advancedActions) && is_array($advancedActions)) {
+        $advancedBackRows = $advancedActions;
+    }
+    $advancedBackRows[] = [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "admin"]];
+    $advancedBack = json_encode(['inline_keyboard' => $advancedBackRows]);
     $advancedText = '<b>' . $advancedTitle . '</b>' . "\n\n" . (count($advancedLines) ? implode("\n", $advancedLines) : 'موردی برای نمایش وجود ندارد.');
     sendmessage($from_id, $advancedText, $advancedBack, 'HTML');
+} elseif (preg_match('/^adv_edit_test_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
+    $testRow = select("product", "*", "id", (int) $advancedEdit[1], "select");
+    if (!$testRow || (int) $testRow['is_test'] !== 1) {
+        sendmessage($from_id, "⭕️ این سرویس تست پیدا نشد.", null, 'HTML');
+        return;
+    }
+    update("user", "Processing_value_one", (int) $advancedEdit[1], "id", $from_id);
+    sendmessage($from_id, "✏️ نام جدید سرویس تست را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید؛ همان‌طور که فرستاده شود نمایش داده می‌شود.\n\nنام فعلی: <b>" . $testRow['name_product'] . "</b>", null, 'HTML');
+    step('adv_test_name', $from_id);
+} elseif ($user['step'] == "adv_test_name" && $adminrulecheck['rule'] == "administrator") {
+    $label = splitCustomEmojiLabel((string) $text);
+    $plainName = trim((string) ($label['text'] ?? ''));
+    $emojiId = trim((string) ($label['icon'] ?? ''));
+    $testRow = select("product", "*", "id", (int) $user['Processing_value_one'], "select");
+    if (!$testRow || (int) $testRow['is_test'] !== 1) {
+        sendmessage($from_id, "⭕️ این سرویس تست پیدا نشد.", null, 'HTML');
+        step('home', $from_id);
+        return;
+    }
+    if ($plainName === '') {
+        sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد.", null, 'HTML');
+        return;
+    }
+    update("product", "name_product", $plainName, "id", (int) $testRow['id']);
+    if ($emojiId !== '') {
+        update("product", "btn_emoji_id", $emojiId, "id", (int) $testRow['id']);
+    }
+    step('home', $from_id);
+    sendmessage($from_id, "✅ نام سرویس تست به «" . $plainName . "» تغییر کرد.", null, 'HTML');
+} elseif (preg_match('/^adv_edit_topup_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
+    $topupRow = nexora_topup_product_by_id((int) $advancedEdit[1]);
+    if (!$topupRow) {
+        sendmessage($from_id, "⭕️ این گزینه شارژ پیدا نشد.", null, 'HTML');
+        return;
+    }
+    update("user", "Processing_value_one", (int) $advancedEdit[1], "id", $from_id);
+    sendmessage($from_id, "✏️ نام جدید گزینه شارژ را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.\n\nنام فعلی: <b>" . $topupRow['name'] . "</b>", null, 'HTML');
+    step('adv_topup_name', $from_id);
+} elseif ($user['step'] == "adv_topup_name" && $adminrulecheck['rule'] == "administrator") {
+    $label = splitCustomEmojiLabel((string) $text);
+    $plainName = trim((string) ($label['text'] ?? ''));
+    $emojiId = trim((string) ($label['icon'] ?? ''));
+    $topupRow = nexora_topup_product_by_id((int) $user['Processing_value_one']);
+    if (!$topupRow) {
+        sendmessage($from_id, "⭕️ این گزینه شارژ پیدا نشد.", null, 'HTML');
+        step('home', $from_id);
+        return;
+    }
+    if ($plainName === '') {
+        sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد.", null, 'HTML');
+        return;
+    }
+    update("panel_topup_product", "name", $plainName, "id", (int) $topupRow['id']);
+    if ($emojiId !== '') {
+        update("panel_topup_product", "btn_emoji_id", $emojiId, "id", (int) $topupRow['id']);
+    }
+    step('home', $from_id);
+    sendmessage($from_id, "✅ نام گزینه شارژ به «" . $plainName . "» تغییر کرد.", null, 'HTML');
+} elseif (preg_match('/^adv_topup_rename_(agentshop|agentpanelshop)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
+    $shopKey = nexora_topup_shop_key($advancedEdit[1]);
+    update("user", "Processing_value_one", $shopKey, "id", $from_id);
+    $shopButton = nexora_topup_button($shopKey);
+    sendmessage($from_id, "✏️ نام جدید دکمه شارژ را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.\n\nنام فعلی: <b>" . $shopButton['label'] . "</b>", null, 'HTML');
+    step('adv_topup_button_name', $from_id);
+} elseif ($user['step'] == "adv_topup_button_name" && $adminrulecheck['rule'] == "administrator") {
+    $shopKey = nexora_topup_shop_key((string) $user['Processing_value_one']);
+    $label = splitCustomEmojiLabel((string) $text);
+    $plainName = trim((string) ($label['text'] ?? ''));
+    if ($plainName === '') {
+        sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد.", null, 'HTML');
+        return;
+    }
+    $shopButton = nexora_topup_button($shopKey);
+    nexora_topup_set_button($shopKey, $plainName, $shopButton['style']);
+    step('home', $from_id);
+    sendmessage($from_id, "✅ نام دکمه شارژ به «" . $plainName . "» تغییر کرد.", null, 'HTML');
+} elseif (preg_match('/^adv_topup_color_(agentshop|agentpanelshop)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
+    $shopKey = nexora_topup_shop_key($advancedEdit[1]);
+    $colorRows = [];
+    foreach (nexora_color_palette() as $slug => $info) {
+        if ($slug === '') {
+            continue;
+        }
+        $colorRows[] = [['text' => ($info['label'] ?? $slug), 'callback_data' => "adv_topup_color_" . $shopKey . "_" . $slug]];
+    }
+    $colorRows[] = [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "adv_topup"]];
+    sendmessage($from_id, "🎨 رنگ دکمه شارژ را انتخاب کنید:", json_encode(['inline_keyboard' => $colorRows]), 'HTML');
+} elseif (preg_match('/^adv_topup_color_(agentshop|agentpanelshop)_([a-z]+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
+    $shopKey = nexora_topup_shop_key($advancedEdit[1]);
+    $color = (string) $advancedEdit[2];
+    if (!in_array($color, nexora_color_slugs(), true)) {
+        $color = '';
+    }
+    $shopButton = nexora_topup_button($shopKey);
+    nexora_topup_set_button($shopKey, $shopButton['label'], $color);
+    sendmessage($from_id, "✅ رنگ دکمه شارژ ذخیره شد.", null, 'HTML');
 } elseif ($datain == "adv_backup") {
     if ($adminrulecheck['rule'] != "administrator") {
         return;

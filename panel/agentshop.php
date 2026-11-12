@@ -141,6 +141,7 @@ foreach (nexora_color_palette() as $slug => $info) {
 $pageTitle = 'فروشگاه پنل نمایندگی';
 $pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند.';
 $activeNav = 'agentshop';
+$shopTab = (isset($_GET['tab']) && $_GET['tab'] === 'topup') ? 'topup' : 'products';
 include __DIR__ . '/inc/layout_head.php';
 ?>
 
@@ -149,6 +150,16 @@ $flashErr = get_flash('error'); ?>
 <?php if ($flashOk): ?><div class="card fade-up" style="margin-bottom:14px"><div class="card-body"><?= htmlspecialchars($flashOk) ?></div></div><?php endif; ?>
 <?php if ($flashErr): ?><div class="card fade-up" style="margin-bottom:14px"><div class="card-body"><?= htmlspecialchars($flashErr) ?></div></div><?php endif; ?>
 
+<div class="card fade-up" style="margin-bottom:14px"><div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap">
+  <a class="btn <?= $shopTab === 'products' ? 'btn-primary' : 'btn-ghost' ?>" href="agentshop.php?tab=products">🛒 محصولات فروشگاه</a>
+  <a class="btn <?= $shopTab === 'topup' ? 'btn-primary' : 'btn-ghost' ?>" href="agentshop.php?tab=topup">💳 شارژ پنل</a>
+</div></div>
+
+<?php if ($shopTab === 'topup'):
+    $topupShop = 'agentshop';
+    $topupReturn = 'agentshop.php';
+    include __DIR__ . '/inc/topup_tab.php';
+else: ?>
 <?php include __DIR__ . '/inc/emoji_picker_bar.php'; ?>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px" class="fade-up">
@@ -239,5 +250,6 @@ $flashErr = get_flash('error'); ?>
     </form>
   </div>
 </div>
+<?php endif; ?>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

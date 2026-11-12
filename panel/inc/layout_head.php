@@ -225,6 +225,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             <span class="nav-icon"><?= icon('server') ?></span><span
               class="nav-label">فروش پنل به نمایندگان</span>
           </a>
+          <a href="testservice.php" class="nav-item <?= $activeNav === 'testservice' ? 'active' : '' ?>"
+            title="سرویس تست">
+            <span class="nav-icon"><?= icon('package') ?></span><span
+              class="nav-label">سرویس تست</span>
+          </a>
 
         </div>
         <div class="nav-section">

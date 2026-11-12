@@ -193,6 +193,39 @@ return [
                 'invalidVolume' => '流量无效',
         ],
         'users' => [
+                'topUp' => [
+                        'intro' => '💳 <b>面板充值</b>
+
+请选择一种充值方式：',
+                        'empty' => '⭕️ 目前没有充值选项。',
+                        'details' => '💳 <b>{name}</b>
+
+{description}
+
+💰 充值金额：<b>{price}</b> 汤曼
+🎁 增加余额：<b>{credit}</b> 汤曼',
+                        'buyBtn' => '🛒 充值并支付',
+                        'backBtn' => '🔙 返回',
+                        'success' => '✅ 面板充值成功
+
+💳 已支付：<b>{price}</b> 汤曼
+🎁 增加余额：<b>{credit}</b> 汤曼
+💰 当前余额：<b>{balance}</b> 汤曼',
+                ],
+                'testService' => [
+                        'intro' => '🧪 <b>测试服务</b>
+
+请选择一个测试服务：',
+                        'empty' => '⭕️ 目前没有测试服务。',
+                        'details' => '🧪 <b>{name}</b>
+
+{description}
+
+💾 流量：<b>{volume}</b> GB
+⏳ 时长：<b>{time}</b> 小时
+📍 面板：<b>{location}</b>',
+                        'buyBtn' => '🧪 获取测试服务',
+                ],
                 'agentPanelShop' => [
                         'intro' => '🖥 <b>代理面板商店</b>
 
@@ -3606,6 +3639,7 @@ f,n.n2',
                 ],
         ],
         'textbot' => [
+                'topUpButton' => '💳 面板充值',
                 'agentPanelShop' => '🖥 购买代理面板',
                 'agentShop' => '🛒 购买代理面板',
                 'accountWallet' => '🏦 钱包 + 充值',

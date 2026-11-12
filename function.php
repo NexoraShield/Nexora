@@ -1203,6 +1203,41 @@ function DirectPayment($order_id, $image = 'images.jpg')
     $stmtReset->execute([$Balance_id['id']]);
     clearSelectCache('user');
     if ($orderType == "buy") {
+        // Panel top up: the invoice note carries "topup:<shop>:<id>" and the
+        // customer receives the credit of the panel instead of a service.
+        $topupMarker = [];
+        if (preg_match('/^topup:([a-z]+):(\d+)$/', (string) ($get_invoice['note'] ?? ''), $topupMarker)) {
+            $topupItem = nexora_topup_product_by_id((int) $topupMarker[2]);
+            if ($topupItem) {
+                $claimTopupInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
+                $claimTopupInvoice->execute([$get_invoice['id_invoice']]);
+                clearSelectCache('invoice');
+                if ($claimTopupInvoice->rowCount() === 0) {
+                    error_log('[DirectPayment] top up order already settled id_order=' . $order_id);
+                    return;
+                }
+                $topupCredit = floatval($topupItem['credit'] ?? 0);
+                if ($topupCredit > 0) {
+                    addBalance($Balance_id['id'], $topupCredit);
+                }
+                $topupBalance = floatval(select("user", "Balance", "id", $Balance_id['id'], "select")['Balance'] ?? 0);
+                $topupText = strtr($textbotlang['users']['topUp']['success'], [
+                    '{price}' => number_format($orderPrice),
+                    '{credit}' => number_format($topupCredit),
+                    '{balance}' => number_format($topupBalance),
+                ]);
+                sendmessage($Balance_id['id'], $topupText, null, 'HTML');
+                if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
+                    telegram('sendmessage', [
+                        'chat_id' => $setting['Channel_Report'],
+                        'message_thread_id' => $buyreport,
+                        'text' => "✅ شارژ پنل تایید شد\n👤 کاربر: " . $Balance_id['id'] . "\n💳 مبلغ: " . number_format($orderPrice) . " تومان\n🎁 اعتبار: " . number_format($topupCredit) . " تومان",
+                        'parse_mode' => 'HTML'
+                    ]);
+                }
+                return;
+            }
+        }
         // Agent panel packages are delivered as an agent login + wallet credit
         // instead of a VPN service.
         $agentPanelProduct = nexora_agent_panel_product_by_name($get_invoice['name_product'] ?? '');
@@ -1881,6 +1916,93 @@ function nexora_agent_panel_deliver(array $product, string $userId): array
         'link' => $link,
         'credit' => $credit,
     ];
+}
+
+// ---------------------------------------------------------------------------
+// Panel top up (شارژ پنل): a separate product list for the agent shop and the
+// agent panel shop. The name and the colour of the top up button itself are
+// stored per shop.
+// ---------------------------------------------------------------------------
+function nexora_topup_shop_key($shop): string
+{
+    $shop = trim((string) $shop);
+    return in_array($shop, ['agentshop', 'agentpanelshop'], true) ? $shop : 'agentshop';
+}
+function nexora_topup_products($shop, $activeOnly = true): array
+{
+    global $pdo;
+    $shop = nexora_topup_shop_key($shop);
+    try {
+        $sql = "SELECT * FROM panel_topup_product WHERE shop = ?" . ($activeOnly ? " AND status_product = 'active'" : "") . " ORDER BY display_order, id";
+        $st = $pdo->prepare($sql);
+        $st->execute([$shop]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('nexora_topup_products: ' . $e->getMessage());
+        return [];
+    }
+}
+function nexora_topup_product_by_id($id): ?array
+{
+    global $pdo;
+    try {
+        $st = $pdo->prepare("SELECT * FROM panel_topup_product WHERE id = ? LIMIT 1");
+        $st->execute([(int) $id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+function nexora_topup_button($shop): array
+{
+    global $pdo, $textbotlang;
+    $shop = nexora_topup_shop_key($shop);
+    $label = trim((string) ($textbotlang['textbot']['topUpButton'] ?? 'Top up'));
+    $style = '';
+    try {
+        $st = $pdo->prepare("SELECT ValuePay FROM PaySetting WHERE NamePay = ?");
+        $st->execute(["nx_topup_label_" . $shop]);
+        $savedLabel = (string) $st->fetchColumn();
+        if (trim($savedLabel) !== '') {
+            $label = trim($savedLabel);
+        }
+        $st->execute(["nx_topup_style_" . $shop]);
+        $savedStyle = trim((string) $st->fetchColumn());
+        $allowed = function_exists('nexora_color_slugs') ? nexora_color_slugs() : [];
+        if ($savedStyle !== '' && in_array($savedStyle, $allowed, true)) {
+            $style = $savedStyle;
+        }
+    } catch (Throwable $e) {
+        error_log('nexora_topup_button: ' . $e->getMessage());
+    }
+    return ['label' => $label, 'style' => $style, 'shop' => $shop];
+}
+function nexora_topup_set_button($shop, $label, $style): void
+{
+    global $pdo;
+    $shop = nexora_topup_shop_key($shop);
+    $label = trim((string) $label);
+    $style = trim((string) $style);
+    $allowed = function_exists('nexora_color_slugs') ? nexora_color_slugs() : [];
+    if ($style !== '' && !in_array($style, $allowed, true)) {
+        $style = '';
+    }
+    $st = $pdo->prepare("INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?,?) ON DUPLICATE KEY UPDATE ValuePay = VALUES(ValuePay)");
+    $st->execute(["nx_topup_label_" . $shop, $label]);
+    $st->execute(["nx_topup_style_" . $shop, $style]);
+}
+// Test services: products that are flagged as a test service.
+function nexora_test_products($activeOnly = true): array
+{
+    global $pdo;
+    try {
+        $sql = "SELECT * FROM product WHERE is_test = 1" . ($activeOnly ? " AND status_product = 'active'" : "") . " ORDER BY display_order, id";
+        return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('nexora_test_products: ' . $e->getMessage());
+        return [];
+    }
 }
 
 function addBackgroundImage($urlimage, $qrCodeResult, $backgroundPath)

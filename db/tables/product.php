@@ -31,6 +31,7 @@ return [
         ['proxies', null, 'TEXT'],
         ['category', null, 'varchar(200)'],
         ['hide_panel', '{}', 'TEXT'],
+        ['is_test', '0', "TINYINT(1) NOT NULL DEFAULT 0"],
         ['btn_style', null, 'VARCHAR(20) NULL'],
         ['btn_emoji_id', null, 'VARCHAR(32) NULL'],
         ['status_product', 'active', "VARCHAR(20) NOT NULL DEFAULT 'active'"],
