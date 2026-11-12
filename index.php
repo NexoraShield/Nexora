@@ -298,6 +298,18 @@ if (floor($TimeLastMessage / 60) >= 1) {
 }
 
 
+// ---------------------------------------------------------------------------
+// A message that belongs to an administrator step (the bot text editor, the
+// renaming of a product with a premium emoji) must not be caught by the main
+// menu: otherwise the menu is opened instead of the text being saved. The
+// original text is restored before the admin section runs.
+$__nexora_adminStepText = null;
+$__nexora_adminSteps = ['get_new_text', 'adv_test_name', 'adv_topup_name', 'adv_topup_button_name'];
+if ($text !== '' && $Chat_type === 'private' && in_array((string) ($user['step'] ?? ''), $__nexora_adminSteps, true)) {
+    $__nexora_adminStepText = $text;
+    $text = 'nexora__admin_step__';
+}
+
 if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] != "gettextSystemMessage") {
     $affiliatesid = (strpos($text, " ") !== false) ? explode(" ", $text)[1] : '';
     if ($affiliatesid !== '' && !in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
@@ -7438,7 +7450,11 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
 } elseif ($text != "" && $Chat_type == "private" && !in_array($from_id, $admin_ids)) {
     sendmessage($from_id, $textbotlang['users']['invalidCommand'], $keyboard, 'HTML');
 }
-if (in_array($from_id, $admin_ids))
+if (in_array($from_id, $admin_ids)) {
+    if ($__nexora_adminStepText !== null) {
+        $text = $__nexora_adminStepText;
+    }
     require_once 'admin.php';
+}
 
 $pdo = null;
