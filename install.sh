@@ -144,7 +144,7 @@ if [[ -z "$TARGET" ]]; then
     rel="${f#./}"
     mkdir -p "$TARGET/$(dirname "$rel")"
     cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-  done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'README.md' -not -name 'patch_*.php' -print0)
+  done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'README.md' -not -name 'patch_*.php' -not -path './install/*' -print0)
   cd "$TARGET"
   echo "    Fresh installation created at $TARGET" >&3
 fi
@@ -257,7 +257,7 @@ if [[ "$FORCE" == "1" ]]; then
         rel="${f#./}"
         mkdir -p "$TARGET/$(dirname "$rel")"
         cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -print0)
+    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -path './install/*' -print0)
     cd "$TARGET"
     echo "    All files copied (FORCE mode)"
 else
@@ -267,7 +267,7 @@ else
         rel="${f#./}"
         mkdir -p "$TARGET/$(dirname "$rel")"
         cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -name 'nexora-update.sh' -print0)
+    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -name 'nexora-update.sh' -not -path './install/*' -print0)
     cd "$TARGET"
     echo "    All files copied"
     # Set permissions
@@ -277,6 +277,14 @@ else
             chown --reference="$TARGET/panel/product.php" "$_f" 2>/dev/null || true
         done
     fi
+fi
+
+# The bundled .htaccess blocks every request while install/index.php exists,
+# so the web installer must never stay inside a live installation (it would
+# take the whole bot and panel offline and the bot could not remove it).
+if [[ -d "$TARGET/install" ]]; then
+  rm -rf "$TARGET/install"
+  echo "    removed the web installer from the installation directory"
 fi
 
 nexora_progress 60
