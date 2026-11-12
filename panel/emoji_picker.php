@@ -63,9 +63,9 @@ include __DIR__ . '/inc/layout_head.php';
     <div class="card-body">
         <div class="emoji-grid">
             <?php foreach ($emojis as $emoji): ?>
-                <div class="emoji-item" onclick="selectEmoji('<?= htmlspecialchars($emoji['emoji_id']) ?>', '<?= $emoji['emoji_name'] ?>')">
-                    <div class="emoji-char"><?= htmlspecialchars($emoji['custom_emoji_id'] ?? $emoji['emoji_name']) ?></div>
-                    <div class="emoji-name"><?= htmlspecialchars($emoji['emoji_name'] ?? '') ?></div>
+                <div class="emoji-item" onclick="selectEmoji('<?= htmlspecialchars((string) ($emoji['custom_emoji_id'] ?? $emoji['emoji_id'] ?? '')) ?>', '<?= htmlspecialchars((string) ($emoji['emoji_name'] ?? '')) ?>')">
+                    <div class="emoji-char"><?= htmlspecialchars((string) ($emoji['custom_emoji_id'] ?? $emoji['emoji_name'] ?? '')) ?></div>
+                    <div class="emoji-name"><?= htmlspecialchars((string) ($emoji['emoji_name'] ?? '')) ?></div>
                 </div>
             <?php endforeach; ?>
         </div>
