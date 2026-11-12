@@ -40,7 +40,7 @@ for arg in "$@"; do
   esac
 done
 
-# â”€â”€ Quiet mode: keep verbose output in a log, show only a progress bar + prompts â”€â”€
+# ── Quiet mode: keep verbose output in a log, show only a progress bar + prompts ──
 exec 3>&1
 exec 1>/tmp/nexora_install.log 2>&1
 
@@ -54,8 +54,8 @@ nexora_progress() {
   [ "$pct" -lt 0 ] && pct=0
   filled=$(( pct * 40 / 100 ))
   local i
-  for ((i=0; i<filled; i++)); do bar+="â–ˆ"; done
-  for ((i=filled; i<40; i++)); do bar+="â–‘"; done
+  for ((i=0; i<filled; i++)); do bar+="█"; done
+  for ((i=filled; i<40; i++)); do bar+="░"; done
   printf '\r  [%s] %3d%%' "$bar" "$pct" >&3
   [ "$pct" -ge 100 ] && printf '\n' >&3
   # Always succeed: with "set -e" a non-zero return here would abort the whole
@@ -70,7 +70,7 @@ echo "==> $UPDATE_NAME"
 # One-liner mode: if run via curl without the full ZIP extracted,
 # automatically fetch and run the self-extracting nexora-update.sh.
 if [[ ! -f "$MANIFEST" ]]; then
-  echo "==> Install package not found locally â€” downloading auto-installer from GitHub..."
+  echo "==> Install package not found locally — downloading auto-installer from GitHub..."
   if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     echo "curl or wget is required for one-line install." >&2
     exit 1
@@ -78,7 +78,7 @@ if [[ ! -f "$MANIFEST" ]]; then
 
   # Ensure PHP is available (self-extracting updater needs it)
   if ! command -v php >/dev/null 2>&1; then
-    echo "==> PHP not found â€” installing PHP and dependencies..."
+    echo "==> PHP not found — installing PHP and dependencies..."
     if command -v apt-get >/dev/null 2>&1; then
       export DEBIAN_FRONTEND=noninteractive
       apt-get update -qq
@@ -94,15 +94,25 @@ if [[ ! -f "$MANIFEST" ]]; then
   fi
 
   TMP_UPDATE="$(mktemp)"
-  trap 'rm -f "$TMP_UPDATE"' EXIT
+  # The error trap is kept (and extended) instead of being replaced: a failing
+  # auto-installer used to end the one-liner without any message at all.
+  trap 'rc=$?; rm -f "$TMP_UPDATE"; if [[ $rc -ne 0 ]]; then { echo ""; echo "!!! Update failed (exit $rc). Last lines of /tmp/nexora_install.log:"; tail -25 /tmp/nexora_install.log 2>/dev/null; } >&3; fi; exit $rc' EXIT
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$TMP_UPDATE"
+    curl -fsSL "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" -o "$TMP_UPDATE" \
+      || { echo "!!! Could not download the auto-installer from GitHub." >&3; exit 1; }
   else
-    wget -qO "$TMP_UPDATE" "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh"
+    wget -qO "$TMP_UPDATE" "https://raw.githubusercontent.com/NexoraShield/Nexora/main/nexora-update.sh" \
+      || { echo "!!! Could not download the auto-installer from GitHub." >&3; exit 1; }
   fi
   chmod +x "$TMP_UPDATE"
   echo "==> Running Nexora auto-installer..."
-  exec bash "$TMP_UPDATE" "$@"
+  # The output goes to the terminal again: the auto-installer prints its own
+  # progress bar and the log of this script stays available for the report.
+  exec 1>&3 2>&3
+  # "exec" is not used on purpose: the exit trap has to run so that a failing
+  # install is reported instead of ending the one-liner silently.
+  bash "$TMP_UPDATE" "$@" || _nexora_update_rc=$?
+  exit "${_nexora_update_rc:-0}"
 fi
 
 if ! command -v sha256sum >/dev/null 2>&1; then
@@ -140,7 +150,7 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  echo "==> No existing nexorabot found â€” creating fresh installation"
+  echo "==> No existing nexorabot found — creating fresh installation"
   TARGET="/var/www/html/nexorabot"
   mkdir -p "$TARGET"
   echo "    Installing to $TARGET"
@@ -213,7 +223,7 @@ chmod 700 "$backup_root" "$BACKUP_DIR" 2>/dev/null || true
 
 # ---- upgrade: if a previous version exists, remove it first ----
 if [[ -f "$TARGET/nexora_style.php" ]]; then
-  echo "==> Previous version detected â€” removing it first"
+  echo "==> Previous version detected — removing it first"
   prev_backup=""
   if [[ -d "$backup_root" ]]; then
     prev_backup="$(ls -td "$backup_root"/nexora-* 2>/dev/null | head -1 || true)"
@@ -235,7 +245,7 @@ if [[ -f "$TARGET/nexora_style.php" ]]; then
   for _f in nexora_style.php panel/btnstyle.php panel/textemojis.php panel/emojis.php panel/panels.php panel/health.php panel/export.php panel/inc/emoji_picker_bar.php panel/js/emoji-insert.js panel/css/nexora-glass.css agent-panel/login.php agent-panel/index.php agent-panel/logout.php agent-panel/inc/auth.php cronbot/nudge_unpaid.php cronbot/frenzyex.php tools/nexora-indexes.php app/assets/nexora-theme.css payment/frenzyex.php; do
     rm -f -- "$TARGET/$_f"
   done
-  echo "    old files removed â€” fresh install follows"
+  echo "    old files removed — fresh install follows"
 fi
 
 echo "==> Backing up patched files to $BACKUP_DIR"
@@ -311,7 +321,7 @@ for _patch in patch_keyboard patch_panel patch_botapi patch_bottext patch_admin 
     echo "WARNING: ${_patch} skipped for this nexorabot version."
     _skipped_patches="$_skipped_patches $_patch"
     if [ "$_patch" = "patch_keyboard" ]; then
-      echo "FATAL: core keyboard patch failed â€” aborting, nothing was changed." >&2
+      echo "FATAL: core keyboard patch failed — aborting, nothing was changed." >&2
       exit 1
     fi
   fi
@@ -335,6 +345,7 @@ if [[ ! -f "$TARGET/vendor/autoload.php" ]]; then
   else
     echo "    vendor/ not bundled - installing composer dependencies" >&3
     _composer_bin=""
+    _composer_tmp=""
     if command -v composer >/dev/null 2>&1; then
       _composer_bin="$(command -v composer)"
     elif command -v php >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
@@ -344,13 +355,17 @@ if [[ ! -f "$TARGET/vendor/autoload.php" ]]; then
          && [[ -f "$_composer_tmp/composer" ]]; then
         _composer_bin="$_composer_tmp/composer"
       fi
-      rm -rf "$_composer_tmp"
     fi
     if [[ -n "$_composer_bin" ]]; then
+      # The temporary folder is removed AFTER the install: it used to be
+      # deleted before, so the composer binary was gone when it was called.
       (cd "$TARGET" && COMPOSER_ALLOW_SUPERUSER=1 "$_composer_bin" install --no-dev --no-interaction --no-progress --optimize-autoloader --classmap-authoritative) \
         || echo "    WARNING: composer install failed" >&3
     else
       echo "    WARNING: composer is unavailable - use the release ZIP (it ships vendor/) instead" >&3
+    fi
+    if [[ -n "$_composer_tmp" ]]; then
+      rm -rf "$_composer_tmp"
     fi
   fi
 fi
@@ -449,10 +464,10 @@ echo "  6. Agent panel: https://YOUR-DOMAIN/agent-panel/ (set passwords via /age
 echo "  7. FrenzyEx gateway: Finance -> Payment settings -> FrenzyEx"
 echo "  8. Optional speed: php tools/nexora-indexes.php"
 echo "     Optional unpaid reminders cron: */30 * * * * php BOTDIR/cronbot/nudge_unpaid.php"
-echo "  9. Check the bot and the panel â€” no restart needed."
+echo "  9. Check the bot and the panel — no restart needed."
 nexora_progress 100
 
-# â”€â”€ Interactive bot configuration (Nexora) â”€â”€
+# ── Interactive bot configuration (Nexora) ──
 echo "" >&3
 CONFIG_FILE="$TARGET/config.php"
 if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
@@ -462,7 +477,7 @@ if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
     echo "  (no interactive terminal - config.php was left as a template)" >&3
     echo "  Fill in the bot token, admin id and domain in $CONFIG_FILE" >&3
   else
-  echo "=== Ù¾ÛŒÚ©Ø±Ø¨Ù†Ø¯ÛŒ Ø±Ø¨Ø§Øª ===" >&3
+  echo "=== پیکربندی ربات ===" >&3
   read -p "  Admin numeric ID: " ADMIN_ID </dev/tty
   read -p "  Bot token: " BOT_TOKEN </dev/tty
   read -p "  Domain (e.g. example.com): " DOMAIN </dev/tty
@@ -473,8 +488,8 @@ if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
   fi
   [ -z "$BOT_USERNAME" ] && BOT_USERNAME="{username_bot}"
   sed -i "s|{API_KEY}|${BOT_TOKEN}|; s|{admin_number}|${ADMIN_ID}|; s|{domain_name}|${DOMAIN}|; s|{username_bot}|${BOT_USERNAME}|" "$CONFIG_FILE"
-  echo "  âœ“ config.php updated (admin=$ADMIN_ID, bot=@${BOT_USERNAME}, domain=$DOMAIN)" >&3
+  echo "  ✓ config.php updated (admin=$ADMIN_ID, bot=@${BOT_USERNAME}, domain=$DOMAIN)" >&3
   fi
 else
-  echo "  (config.php already configured â€” skipping prompts)" >&3
+  echo "  (config.php already configured — skipping prompts)" >&3
 fi

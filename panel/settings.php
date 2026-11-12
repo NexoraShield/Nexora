@@ -1,7 +1,76 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
+require_once __DIR__ . '/inc/botconfig.php';
 require_auth();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_bot') {
+    csrf_check_post();
+    $domain = panel_clean_domain((string) ($_POST['domainhosts'] ?? ''));
+    $ownerId = panel_clean_user_id((string) ($_POST['adminnumber'] ?? ''));
+    $current = panel_config_values();
+    $problems = [];
+    if ($domain === '') {
+        $problems[] = 'دامنه ربات نمی‌تواند خالی باشد.';
+    } elseif (!preg_match('/^[A-Za-z0-9]([A-Za-z0-9\-\._])*(\.[A-Za-z0-9]([A-Za-z0-9\-\._])*)+$/', $domain)) {
+        $problems[] = 'دامنه ربات معتبر نیست (مثال: bot.example.com).';
+    }
+    if ($ownerId === '') {
+        $problems[] = 'شناسه ادمین صاحب ربات باید یک عدد باشد.';
+    }
+    if ($problems) {
+        flash('error', implode(' ', $problems));
+        header('Location: settings.php?tab=bot');
+        exit;
+    }
+    // The owner has to exist as an administrator of the bot.
+    try {
+        $owner = db_fetch($pdo, "SELECT id_admin, rule FROM admin WHERE id_admin = ?", [$ownerId]);
+        if (!$owner) {
+            db_query($pdo, "INSERT INTO admin (id_admin, username, password, rule) VALUES (?,?,?,?)", [
+                $ownerId,
+                'admin',
+                password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT),
+                'administrator',
+            ]);
+        } elseif ($owner['rule'] !== 'administrator') {
+            db_query($pdo, "UPDATE admin SET rule = 'administrator' WHERE id_admin = ?", [$ownerId]);
+        }
+    } catch (Exception $e) {
+        flash('error', 'خطای دیتابیس: ' . $e->getMessage());
+        header('Location: settings.php?tab=bot');
+        exit;
+    }
+    $write = panel_config_write([
+        'domainhosts' => $domain,
+        'adminnumber' => $ownerId,
+    ]);
+    if (!$write['ok']) {
+        flash('error', $write['message']);
+        header('Location: settings.php?tab=bot');
+        exit;
+    }
+    // The webhook of the bot points to the old domain, so it is moved as well.
+    $webhookMessage = '';
+    if ($domain !== (string) ($current['domainhosts'] ?? '')) {
+        try {
+            $secret = (string) (db_fetch($pdo, "SELECT webhook_secret FROM setting LIMIT 1")['webhook_secret'] ?? '');
+            if ($secret !== '' && function_exists('telegram')) {
+                $result = telegram('setWebhook', ['url' => "https://$domain/index.php?secret=$secret"]);
+                $webhookMessage = !empty($result['ok'])
+                    ? '✅ وب‌هوک ربات روی دامنه جدید ثبت شد.'
+                    : '⚠️ وب‌هوک ثبت نشد؛ آن را دستی در BotFather تنظیم کنید.';
+            } else {
+                $webhookMessage = '⚠️ سکرت وب‌هوک خالی است؛ وب‌هوک را دستی تنظیم کنید.';
+            }
+        } catch (Throwable $e) {
+            $webhookMessage = '⚠️ وب‌هوک ثبت نشد: ' . $e->getMessage();
+        }
+    }
+    flash('success', 'تنظیمات ربات ذخیره شد. ' . $webhookMessage);
+    header('Location: settings.php?tab=bot');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'change_password') {
     csrf_check_post();
@@ -54,6 +123,7 @@ $themes = [
 $tabs = [
     'appearance' => ['icon' => 'settings', 'label' => $textbotlang['panel']['settingsTabAppearance']],
     'security' => ['icon' => 'block', 'label' => $textbotlang['panel']['settingsTabSecurity']],
+    'bot' => ['icon' => 'robot', 'label' => 'ربات'],
     'system' => ['icon' => 'dashboard', 'label' => $textbotlang['panel']['settingsTabSystem']],
 ];
 
@@ -226,6 +296,62 @@ include __DIR__ . '/inc/layout_head.php';
                     <span class="kv-key"><?= $textbotlang['panel']['settingsSidebarToggleLabel'] ?></span>
                     <span class="kv-val cm"><?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? '—') ?></span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+<?php elseif ($tab === 'bot'):
+
+    $configValues = panel_config_values();
+    $currentDomain = (string) ($configValues['domainhosts'] ?? ($domainhosts ?? ''));
+    $currentOwner = (string) ($configValues['adminnumber'] ?? ($adminnumber ?? ''));
+    $admins = db_fetchAll($pdo, "SELECT id_admin, username, rule FROM admin ORDER BY rule, id_admin");
+    ?>
+    <div class="two-col">
+        <div class="card fade-up">
+            <div class="card-head">
+                <div>
+                    <div class="card-title">🤖 دامنه و ادمین صاحب ربات</div>
+                    <div class="card-subtitle">این دو مقدار در فایل config.php نگهداری می‌شوند. قبل از هر تغییر یک نسخه پشتیبان از آن ساخته می‌شود.</div>
+                </div>
+            </div>
+            <form method="POST" class="card-body">
+                <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+                <input type="hidden" name="action" value="save_bot">
+                <div style="display:flex;flex-direction:column;gap:14px">
+                    <div class="field">
+                        <label>دامنه ربات</label>
+                        <input type="text" name="domainhosts" class="input" dir="ltr" required
+                            value="<?= htmlspecialchars($currentDomain) ?>" placeholder="bot.example.com">
+                        <span class="field-hint">دامنه‌ای که ربات روی آن نصب شده است. آدرس وب‌هوک و لینک‌های پرداخت با این دامنه ساخته می‌شوند.</span>
+                    </div>
+                    <div class="field">
+                        <label>شناسه ادمین صاحب ربات</label>
+                        <input type="text" name="adminnumber" class="input" dir="ltr" required
+                            value="<?= htmlspecialchars($currentOwner) ?>" placeholder="8988995603">
+                        <span class="field-hint">این شناسه به عنوان ادمین اصلی ثبت می‌شود و مدیریت کامل ربات را دارد.</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><?= icon('check', 14) ?> ذخیره تنظیمات ربات</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card fade-up d1" style="height:fit-content">
+            <div class="card-head">
+                <div>
+                    <div class="card-title">👥 مدیران فعلی</div>
+                    <div class="card-subtitle"><?= count($admins) ?> مدیر</div>
+                </div>
+            </div>
+            <div class="kv-list">
+                <?php foreach ($admins as $adminRow): ?>
+                    <div class="kv">
+                        <span class="kv-key cm"><?= htmlspecialchars((string) ($adminRow['id_admin'] ?? '')) ?></span>
+                        <span class="kv-val"><?= htmlspecialchars((string) ($adminRow['username'] ?? '')) ?>
+                            <?= ($adminRow['rule'] ?? '') === 'administrator' ? '<span class="tag tag-ok">مدیر</span>' : '<span class="tag tag-plain">فروشنده</span>' ?>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </div>

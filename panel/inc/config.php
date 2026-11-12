@@ -165,9 +165,67 @@ function clear_login_rate(string $ip): void
     @unlink(sys_get_temp_dir() . '/panel_login_' . md5($ip));
 }
 
-function user_role_label(string $agent): string
+/**
+ * The columns of a table. A column that the database does not have is simply
+ * left out, so a page still works when the migration has not run yet.
+ */
+function panel_table_columns(PDO $pdo, string $table): array
 {
-    global $textbotlang;
+    static $cache = [];
+    $key = strtolower($table);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+    $columns = [];
+    try {
+        $st = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+        $st->execute([$table]);
+        $columns = $st->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        $columns = [];
+    }
+    $cache[$key] = $columns;
+    return $columns;
+}
+
+/**
+ * Every panel of the installation.
+ *
+ * The list is built from the columns the database really has, so a missing
+ * column can never empty the list (which made the panel of the product form
+ * impossible to pick).
+ */
+function panel_load_panels(PDO $pdo): array
+{
+    $columns = panel_table_columns($pdo, 'marzban_panel');
+    if (!$columns) {
+        return [];
+    }
+    $wanted = ['id', 'name_panel', 'type', 'status', 'inbounds', 'proxies', 'display_order'];
+    $selected = array_values(array_intersect($wanted, $columns));
+    if (!$selected) {
+        return [];
+    }
+    $order = in_array('display_order', $columns, true) ? ' ORDER BY display_order, id' : ' ORDER BY id';
+    try {
+        return db_fetchAll($pdo, "SELECT " . implode(', ', $selected) . " FROM marzban_panel" . $order);
+    } catch (Throwable $e) {
+        error_log('panel_load_panels: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * The name of a panel without its premium emoji tag (only for the display).
+ */
+function panel_plain_name(string $name): string
+{
+    $clean = trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', $name));
+    return $clean !== '' ? $clean : $name;
+}
+
+function user_role_label(string $agent): string
+{    global $textbotlang;
     return match ($agent) {
         'n' => $textbotlang['panel']['configRoleN'],
         'n2' => $textbotlang['panel']['configRoleN2'],

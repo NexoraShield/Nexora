@@ -11,6 +11,7 @@ return [
     ['Payment_report', 'idx_payreport_id_order', '`id_order`'],
     ['Payment_report', 'idx_payreport_status', '`payment_Status`(100)'],
     ['Payment_report', 'idx_payreport_time', '`time`(50)'],
+    ['Payment_report', 'idx_payreport_user_status', '`id_user`(100), `payment_Status`(100)'],
     ['marzban_panel', 'idx_panel_name', '`name_panel`(150)'],
     ['marzban_panel', 'idx_panel_code', '`code_panel`(100)'],
     ['product', 'idx_product_code', '`code_product`(50)'],

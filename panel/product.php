@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
+$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
+if (is_file($__nexoraStyleLib)) {
+    require_once $__nexoraStyleLib;
+}
 require_once __DIR__ . '/../panel_protocol.php';
 require_auth();
 
@@ -192,15 +196,16 @@ include __DIR__ . '/inc/layout_head.php';
         <thead>
           <tr>
             <th>#</th>
-            <th><?= $textbotlang['panel']['productColPrice'] ?></th>
-            <th><?= $textbotlang['panel']['productColActions'] ?></th>
-            <th><?= $textbotlang['panel']['productNoProductFound'] ?></th>
-            <th><?= $textbotlang['panel']['productNoProductYet'] ?></th>
-            <th><?= $textbotlang['panel']['productAddProductTitle'] ?></th>
-            <th><?= $textbotlang['panel']['productEditProductTitle'] ?></th>
-            <th><?= $textbotlang['panel']['productFieldProductName'] ?></th>
-            <th><?= $textbotlang['panel']['productFieldVolumeGb'] ?></th>
+            <th>نام محصول</th>
+            <th>قیمت</th>
+            <th>حجم</th>
+            <th>مدت</th>
+            <th>پنل</th>
             <th>اینباند</th>
+            <th>دسته‌بندی</th>
+            <th>ایموجی</th>
+            <th>کد</th>
+            <th>عملیات</th>
           </tr>
         </thead>
         <tbody>
@@ -217,6 +222,7 @@ include __DIR__ . '/inc/layout_head.php';
               <td><?php if (!empty($p['category'])): ?><span
                     class="tag tag-info"><?= htmlspecialchars($p['category']) ?></span><?php else: ?><span
                     class="cf">—</span><?php endif; ?></td>
+              <td><?= function_exists('nexora_emoji_preview_html') ? (nexora_emoji_preview_html((string) ($p['btn_emoji_id'] ?? '')) ?: '<span class="cf">—</span>') : '<span class="cf">—</span>' ?></td>
               <td class="cm" style="font-size:.72rem"><?= htmlspecialchars($p['code_product'] ?? '') ?></td>
               <td>
                 <div style="display:flex;gap:5px">

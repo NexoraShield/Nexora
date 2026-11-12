@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
+$__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
+if (is_file($__nexoraStyleLib)) {
+    require_once $__nexoraStyleLib;
+}
 require_auth();
 try {
     foreach ([['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL']] as [$col, $def]) {
@@ -86,7 +90,7 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
           <input type="hidden" name="action" value="edit">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
-          <td><span style="display:inline-block;background:<?= $bg ?>;color:<?= $fg ?>;border-radius:8px;padding:4px 12px;font-size:.8rem"><?= ($em !== '' ? '◆ ' : '') . htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?></span></td>
+          <td><span style="display:inline-block;background:<?= $bg ?>;color:<?= $fg ?>;border-radius:8px;padding:4px 12px;font-size:.8rem"><?= nexora_emoji_preview_html($em) . htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?></span></td>
           <td class="cs"><?= htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?><br><small style="opacity:.6"><?= htmlspecialchars($p['type'] ?? '') ?></small></td>
           <td>
             <select name="status" class="select" style="min-width:90px">

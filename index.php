@@ -171,19 +171,24 @@ if ($from_id != 0) {
         $valueverify = 0;
     }
     $randomString = bin2hex(random_bytes(6));
-    $stmt = $pdo->prepare("INSERT IGNORE INTO user (id , step,limit_usertest,User_Status,number,Balance,pagenumber,username,agent,message_count,last_message_time,affiliates,affiliatescount,cardpayment,number_username,namecustom,register,verify,codeInvitation,pricediscount,maxbuyagent,joinchannel,score,status_cron) VALUES (:from_id, 'none',:limit_usertest_all,'Active','none','0','1',:username,'f','0','0','0','0',:showcard,'100','none',:date,:verifycode,:codeInvitation,'0','0','0','0','1')");
-    $stmt->bindParam(':from_id', $from_id);
-    $stmt->bindParam(':limit_usertest_all', $setting['limit_usertest_all']);
-    $stmt->bindParam(':username', $username);
-    $stmt->bindParam(':showcard', $setting['showcard']);
-    $stmt->bindParam(':date', $date);
-    $stmt->bindParam(':verifycode', $valueverify);
-    $stmt->bindParam(':codeInvitation', $randomString);
-    $stmt->execute();
-    if ($stmt->rowCount() > 0) {
-        clearSelectCache('user');
-        if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
-            unset($GLOBALS['nexora_user_cache'][$from_id]);
+    // The row is only written when it does not exist yet. The unconditional
+    // INSERT IGNORE made every single message a write query.
+    if ($isNewUser) {
+        $stmt = $pdo->prepare("INSERT IGNORE INTO user (id , step,limit_usertest,User_Status,number,Balance,pagenumber,username,agent,message_count,last_message_time,affiliates,affiliatescount,cardpayment,number_username,namecustom,register,verify,codeInvitation,pricediscount,maxbuyagent,joinchannel,score,status_cron) VALUES (:from_id, 'none',:limit_usertest_all,'Active','none','0','1',:username,'f','0','0','0','0',:showcard,'100','none',:date,:verifycode,:codeInvitation,'0','0','0','0','1')");
+        $stmt->bindParam(':from_id', $from_id);
+        $stmt->bindParam(':limit_usertest_all', $setting['limit_usertest_all']);
+        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':showcard', $setting['showcard']);
+        $stmt->bindParam(':date', $date);
+        $stmt->bindParam(':verifycode', $valueverify);
+        $stmt->bindParam(':codeInvitation', $randomString);
+        $stmt->execute();
+        if ($stmt->rowCount() > 0) {
+            clearSelectCache('user');
+            if (isset($GLOBALS['nexora_user_cache'][$from_id])) {
+                unset($GLOBALS['nexora_user_cache'][$from_id]);
+            }
+            $user = false;
         }
     }
 }
@@ -6601,7 +6606,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $agentProduct['Volume_constraint'],
         $agentProduct['Service_time'],
         'unpaid',
-        (string) ($agentProduct['note'] ?? ''),
+        // The marker tells the payment handler that this product is delivered
+        // by hand: the administrator gets the details of the buyer.
+        'agentshop:' . $agentProduct['code_product'] . '|' . (string) ($agentProduct['note'] ?? ''),
         $agentNotif,
     ]);
     update("invoice", "payable_amount", $agentPrice, "id_invoice", $agentRandom);

@@ -12,7 +12,7 @@ $textbotlang = languagechange();
 $frenzyexStatus = getPaySettingValue('frenzyexstatus', 'offfrenzyex');
 if ($frenzyexStatus !== 'onfrenzyex' && $frenzyexStatus !== '1' && $frenzyexStatus !== 'on') exit;
 $apiKey = getPaySettingValue('frenzyex_api_key', '');
-$baseUrl = getPaySettingValue('frenzyex_base_url', 'https://frenzy.fastsnap.info');
+$baseUrl = getPaySettingValue('frenzyex_base_url', '');
 if ($apiKey === '' || $baseUrl === '') exit;
 $stmt = $pdo->prepare("SELECT * FROM Payment_report WHERE Payment_Method = 'frenzyex' AND payment_Status = 'pending' ORDER BY id ASC LIMIT 50");
 $stmt->execute();

@@ -167,8 +167,53 @@ if (!function_exists('nexora_emoji_placeholder')) {
     }
 }
 
-if (!function_exists('nexora_emoji_save')) {
-    function nexora_emoji_save(string $name, string $customEmojiId, string $emojiUtf8 = '', ?string $createdBy = null): array
+if (!function_exists('nexora_emoji_image_url')) {
+    /**
+     * The address of the picture of a premium emoji.
+     *
+     * Telegram serves every custom emoji as a small picture, so the web panel
+     * can show the very same emoji the bot uses in its buttons.
+     */
+    function nexora_emoji_image_url($ref): string
+    {
+        $ref = trim((string) $ref);
+        if ($ref === '') {
+            return '';
+        }
+        $id = '';
+        if (preg_match('/^\d{1,32}$/', $ref)) {
+            $id = $ref;
+        } else {
+            $row = nexora_emoji_lookup($ref);
+            if ($row && !empty($row['custom_emoji_id'])) {
+                $id = (string) $row['custom_emoji_id'];
+            }
+        }
+        if ($id === '' || !preg_match('/^\d{1,32}$/', $id)) {
+            return '';
+        }
+        return 'https://t.me/i/emoji/' . $id . '.webp';
+    }
+}
+
+if (!function_exists('nexora_emoji_preview_html')) {
+    /**
+     * The premium emoji of a button as a picture.
+     *
+     * When the emoji cannot be resolved, nothing is shown at all: the raw id
+     * is never displayed, because it means nothing to the administrator.
+     */
+    function nexora_emoji_preview_html($ref, string $class = 'nx-emoji'): string
+    {
+        $url = nexora_emoji_image_url($ref);
+        if ($url === '') {
+            return '';
+        }
+        return '<img class="' . htmlspecialchars($class) . '" src="' . htmlspecialchars($url) . '" alt="" loading="lazy">';
+    }
+}
+
+if (!function_exists('nexora_emoji_save')) {    function nexora_emoji_save(string $name, string $customEmojiId, string $emojiUtf8 = '', ?string $createdBy = null): array
     {
         $pdo = $GLOBALS['pdo'] ?? null;
         if (!($pdo instanceof PDO)) return ['ok' => false, 'error' => 'DB unavailable'];
@@ -492,10 +537,20 @@ if (!function_exists('nexora_agent_setpass')) {
 if (!function_exists('nexora_bb_map')) {
     function nexora_bb_map(): array
     {
+        // The map is read once per request. It used to run one query per button
+        // (hundreds of them on every webhook call), which made the bot answer
+        // in seconds instead of milliseconds.
+        static $memo = null;
+        if ($memo !== null) {
+            return $memo;
+        }
         try {
             global $pdo;
             $pdo = $pdo instanceof PDO ? $pdo : ($GLOBALS['pdo'] ?? null);
-            if (!($pdo instanceof PDO)) return ['emoji' => [], 'style' => []];
+            if (!($pdo instanceof PDO)) {
+                $memo = ['emoji' => [], 'style' => []];
+                return $memo;
+            }
             $rows = $pdo->query("SELECT NamePay, ValuePay FROM PaySetting WHERE NamePay LIKE 'nx_bb_emoji_%' OR NamePay LIKE 'nx_bb_style_%'")->fetchAll(PDO::FETCH_ASSOC);
             $emoji = []; $style = [];
             foreach ($rows as $r) {
@@ -505,8 +560,12 @@ if (!function_exists('nexora_bb_map')) {
                 if (strpos($k, 'nx_bb_emoji_') === 0) $emoji[substr($k, 12)] = $v;
                 elseif (strpos($k, 'nx_bb_style_') === 0) $style[substr($k, 12)] = $v;
             }
-            return ['emoji' => $emoji, 'style' => $style];
-        } catch (Throwable $e) { return ['emoji' => [], 'style' => []]; }
+            $memo = ['emoji' => $emoji, 'style' => $style];
+            return $memo;
+        } catch (Throwable $e) {
+            $memo = ['emoji' => [], 'style' => []];
+            return $memo;
+        }
     }
 }
 if (!function_exists('nexora_apply_bb_style')) {
@@ -580,6 +639,7 @@ if (!function_exists('nexora_ensure_indexes')) {
             ['invoice', 'idx_invoice_time_sell', '`time_sell`(50)'],
             ['Payment_report', 'idx_payreport_status', '`payment_Status`(100)'],
             ['Payment_report', 'idx_payreport_time', '`time`(50)'],
+            ['Payment_report', 'idx_payreport_user_status', '`id_user`(100), `payment_Status`(100)'],
             ['product', 'idx_product_location', '`Location`(100)'],
             ['product', 'idx_product_agent', '`agent`(50)'],
             ['product', 'idx_product_status', '`status_product`(20)'],
@@ -606,47 +666,86 @@ if (!function_exists('nexora_self_heal')) {
         static $done = false;
         if ($done) return;
         $done = true;
-        // Throttle: only run once per 5 minutes (file-based, works across processes)
+        // The schema is repaired at most once per hour. The flag is written
+        // BEFORE the work starts, so a failing statement can no longer make
+        // every single request run the whole (slow) DDL block again.
         $flagFile = __DIR__ . '/storage/.heal_flag';
-        if (is_file($flagFile) && (time() - filemtime($flagFile)) < 300) {
+        $flagDir = dirname($flagFile);
+        if (!is_dir($flagDir)) @mkdir($flagDir, 0775, true);
+        if (is_file($flagFile) && (time() - filemtime($flagFile)) < 3600) {
             return;
         }
         $pdo = $GLOBALS['pdo'] ?? null;
         if (!($pdo instanceof PDO)) return;
+        // Only one process may repair the schema at a time.
+        $lockHandle = @fopen($flagFile . '.lock', 'c');
+        if ($lockHandle !== false) {
+            if (!@flock($lockHandle, LOCK_EX | LOCK_NB)) {
+                @fclose($lockHandle);
+                return;
+            }
+        }
+        @touch($flagFile);
+        $safe = function (callable $fn) use ($pdo) {
+            try {
+                $fn();
+            } catch (Throwable $e) {
+                error_log('nexora_self_heal: ' . $e->getMessage());
+            }
+        };
         try {
-            if (function_exists('nexora_ensure_style_columns')) {
-                nexora_ensure_style_columns($pdo);
-            }
-            if (function_exists('nexora_ensure_emoji_table')) {
-                nexora_ensure_emoji_table($pdo);
-            }
-            // Ensure database indexes for performance
-            if (function_exists('nexora_ensure_indexes')) {
-                nexora_ensure_indexes($pdo);
-            }
-            $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-            $pdo->exec('CREATE TABLE IF NOT EXISTS agent_login_attempts (ip VARCHAR(64) NOT NULL PRIMARY KEY, attempts INT UNSIGNED NOT NULL DEFAULT 0, first_attempt INT UNSIGNED NOT NULL DEFAULT 0, last_attempt INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-            $pdo->exec("CREATE TABLE IF NOT EXISTS support_tickets (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, subject VARCHAR(255) NOT NULL, message TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'open', admin_reply TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS op_queue (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, id_invoice VARCHAR(64) NULL, op_type VARCHAR(32) NOT NULL, payload TEXT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0, last_error TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS custom_apps (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, platform VARCHAR(64) NULL, download_link VARCHAR(512) NULL, tutorial TEXT NULL, icon VARCHAR(64) NULL, sort_order INT NOT NULL DEFAULT 0, status VARCHAR(20) NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS collab_notes (id INT AUTO_INCREMENT PRIMARY KEY, admin_user VARCHAR(64) NULL, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, pinned TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            $frenzyDefaults = ['frenzyexstatus' => 'offfrenzyex', 'frenzyex_api_key' => '', 'frenzyex_base_url' => 'https://frenzy.fastsnap.info', 'frenzyex_callback_secret' => '', 'cashbackfrenzyex' => '0'];
-            foreach ($frenzyDefaults as $name => $val) {
-                $chk = $pdo->prepare('SELECT COUNT(*) FROM PaySetting WHERE NamePay = ?');
-                $chk->execute([$name]);
-                if ((int) $chk->fetchColumn() === 0) {
-                    $pdo->prepare('INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?, ?)')->execute([$name, $val]);
+            $safe(function () use ($pdo) {
+                if (function_exists('nexora_ensure_style_columns')) {
+                    nexora_ensure_style_columns($pdo);
                 }
-            }
-            if (function_exists('opcache_reset')) {
-                @opcache_reset();
-            }
-            // Touch flag file
-            $flagDir = dirname($flagFile);
-            if (!is_dir($flagDir)) @mkdir($flagDir, 0775, true);
-            @touch($flagFile);
+            });
+            $safe(function () use ($pdo) {
+                if (function_exists('nexora_ensure_emoji_table')) {
+                    nexora_ensure_emoji_table($pdo);
+                }
+            });
+            // Ensure database indexes for performance
+            $safe(function () use ($pdo) {
+                if (function_exists('nexora_ensure_indexes')) {
+                    nexora_ensure_indexes($pdo);
+                }
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec('CREATE TABLE IF NOT EXISTS agent_login_attempts (ip VARCHAR(64) NOT NULL PRIMARY KEY, attempts INT UNSIGNED NOT NULL DEFAULT 0, first_attempt INT UNSIGNED NOT NULL DEFAULT 0, last_attempt INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS support_tickets (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, subject VARCHAR(255) NOT NULL, message TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'open', admin_reply TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS op_queue (id INT AUTO_INCREMENT PRIMARY KEY, id_user VARCHAR(32) NOT NULL, id_invoice VARCHAR(64) NULL, op_type VARCHAR(32) NOT NULL, payload TEXT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', attempts INT NOT NULL DEFAULT 0, last_error TEXT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_status (status), INDEX idx_user (id_user)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS custom_apps (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, platform VARCHAR(64) NULL, download_link VARCHAR(512) NULL, tutorial TEXT NULL, icon VARCHAR(64) NULL, sort_order INT NOT NULL DEFAULT 0, status VARCHAR(20) NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            });
+            $safe(function () use ($pdo) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS collab_notes (id INT AUTO_INCREMENT PRIMARY KEY, admin_user VARCHAR(64) NULL, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, pinned TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            });
+            // The FrenzyEx base URL stays empty on purpose: a fresh install must
+            // not point at the gateway of another installation.
+            $frenzyDefaults = ['frenzyexstatus' => 'offfrenzyex', 'frenzyex_api_key' => '', 'frenzyex_base_url' => '', 'frenzyex_callback_secret' => '', 'cashbackfrenzyex' => '0'];
+            $safe(function () use ($pdo, $frenzyDefaults) {
+                foreach ($frenzyDefaults as $name => $val) {
+                    $chk = $pdo->prepare('SELECT COUNT(*) FROM PaySetting WHERE NamePay = ?');
+                    $chk->execute([$name]);
+                    if ((int) $chk->fetchColumn() === 0) {
+                        $pdo->prepare('INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?, ?)')->execute([$name, $val]);
+                    }
+                }
+            });
         } catch (Throwable $e) {
             error_log('nexora_self_heal: ' . $e->getMessage());
+        }
+        if ($lockHandle !== false) {
+            @flock($lockHandle, LOCK_UN);
+            @fclose($lockHandle);
         }
     }
 }

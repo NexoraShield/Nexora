@@ -64,7 +64,7 @@ try {
     $frenzyDefaults = [
         'frenzyexstatus' => 'offfrenzyex',
         'frenzyex_api_key' => '',
-        'frenzyex_base_url' => 'https://frenzy.fastsnap.info',
+        'frenzyex_base_url' => '',
         'frenzyex_callback_secret' => '',
         'cashbackfrenzyex' => '0',
         'minbalancefrenzyex' => '20000',

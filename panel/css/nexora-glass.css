@@ -117,3 +117,22 @@ body[data-theme="dark"] {
 }
 }
 
+
+/* The premium emoji of a button is shown as the picture Telegram serves for
+   it, so the panel shows the same emoji the bot uses. */
+.nx-emoji {
+    height: 18px;
+    width: 18px;
+    vertical-align: -3px;
+    border-radius: 4px;
+    margin-left: 4px;
+    margin-right: 2px;
+    image-rendering: auto;
+}
+
+td .nx-emoji {
+    height: 22px;
+    width: 22px;
+    vertical-align: middle;
+    margin: 0;
+}

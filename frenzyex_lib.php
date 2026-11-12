@@ -190,8 +190,11 @@ if (!function_exists('frenzyex_enabled')) {
 
         $key = frenzyex_setting('frenzyex_api_key', '');
         $secret = frenzyex_setting('frenzyex_callback_secret', '');
+        $base = frenzyex_setting('frenzyex_base_url', '');
 
-        return $key !== '' && $key !== '0' && $secret !== '' && $secret !== '0';
+        return $key !== '' && $key !== '0'
+            && $secret !== '' && $secret !== '0'
+            && $base !== '' && $base !== '0';
     }
 }
 
@@ -252,7 +255,10 @@ if (!function_exists('createPayFrenzyEx')) {
 
         $base = frenzyex_setting('frenzyex_base_url', '');
         if ($base === '' || $base === '0') {
-            $base = 'https://frenzy.fastsnap.info';
+            // The address of the gateway is installation specific. A fresh
+            // install has no address, so the gateway cannot be used until the
+            // administrator fills it in.
+            return ['success' => false, 'message' => 'frenzyex: base url is unset'];
         }
         $base = rtrim($base, '/');
 

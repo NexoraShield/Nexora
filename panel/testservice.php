@@ -40,14 +40,13 @@ function nexora_testservice_preview($name, $style, $emoji, $colors): string
 {
     $bg = $colors[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($colors[$style])) ? '#fff' : 'inherit';
-    $icon = ($emoji !== '' && $emoji !== null) ? '◆ ' : '';
+    $icon = function_exists('nexora_emoji_preview_html') ? nexora_emoji_preview_html($emoji) : '';
     return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
 }
 // The name of the panel without the premium emoji tag (only for the display)
 function nexora_testservice_panel_label(string $name): string
 {
-    $clean = trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', $name));
-    return $clean !== '' ? $clean : $name;
+    return function_exists('panel_plain_name') ? panel_plain_name($name) : $name;
 }
 // The inbounds of a panel
 function nexora_testservice_inbounds(array $panel): array
@@ -147,10 +146,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     exit;
 }
 
-$panels = [];
-try {
-    $panels = db_fetchAll($pdo, "SELECT id, name_panel, inbounds FROM marzban_panel ORDER BY display_order, id");
-} catch (Exception $e) {
+$panels = panel_load_panels($pdo);
+$panelLoadError = '';
+if (!$panels) {
+    $panelLoadError = 'هیچ پنلی در دیتابیس پیدا نشد. اگر پنل دارید، ابتدا «مدیریت پنل‌ها» را در ربات بررسی کنید یا مهاجرت دیتابیس را اجرا کنید (php migrate.php).';
+    flash('error', $panelLoadError);
 }
 $items = db_fetchAll($pdo, "SELECT * FROM product WHERE is_test = 1 ORDER BY display_order, id");
 $colors = [];
@@ -174,6 +174,15 @@ include __DIR__ . '/inc/layout_head.php';
   <button class="btn btn-primary" onclick="openModal('addModal')"><?= icon('plus', 14) ?> افزودن سرویس تست</button>
 </div>
 
+<?php if (!$panels): ?>
+  <div class="card fade-up d1" style="margin-bottom:18px;border-right:3px solid var(--no)">
+    <div class="card-body">
+      <div class="card-title" style="color:var(--no)">⚠️ پنلی برای انتخاب وجود ندارد</div>
+      <p style="margin-top:8px;color:var(--mute)"><?= htmlspecialchars($panelLoadError) ?></p>
+    </div>
+  </div>
+<?php endif; ?>
+
 <div class="card fade-up d1" style="margin-bottom:18px">
   <div class="tbl-wrap"><table class="tbl">
     <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>حجم (GB)</th><th>مدت (ساعت)</th><th>پنل</th><th>اینباند</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
@@ -194,7 +203,7 @@ include __DIR__ . '/inc/layout_head.php';
           <td style="min-width:160px"><?= htmlspecialchars($inboundText) ?></td>
           <td style="min-width:200px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
           <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
-          <td><?= ($it['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= nexora_emoji_preview_html((string) ($it['btn_emoji_id'] ?? '')) ?: '<span class="cf">—</span>' ?></td>
           <td><?= ($it['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
           <td><?= (int) ($it['display_order'] ?? 0) ?></td>
           <td style="white-space:nowrap">

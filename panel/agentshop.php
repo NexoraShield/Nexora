@@ -5,7 +5,6 @@ $__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
 if (is_file($__nexoraStyleLib)) {
     require_once $__nexoraStyleLib;
 }
-require_once __DIR__ . '/../panel_protocol.php';
 require_once __DIR__ . '/inc/shop_helpers.php';
 require_auth();
 
@@ -16,13 +15,13 @@ $shopTab = (isset($_GET['tab']) && $_GET['tab'] === 'topup') ? 'topup' : 'produc
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
     $action = (string) $_POST['action'];
-    $protocolMessage = '';
     if ($action === 'add' || $action === 'edit') {
         $name = trim($_POST['name_product'] ?? '');
         $panel = trim($_POST['namepanel'] ?? '');
-        $reference = trim($_POST['protocol_account'] ?? '');
         if ($name === '') {
             flash('error', 'نام محصول را وارد کنید.');
+        } elseif ($panel === '') {
+            flash('error', 'پنل را انتخاب کنید.');
         } else {
             try {
                 if ($action === 'add') {
@@ -71,14 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                     }
                     flash('success', 'محصول بروزرسانی شد.');
                 }
-                // the protocol / inbound of the panel is taken from an account
-                // that already exists inside that panel
-                if ($reference !== '') {
-                    $protocol = nexora_apply_panel_protocol($pdo, $panel, $reference);
-                    $protocolMessage = $protocol['ok']
-                        ? '✅ ' . $protocol['message']
-                        : '⚠️ ' . $protocol['message'];
-                }
             } catch (Exception $e) {
                 flash('error', 'خطای دیتابیس: ' . $e->getMessage());
             }
@@ -86,9 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     } elseif ($action === 'delete') {
         db_query($pdo, "DELETE FROM product WHERE id = ? AND agent = ?", [(int) ($_POST['edit_id'] ?? 0), NEXORA_AGENT_SHOP_MARKER]);
         flash('success', 'محصول حذف شد.');
-    }
-    if ($protocolMessage !== '') {
-        flash($protocolMessage === '' ? 'success' : 'success', $protocolMessage);
     }
     header('Location: agentshop.php?tab=' . ($shopTab === 'topup' ? 'topup' : 'products'));
     exit;
@@ -105,7 +93,7 @@ if (isset($_GET['delete'])) {
 $panels = [];
 $categories = [];
 try {
-    $panels = db_fetchAll($pdo, "SELECT id, name_panel FROM marzban_panel ORDER BY display_order, id");
+    $panels = panel_load_panels($pdo);
     $categories = db_fetchAll($pdo, "SELECT id, remark FROM category ORDER BY display_order, id");
 } catch (Exception $e) {
 }
@@ -117,7 +105,7 @@ foreach (nexora_color_palette() as $slug => $info) {
 }
 
 $pageTitle = 'فروشگاه پنل نمایندگی';
-$pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند.';
+$pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند. بعد از پرداخت، مشخصات پرداخت‌کننده و محصول سفارش‌شده برای ادمین ارسال می‌شود تا خودش آن را برای خریدار ارسال کند.';
 $activeNav = 'agentshop';
 include __DIR__ . '/inc/layout_head.php';
 ?>
@@ -161,7 +149,7 @@ else: ?>
           <td><?= htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
           <td style="min-width:220px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
           <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
-          <td><?= ($it['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= nexora_emoji_preview_html((string) ($it['btn_emoji_id'] ?? '')) ?: '<span class="cf">—</span>' ?></td>
           <td><?= ($it['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
           <td><?= (int) ($it['display_order'] ?? 0) ?></td>
           <td style="white-space:nowrap">
@@ -205,7 +193,7 @@ else: ?>
           <label class="field"><span>پنل</span>
             <select name="namepanel" class="select" required>
               <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', (string) $pn['name_panel']))) ?></option>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(panel_plain_name((string) $pn['name_panel'])) ?></option>
               <?php endforeach; ?>
             </select>
           </label>
@@ -216,10 +204,6 @@ else: ?>
                 <option value="<?= htmlspecialchars((string) $ct['remark']) ?>"><?= htmlspecialchars((string) $ct['remark']) ?></option>
               <?php endforeach; ?>
             </select>
-          </label>
-          <label class="field" style="grid-column:1/-1"><span>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</span>
-            <input class="input" name="protocol_account" placeholder="اختیاری — مثلاً نام کاربری یکی از اکانت‌های موجود در پنل">
-            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
@@ -253,7 +237,7 @@ else: ?>
           <label class="field"><span>پنل</span>
             <select name="namepanel" id="edit_panel" class="select" required>
               <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', (string) $pn['name_panel']))) ?></option>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(panel_plain_name((string) $pn['name_panel'])) ?></option>
               <?php endforeach; ?>
             </select>
           </label>
@@ -264,10 +248,6 @@ else: ?>
                 <option value="<?= htmlspecialchars((string) $ct['remark']) ?>"><?= htmlspecialchars((string) $ct['remark']) ?></option>
               <?php endforeach; ?>
             </select>
-          </label>
-          <label class="field" style="grid-column:1/-1"><span>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</span>
-            <input class="input" name="protocol_account" id="edit_protocol" placeholder="اختیاری — نام کاربری یکی از اکانت‌های موجود در پنل">
-            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'edit_btn_style') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
@@ -299,7 +279,6 @@ window.openEditModal = function (p) {
     document.getElementById('edit_time').value = p.time_product || 0;
     document.getElementById('edit_note').value = p.note_product || '';
     document.getElementById('edit_emoji').value = p.btn_emoji_id || '';
-    document.getElementById('edit_protocol').value = '';
     document.getElementById('edit_position').value = p.position || 0;
     document.getElementById('edit_status').value = p.status_product || 'active';
     var sel = document.getElementById('edit_panel');

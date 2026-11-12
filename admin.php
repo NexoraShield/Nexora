@@ -509,7 +509,7 @@ if ($datain == "paygwback") {
     $backmenu_step = (string) $user['step'];
     step('home', $from_id);
     if (in_array($backmenu_step, $backmenu_panel_steps, true)) {
-        $backmenu_panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+        $backmenu_panel = nexora_panel_by_name($user['Processing_value']);
         $backmenu_paneltype = is_array($backmenu_panel) ? (string) $backmenu_panel['type'] : '';
         if ($backmenu_paneltype === '') {
             sendmessage($from_id, $textbotlang['Admin']['backAdmin'], $keyboardadmin, 'HTML');
@@ -1893,15 +1893,20 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['Product']['serviceLocation'], $json_list_marzban_panel, 'HTML');
     step('get_location', $from_id);
 } elseif ($user['step'] == "get_location") {
-    if ($text != '/all' && !rowExists("marzban_panel", "name_panel", $text)) {
+    // The reply keyboard shows the plain name of the panel (the premium emoji
+    // is an entity), so the canonical name is stored: the product has to match
+    // the panel exactly, otherwise it never shows up in the shop.
+    $selectedPanel = $text === '/all' ? null : nexora_panel_by_name($text);
+    if ($text !== '/all' && empty($selectedPanel)) {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['invalidSelection'], null, 'HTML');
         return;
     }
+    $text = $selectedPanel ? (string) $selectedPanel['name_panel'] : '/all';
     savedata("save", "Location", $text);
     // After the panel is chosen the administrator can give the name of an
     // account that already exists inside that panel: the protocol and the
     // inbound of the panel are set with the data of that account.
-    $panelForProtocol = select("marzban_panel", "*", "name_panel", $text, "select");
+    $panelForProtocol = $selectedPanel;
     if ($panelForProtocol && $panelForProtocol['type'] != "Manualsale") {
         $keyboardSkipProtocol = json_encode([
             'inline_keyboard' => [
@@ -1917,8 +1922,8 @@ elseif ($datain == "systemsms") {
         step("getcategory", $from_id);
         return;
     }
-    $panel = select("marzban_panel", "*", "name_panel", $text, "select");
-    if ($panel['type'] == "Manualsale") {
+    $panel = $panelForProtocol;
+    if ($panel && $panel['type'] == "Manualsale") {
         savedata("save", "Service_time", "0");
         savedata("save", "Volume_constraint", "0");
         sendmessage($from_id, $textbotlang['Admin']['Product']['getPrice'], $backadmin, 'HTML');
@@ -2392,11 +2397,14 @@ elseif ($datain == "systemsms") {
     }
     $product = select("product", "*", "id", $user['Processing_value'], "select");
     $panel = select("marzban_panel", "*", "code_panel", $user['Processing_value_one'], "select");
-    $newPanel = select("marzban_panel", "*", "name_panel", $text, "select");
-    if ($newPanel == false) {
+    $newPanel = nexora_panel_by_name($text);
+    if ($newPanel == false || $newPanel == null) {
         sendmessage($from_id, $textbotlang['common']['invalidInput'], $shopkeyboard, 'HTML');
         return;
     }
+    // The canonical name of the panel is stored, otherwise the product would
+    // never match it again.
+    $text = (string) $newPanel['name_panel'];
     $stmt = $pdo->prepare("UPDATE product SET Location = :Location2 WHERE id = :name_product AND (Location = :Location OR Location = '/all') AND agent = :agent");
     $stmt->bindParam(':Location2', $text);
     $stmt->bindParam(':name_product', $user['Processing_value']);
@@ -2768,7 +2776,7 @@ elseif ($datain == "systemsms") {
         return;
     }
     update("marzban_panel", "MethodUsername", $methodusername, "name_panel", $user['Processing_value']);
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     if (in_array($methodusername, ['customTextRandom', 'customTextSequential', 'agentCustomTextSequential'], true)) {
         step('getnamecustom', $from_id);
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['customNameSend'], $backadmin, 'HTML');
@@ -2788,7 +2796,7 @@ elseif ($datain == "systemsms") {
     }
     update("marzban_panel", "namecustom", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['savedName']);
 } elseif ($text == $textbotlang['keyboard']['backToCardSettings']) {
     sendmessage($from_id, $textbotlang['users']['selectoption'], $CartManage, 'HTML');
@@ -2884,7 +2892,15 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['getLoc'], $json_list_marzban_panel, 'HTML');
     step('GetLocationEdit', $from_id);
 } elseif ($user['step'] == "GetLocationEdit") {
-    $marzban_list_get = select("marzban_panel", "*", "name_panel", $text, "select");
+    $marzban_list_get = nexora_panel_by_name($text);
+    if (empty($marzban_list_get)) {
+        sendmessage($from_id, $textbotlang['Admin']['managepanel']['invalidSelection'], $json_list_marzban_panel, 'HTML');
+        return;
+    }
+    // The panel is stored with its premium emoji, so the canonical name is
+    // used from here on.
+    $text = (string) $marzban_list_get['name_panel'];
+    update("user", "Processing_value", $text, "id", $from_id);
     if ($marzban_list_get['type'] == "marzban") {
         $Check_token = token_panel($marzban_list_get['code_panel'], false);
         if (isset($Check_token['access_token'])) {
@@ -3095,7 +3111,7 @@ elseif ($datain == "systemsms") {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['repeatPanel'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['changedNamePanel']);
     update("marzban_panel", "name_panel", $text, "name_panel", $user['Processing_value']);
     update("invoice", "Service_location", $text, "Service_location", $user['Processing_value']);
@@ -3111,7 +3127,7 @@ elseif ($datain == "systemsms") {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['invalidDomain'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['changedUrlPanel']);
     update("marzban_panel", "url_panel", $text, "name_panel", $user['Processing_value']);
     update("marzban_panel", "datelogin", null, "name_panel", $user['Processing_value']);
@@ -3120,7 +3136,7 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['askUserGroup'], $backadmin, 'HTML');
     step('getagentpanel', $from_id);
 } elseif ($user['step'] == "getagentpanel") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['userGroupChanged']);
     update("marzban_panel", "agent", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -3132,7 +3148,7 @@ elseif ($datain == "systemsms") {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['invalidDomain'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     if ($typepanel['type'] == "x-ui_single") {
         $req = new CurlRequest($text);
         $response = $req->get();
@@ -3161,7 +3177,7 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['askAdminUuid'], $backadmin, 'HTML');
     step('getuuidadmin', $from_id);
 } elseif ($user['step'] == "getuuidadmin") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['adminUuidSaved']);
     update("marzban_panel", "secret_code", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -3169,7 +3185,7 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['setLimit'], $backadmin, 'HTML');
     step('getlimitnew', $from_id);
 } elseif ($user['step'] == "getlimitnew") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['changedLimit']);
     update("marzban_panel", "limit_panel", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -3181,7 +3197,7 @@ elseif ($datain == "systemsms") {
         sendmessage($from_id, $textbotlang['common']['invalidTime'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['savedData']);
     update("marzban_panel", "time_usertest", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -3193,7 +3209,7 @@ elseif ($datain == "systemsms") {
         sendmessage($from_id, $textbotlang['common']['invalidVolume'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['savedData']);
     update("marzban_panel", "val_usertest", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -3208,7 +3224,7 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['getUsernameNew'], $backadmin, 'HTML');
     step('GetusernameNew', $from_id);
 } elseif ($user['step'] == "GetusernameNew") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['changedUsernamePanel']);
     update("marzban_panel", "username_panel", $text, "name_panel", $user['Processing_value']);
     update("marzban_panel", "datelogin", null, "name_panel", $user['Processing_value']);
@@ -3217,7 +3233,7 @@ elseif ($datain == "systemsms") {
     sendmessage($from_id, $textbotlang['Admin']['managepanel']['getPasswordNew'], $backadmin, 'HTML');
     step('GetpaawordNew', $from_id);
 } elseif ($user['step'] == "GetpaawordNew") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['changedPasswordPanel']);
     update("marzban_panel", "password_panel", $text, "name_panel", $user['Processing_value']);
     update("marzban_panel", "datelogin", null, "name_panel", $user['Processing_value']);
@@ -3228,7 +3244,7 @@ elseif ($datain == "systemsms") {
 } elseif ($user['step'] == "confirmremovepanel") {
     if ($text == $textbotlang['keyboard']['confirm']) {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['removedPanel'], $keyboardadmin, 'HTML');
-        $marzban = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+        $marzban = nexora_panel_by_name($user['Processing_value']);
         $stmt = $pdo->prepare("DELETE FROM marzban_panel WHERE name_panel = :name_panel");
         $stmt->bindParam(':name_panel', $user['Processing_value'], PDO::PARAM_STR);
         $stmt->execute();
@@ -5246,7 +5262,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
         return;
     }
     update("marzban_panel", "Methodextend", extendMethodKey($text), "name_panel", $user['Processing_value']);
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['algorithmExtend']['saveData']);
     step('home', $from_id);
 } elseif ($text == $textbotlang['keyboard']['apiToken'] && $adminrulecheck['rule'] == "administrator") {
@@ -6041,9 +6057,12 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     [$cronText, $cronKeyboard] = cronStatusMenu();
     Editmessagetext($from_id, $message_id, ($datain == "cronstatus_fix" ? $textbotlang['Admin']['cronHealth']['fixed'] . "\n\n" : "") . $cronText, $cronKeyboard);
 } elseif ($text == $textbotlang['keyboard']['financial'] && $adminrulecheck['rule'] == "administrator") {
+    // The old "nSolutions" value is the legacy name of this gateway. It used to
+    // be rewritten to "onSwapinoBot", which switched the gateway ON behind the
+    // administrator's back. An unknown value is now normalised to OFF.
     $swapWalletStatus = getPaySettingValue('statusSwapWallet', 'offSwapinoBot');
     if ($swapWalletStatus != "onSwapinoBot" && $swapWalletStatus != "offSwapinoBot") {
-        update("PaySetting", "ValuePay", "onSwapinoBot", "NamePay", "statusSwapWallet");
+        update("PaySetting", "ValuePay", "offSwapinoBot", "NamePay", "statusSwapWallet");
     }
     sendmessage($from_id, $textbotlang['Admin']['gateway']['intro'], paymentGatewaysKeyboard(), 'HTML');
 } elseif ($text == $textbotlang['keyboard']['renewalCashback'] && $adminrulecheck['rule'] == "administrator") {
@@ -6077,7 +6096,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
 } elseif (preg_match('/^paygw(toggle)?-(\w+)$/', $datain, $gatewayMatch) && isset($paymentGateways[$gatewayMatch[2]]) && $adminrulecheck['rule'] == "administrator") {
     [, $isToggle, $gatewayKey] = $gatewayMatch;
     $gateway = $paymentGateways[$gatewayKey];
-    $gatewayIsOn = getPaySettingValue($gateway['setting'], $gateway['off']) == $gateway['on'];
+    $gatewayIsOn = nexora_pay_switch_is_on(getPaySettingValue($gateway['setting'], $gateway['off']), $gateway['on']);
     if ($isToggle) {
         $gatewayIsOn = !$gatewayIsOn;
         update("PaySetting", "ValuePay", $gatewayIsOn ? $gateway['on'] : $gateway['off'], "NamePay", $gateway['setting']);
@@ -6086,6 +6105,42 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     $gatewayRows = json_decode($gateway['keyboard'], true)['inline_keyboard'];
     array_unshift($gatewayRows, [['text' => $gatewayStatusText, 'callback_data' => "paygwtoggle-$gatewayKey"]]);
     Editmessagetext($from_id, $message_id, sprintf($textbotlang['Admin']['gateway']['detail'], $gateway['label'], $gatewayStatusText), json_encode(['inline_keyboard' => $gatewayRows]));
+} elseif ($text == ($textbotlang['keyboard']['frenzyexApiKey'] ?? '🔑 کلید API فرنزی ایکس') && $adminrulecheck['rule'] == "administrator") {
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['askFrenzyexApiKey'] ?? 'کلید API درگاه فرنزی ایکس را ارسال کنید:'), $backadmin, 'HTML');
+    step('frenzyexapikey', $from_id);
+} elseif ($user['step'] == 'frenzyexapikey') {
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['frenzyexSaved'] ?? '✅ تنظیمات فرنزی ایکس ذخیره شد.'), $frenzyexManage, 'HTML');
+    update("PaySetting", "ValuePay", trim($text), "NamePay", "frenzyex_api_key");
+    step('home', $from_id);
+} elseif ($text == ($textbotlang['keyboard']['frenzyexCallbackSecret'] ?? '🔒 سکرت کال‌بک فرنزی ایکس') && $adminrulecheck['rule'] == "administrator") {
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['askFrenzyexCallbackSecret'] ?? 'سکرت کال‌بک درگاه فرنزی ایکس را ارسال کنید:'), $backadmin, 'HTML');
+    step('frenzyexsecret', $from_id);
+} elseif ($user['step'] == 'frenzyexsecret') {
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['frenzyexSaved'] ?? '✅ تنظیمات فرنزی ایکس ذخیره شد.'), $frenzyexManage, 'HTML');
+    update("PaySetting", "ValuePay", trim($text), "NamePay", "frenzyex_callback_secret");
+    step('home', $from_id);
+} elseif ($text == ($textbotlang['keyboard']['frenzyexBaseUrl'] ?? '🌐 آدرس درگاه فرنزی ایکس') && $adminrulecheck['rule'] == "administrator") {
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['askFrenzyexBaseUrl'] ?? 'آدرس درگاه فرنزی ایکس را ارسال کنید (مثال: https://example.com):'), $backadmin, 'HTML');
+    step('frenzyexbaseurl', $from_id);
+} elseif ($user['step'] == 'frenzyexbaseurl') {
+    $frenzyBase = trim($text);
+    if ($frenzyBase !== '' && !preg_match('#^https?://#i', $frenzyBase)) {
+        $frenzyBase = 'https://' . $frenzyBase;
+    }
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['frenzyexSaved'] ?? '✅ تنظیمات فرنزی ایکس ذخیره شد.'), $frenzyexManage, 'HTML');
+    update("PaySetting", "ValuePay", $frenzyBase, "NamePay", "frenzyex_base_url");
+    step('home', $from_id);
+} elseif ($text == ($textbotlang['keyboard']['cashbackFrenzyex'] ?? '🎁 کش‌بک فرنزی ایکس') && $adminrulecheck['rule'] == "administrator") {
+    sendmessage($from_id, ($textbotlang['Admin']['price']['askPaymentCashback'] ?? 'درصد کش‌بک را ارسال کنید:'), $backadmin, 'HTML');
+    step('frenzyexcashback', $from_id);
+} elseif ($user['step'] == 'frenzyexcashback') {
+    if (!is_numeric($text)) {
+        sendmessage($from_id, ($textbotlang['common']['invalidInput'] ?? 'ورودی نامعتبر است.'), $backadmin, 'HTML');
+        return;
+    }
+    sendmessage($from_id, ($textbotlang['Admin']['gateway']['frenzyexSaved'] ?? '✅ تنظیمات فرنزی ایکس ذخیره شد.'), $frenzyexManage, 'HTML');
+    update("PaySetting", "ValuePay", (string) $text, "NamePay", "cashbackfrenzyex");
+    step('home', $from_id);
 } elseif ($text == $textbotlang['keyboard']['cashbackCartToCart']) {
     sendmessage($from_id, $textbotlang['Admin']['price']['askPaymentCashback'], $backadmin, 'HTML');
     step("getcashcart", $from_id);
@@ -6274,7 +6329,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     }
     update("user", "Processing_value", $panel['name_panel'], "id", $from_id);
 } elseif ($text == $textbotlang['Admin']['config']['btnDelete']) {
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
     $listconfig = [];
     $stmt = $pdo->prepare("SELECT * FROM manualsell WHERE codepanel = :mp14");
     $stmt->execute([':mp14' => $panel['code_panel']]);
@@ -6298,7 +6353,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     step("getnameremove", $from_id);
 } elseif ($user['step'] == "getnameremove") {
     sendmessage($from_id, $textbotlang['Admin']['config']['deleted'], $panelOptions['Manualsale'], 'HTML');
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
     $stmt = $pdo->prepare("DELETE FROM manualsell WHERE namerecord = ? AND codepanel = ?");
     $stmt->execute([$text, $panel['code_panel']]);
     step("home", $from_id);
@@ -6306,7 +6361,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     sendmessage($from_id, $textbotlang['Admin']['price']['askChangeLocation'], $backadmin, 'HTML');
     step('setpricechangelocation', $from_id);
 } elseif ($user['step'] == "setpricechangelocation") {
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['price']['changeLocationSaved']);
     update("marzban_panel", "priceChangeloc", $text, "name_panel", $user['Processing_value']);
     step('home', $from_id);
@@ -6475,7 +6530,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     ]);
     Editmessagetext($from_id, $message_id, $textbotlang['Admin']['card']['afterFirstPayOn'], $keyboardverify);
 } elseif ($text == $textbotlang['keyboard']['editConfig']) {
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
     $listconfig = [];
     $stmt = $pdo->prepare("SELECT * FROM manualsell WHERE codepanel = :mp15");
     $stmt->execute([':mp15' => $panel['code_panel']]);
@@ -6506,7 +6561,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     step("getcontentedit", $from_id);
 } elseif ($user['step'] == "getcontentedit") {
     sendmessage($from_id, $textbotlang['Admin']['saved'], $panelOptions['Manualsale'], 'HTML');
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
     $stmt = $pdo->prepare("UPDATE manualsell SET contentrecord = ? WHERE namerecord = ? AND codepanel = ?");
     $stmt->execute([$text, $user['Processing_value_one'], $panel['code_panel']]);
     step('home', $from_id);
@@ -7412,7 +7467,14 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     sendmessage($from_id, $textsetprotocol, $backadmin, 'HTML');
     step("setinboundandprotocol", $from_id);
 } elseif ($user['step'] == "setinboundandprotocol") {
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
+    if (empty($panel)) {
+        sendmessage($from_id, ($textbotlang['Admin']['managepanel']['invalidSelection'] ?? '❌ پنل پیدا نشد.'), $json_list_marzban_panel, 'HTML');
+        return;
+    }
+    // The panel is addressed by its canonical name (with the premium emoji).
+    $user['Processing_value'] = (string) $panel['name_panel'];
+    update("user", "Processing_value", $user['Processing_value'], "id", $from_id);
     if ($panel['type'] == "marzban") {
         if ($panel['version_panel'] == "1") {
             $DataUserOut = getuser($text, $user['Processing_value']);
@@ -7512,7 +7574,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     }
     step("home", $from_id);
 } elseif ($text == $textbotlang['keyboard']['renewalStatus'] && $adminrulecheck['rule'] == "administrator") {
-    $marzbanstatus = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $marzbanstatus = nexora_panel_by_name($user['Processing_value']);
     $keyboardstatus = json_encode([
         'inline_keyboard' => [
             [
@@ -7523,7 +7585,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     sendmessage($from_id, $textbotlang['Admin']['Status']['activePanel'], $keyboardstatus, 'HTML');
 } elseif ($datain == "on_extend") {
     update("marzban_panel", "status_extend", "off_extend", "name_panel", $user['Processing_value']);
-    $marzbanstatus = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $marzbanstatus = nexora_panel_by_name($user['Processing_value']);
     $keyboardstatus = json_encode([
         'inline_keyboard' => [
             [
@@ -7534,7 +7596,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     Editmessagetext($from_id, $message_id, $textbotlang['Admin']['Status']['activePanelOff'], $keyboardstatus);
 } elseif ($datain == "off_extend") {
     update("marzban_panel", "status_extend", "on_extend", "name_panel", $user['Processing_value']);
-    $marzbanstatus = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $marzbanstatus = nexora_panel_by_name($user['Processing_value']);
     $keyboardstatus = json_encode([
         'inline_keyboard' => [
             [
@@ -7600,7 +7662,7 @@ elseif ($text == $textbotlang['keyboard']['hidePanelForUser'] && $adminrulecheck
         sendmessage($from_id, $textbotlang['common']['invalidInput'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['hiddenForUser']);
     if ($typepanel['hide_user'] == null) {
         $hideuserid = [];
@@ -7619,7 +7681,7 @@ elseif ($text == $textbotlang['keyboard']['hidePanelForUser'] && $adminrulecheck
         sendmessage($from_id, $textbotlang['common']['invalidInput'], $backadmin, 'HTML');
         return;
     }
-    $typepanel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $typepanel = nexora_panel_by_name($user['Processing_value']);
     step("home", $from_id);
     if ($typepanel['hide_user'] == null) {
         outtypepanel($typepanel['type'], $textbotlang['Admin']['managepanel']['hiddenListEmpty']);
@@ -8519,7 +8581,14 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     $stmt->bindParam(':name', $text, PDO::PARAM_STR);
     $stmt->execute();
 } elseif ($text == $textbotlang['keyboard']['panelFeatureStatus'] && $adminrulecheck['rule'] == "administrator") {
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
+    if (empty($panel)) {
+        sendmessage($from_id, ($textbotlang['Admin']['managepanel']['invalidSelection'] ?? '❌ پنل پیدا نشد.'), $json_list_marzban_panel, 'HTML');
+        return;
+    }
+    // The panel is stored with its premium emoji, so the canonical name is
+    // used for every lookup from here on.
+    $panelName = (string) $panel['name_panel'];
     if (!in_array($panel['subvip'], ['offsubvip', 'onsubvip'])) {
         update("marzban_panel", "subvip", "offsubvip", "code_panel", $panel['code_panel']);
         $panel = select("marzban_panel", "*", "code_panel", $panel['code_panel'], "select");
@@ -8527,83 +8596,56 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     if (!in_array($panel['version_panel'], ['0', '1'])) {
         $panel['version_panel'] = '0';
     }
-    $customvlume = json_decode($panel['customvolume'], true);
-    $statusconfig = [
-        'onconfig' => $textbotlang['Admin']['Status']['statuson'],
-        'offconfig' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['config']];
-    $statussublink = [
-        'onsublink' => $textbotlang['Admin']['Status']['statuson'],
-        'offsublink' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['sublink']];
-    $statusshowbuy = [
-        'active' => $textbotlang['Admin']['Status']['statuson'],
-        'disable' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['status']];
-    $statusshowtest = [
-        'ONTestAccount' => $textbotlang['Admin']['Status']['statuson'],
-        'OFFTestAccount' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['TestAccount']];
-    $statusconnecton = [
-        'onconecton' => $textbotlang['Admin']['Status']['statuson'],
-        'offconecton' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['conecton']];
-    $status_extend = [
-        'on_extend' => $textbotlang['Admin']['Status']['statuson'],
-        'off_extend' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['status_extend']];
-    $changeloc = [
-        'onchangeloc' => $textbotlang['Admin']['Status']['statuson'],
-        'offchangeloc' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['changeloc']];
-    $inbocunddisable = [
-        'oninbounddisable' => $textbotlang['Admin']['Status']['statuson'],
-        'offinbounddisable' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['inboundstatus']];
-    $subvip = [
-        'onsubvip' => $textbotlang['Admin']['Status']['statuson'],
-        'offsubvip' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['subvip']];
-    $customstatusf = [
-        '1' => $textbotlang['Admin']['Status']['statuson'],
-        '0' => $textbotlang['Admin']['Status']['statusoff']
-    ][$customvlume['f']];
-    $customstatusn = [
-        '1' => $textbotlang['Admin']['Status']['statuson'],
-        '0' => $textbotlang['Admin']['Status']['statusoff']
-    ][$customvlume['n']];
-    $customstatusn2 = [
-        '1' => $textbotlang['Admin']['Status']['statuson'],
-        '0' => $textbotlang['Admin']['Status']['statusoff']
-    ][$customvlume['n2']];
-    $on_hold_test = [
-        '1' => $textbotlang['Admin']['Status']['statuson'],
-        '0' => $textbotlang['Admin']['Status']['statusoff']
-    ][$panel['on_hold_test']];
+    $customvlume = json_decode((string) ($panel['customvolume'] ?? ''), true);
+    if (!is_array($customvlume)) {
+        $customvlume = ['f' => '0', 'n' => '0', 'n2' => '0'];
+    }
+    $statusText = function ($value, string $on, string $off) use ($textbotlang) {
+        if ($value === $on) {
+            return $textbotlang['Admin']['Status']['statuson'];
+        }
+        if ($value === $off) {
+            return $textbotlang['Admin']['Status']['statusoff'];
+        }
+        return $textbotlang['Admin']['Status']['statusoff'];
+    };
+    $statusconfig = $statusText($panel['config'] ?? '', 'onconfig', 'offconfig');
+    $statussublink = $statusText($panel['sublink'] ?? '', 'onsublink', 'offsublink');
+    $statusshowbuy = $statusText($panel['status'] ?? '', 'active', 'disable');
+    $statusshowtest = $statusText($panel['TestAccount'] ?? '', 'ONTestAccount', 'OFFTestAccount');
+    $statusconnecton = $statusText($panel['conecton'] ?? '', 'onconecton', 'offconecton');
+    $status_extend = $statusText($panel['status_extend'] ?? '', 'on_extend', 'off_extend');
+    $changeloc = $statusText($panel['changeloc'] ?? '', 'onchangeloc', 'offchangeloc');
+    $inbocunddisable = $statusText($panel['inboundstatus'] ?? '', 'oninbounddisable', 'offinbounddisable');
+    $subvip = $statusText($panel['subvip'] ?? '', 'onsubvip', 'offsubvip');
+    $customstatusf = $statusText($customvlume['f'] ?? '0', '1', '0');
+    $customstatusn = $statusText($customvlume['n'] ?? '0', '1', '0');
+    $customstatusn2 = $statusText($customvlume['n2'] ?? '0', '1', '0');
+    $on_hold_test = $statusText($panel['on_hold_test'] ?? '0', '1', '0');
     $Bot_Status = [
         'inline_keyboard' => [
             [
-                ['text' => $statusshowbuy, 'callback_data' => "editpanel-statusbuy-{$panel['status']}-{$panel['code_panel']}"],
+                ['text' => $statusshowbuy, 'callback_data' => "editpanel-statusbuy-" . ($panel['status'] ?? 'active') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['showPanel'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $statusshowtest, 'callback_data' => "editpanel-statustest-{$panel['TestAccount']}-{$panel['code_panel']}"],
+                ['text' => $statusshowtest, 'callback_data' => "editpanel-statustest-" . ($panel['TestAccount'] ?? 'OFFTestAccount') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['showTestAccount'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $status_extend, 'callback_data' => "editpanel-stautsextend-{$panel['status_extend']}-{$panel['code_panel']}"],
+                ['text' => $status_extend, 'callback_data' => "editpanel-stautsextend-" . ($panel['status_extend'] ?? 'off_extend') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['renewalStatus'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusf, 'callback_data' => "editpanel-customstatusf-{$customvlume['f']}-{$panel['code_panel']}"],
+                ['text' => $customstatusf, 'callback_data' => "editpanel-customstatusf-" . ($customvlume['f'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupF'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusn, 'callback_data' => "editpanel-customstatusn-{$customvlume['n']}-{$panel['code_panel']}"],
+                ['text' => $customstatusn, 'callback_data' => "editpanel-customstatusn-" . ($customvlume['n'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupN'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusn2, 'callback_data' => "editpanel-customstatusn2-{$customvlume['n2']}-{$panel['code_panel']}"],
+                ['text' => $customstatusn2, 'callback_data' => "editpanel-customstatusn2-" . ($customvlume['n2'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupN2'], 'callback_data' => "none"],
             ]
         ]
@@ -8821,27 +8863,27 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     $Bot_Status = [
         'inline_keyboard' => [
             [
-                ['text' => $statusshowbuy, 'callback_data' => "editpanel-statusbuy-{$panel['status']}-{$panel['code_panel']}"],
+                ['text' => $statusshowbuy, 'callback_data' => "editpanel-statusbuy-" . ($panel['status'] ?? 'active') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['showPanel'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $statusshowtest, 'callback_data' => "editpanel-statustest-{$panel['TestAccount']}-{$panel['code_panel']}"],
+                ['text' => $statusshowtest, 'callback_data' => "editpanel-statustest-" . ($panel['TestAccount'] ?? 'OFFTestAccount') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['showTestAccount'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $status_extend, 'callback_data' => "editpanel-stautsextend-{$panel['status_extend']}-{$panel['code_panel']}"],
+                ['text' => $status_extend, 'callback_data' => "editpanel-stautsextend-" . ($panel['status_extend'] ?? 'off_extend') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['renewalStatus'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusf, 'callback_data' => "editpanel-customstatusf-{$customvlume['f']}-{$panel['code_panel']}"],
+                ['text' => $customstatusf, 'callback_data' => "editpanel-customstatusf-" . ($customvlume['f'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupF'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusn, 'callback_data' => "editpanel-customstatusn-{$customvlume['n']}-{$panel['code_panel']}"],
+                ['text' => $customstatusn, 'callback_data' => "editpanel-customstatusn-" . ($customvlume['n'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupN'], 'callback_data' => "none"],
             ],
             [
-                ['text' => $customstatusn2, 'callback_data' => "editpanel-customstatusn2-{$customvlume['n2']}-{$panel['code_panel']}"],
+                ['text' => $customstatusn2, 'callback_data' => "editpanel-customstatusn2-" . ($customvlume['n2'] ?? '0') . "-{$panel['code_panel']}"],
                 ['text' => $textbotlang['keyboard']['customServiceGroupN2'], 'callback_data' => "none"],
             ]
         ]
@@ -9808,7 +9850,7 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     update("PaySetting", "ValuePay", $text, "NamePay", "marchent_floypay");
     step('home', $from_id);
 } elseif ($text == $textbotlang['keyboard']['panelSetting']) {
-    $panel = select("marzban_panel", "*", "name_panel", $user['Processing_value'], "select");
+    $panel = nexora_panel_by_name($user['Processing_value']);
     if (!$panel) {
         sendmessage($from_id, $textbotlang['Admin']['managepanel']['notFound'], null, 'HTML');
         return;

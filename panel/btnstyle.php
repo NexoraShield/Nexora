@@ -82,7 +82,7 @@ function nexora_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
 {
     $bg = $STYLE_COLORS[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($STYLE_COLORS[$style])) ? '#fff' : 'inherit';
-    $icon = ($emoji !== '' && $emoji !== null) ? '◆ ' : '';
+    $icon = function_exists('nexora_emoji_preview_html') ? nexora_emoji_preview_html($emoji) : '';
     return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
 }
 

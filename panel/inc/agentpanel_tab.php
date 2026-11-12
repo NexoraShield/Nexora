@@ -141,7 +141,7 @@ foreach (nexora_color_palette() as $slug => $info) {
           <td><?= number_format((float) ($it['credit'] ?? 0)) ?></td>
           <td style="min-width:240px"><?= nl2br(htmlspecialchars((string) ($it['description'] ?? ''))) ?></td>
           <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
-          <td><?= ($it['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= nexora_emoji_preview_html((string) ($it['btn_emoji_id'] ?? '')) ?: '<span class="cf">—</span>' ?></td>
           <td><?= ($it['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
           <td><?= (int) ($it['display_order'] ?? 0) ?></td>
           <td style="white-space:nowrap">

@@ -489,6 +489,12 @@ function clearSelectCache($table = null)
 {
     $store = &getSelectCacheStore();
 
+    // The memoized PaySetting rows live in their own static, so they have to be
+    // dropped as well whenever the table is invalidated.
+    if ($table === null || strcasecmp((string) $table, 'PaySetting') === 0) {
+        $GLOBALS['nexora_paysetting_memo_version'] = ($GLOBALS['nexora_paysetting_memo_version'] ?? 0) + 1;
+    }
+
     if ($table === null) {
         $store['results'] = [];
         $store['tableIndex'] = [];
@@ -714,16 +720,126 @@ function rowExists($table, $field, $value) {
 }
 function getPaySettingValue($name, $default = null)
 {
-    $rows = select("PaySetting", "*", null, null, "fetchAll", ['cache' => false]);
-    if (is_array($rows)) {
-        foreach ($rows as $row) {
-            if (isset($row['NamePay']) && strcasecmp(trim((string) $row['NamePay']), trim((string) $name)) === 0) {
-                return array_key_exists('ValuePay', $row) ? $row['ValuePay'] : $default;
+    // The whole PaySetting table is read once per request. This function is
+    // called dozens of times while the keyboards are built and every call used
+    // to run a fresh query that bypassed the cache on purpose.
+    static $rows = null;
+    static $index = null;
+    static $version = -1;
+    $memoVersion = $GLOBALS['nexora_paysetting_memo_version'] ?? 0;
+    if ($rows === null || $version !== $memoVersion) {
+        $rows = select("PaySetting", "*", null, null, "fetchAll");
+        $index = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (!isset($row['NamePay'])) {
+                    continue;
+                }
+                $key = strtolower(trim((string) $row['NamePay']));
+                if (!array_key_exists($key, $index)) {
+                    $index[$key] = $row;
+                }
             }
         }
+        $version = $memoVersion;
+    }
+    $key = strtolower(trim((string) $name));
+    if (isset($index[$key])) {
+        return array_key_exists('ValuePay', $index[$key]) ? $index[$key]['ValuePay'] : $default;
     }
 
     return $default;
+}
+/**
+ * Finds a panel by the text the administrator pressed.
+ *
+ * A reply keyboard shows the name of the panel as plain text: the premium
+ * emoji of the name is an entity of the message, so the text that comes back
+ * has the fallback character instead of the "<tg-emoji>" tag. The panel is
+ * therefore also looked up without its emoji tag, otherwise every panel with
+ * a premium emoji in its name could not be selected.
+ */
+function nexora_panel_by_name($name): ?array
+{
+    global $pdo;
+    static $memo = [];
+    $name = trim((string) $name);
+    if ($name === '' || !($pdo instanceof PDO)) {
+        return null;
+    }
+    $memoKey = $name;
+    if (array_key_exists($memoKey, $memo)) {
+        return $memo[$memoKey];
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM marzban_panel WHERE name_panel = ? LIMIT 1");
+        $stmt->execute([$name]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $memo[$memoKey] = $row;
+            return $row;
+        }
+        $plain = trim(stripCustomEmojiTags($name));
+        if ($plain !== '' && $plain !== $name) {
+            $stmt = $pdo->prepare("SELECT * FROM marzban_panel WHERE name_panel = ? LIMIT 1");
+            $stmt->execute([$plain]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $memo[$memoKey] = $row;
+                return $row;
+            }
+        }
+        // The name in the database carries the emoji tag, the pressed text does
+        // not, so every panel is compared without its tag as well.
+        $rows = $pdo->query("SELECT * FROM marzban_panel")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $candidate) {
+            if (trim(stripCustomEmojiTags((string) ($candidate['name_panel'] ?? ''))) === $plain) {
+                $memo[$memoKey] = $candidate;
+                return $candidate;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('nexora_panel_by_name: ' . $e->getMessage());
+    }
+    $memo[$memoKey] = null;
+    return null;
+}
+
+/**
+ * The exact name of a panel as it is stored in the database. Everything that
+ * compares a panel name (products, invoices, the admin menu) has to use it.
+ */
+function nexora_panel_canonical_name($name): string
+{
+    $panel = nexora_panel_by_name($name);
+    if ($panel && !empty($panel['name_panel'])) {
+        return (string) $panel['name_panel'];
+    }
+    return trim((string) $name);
+}
+
+function nexora_pay_switch_is_on($value, $onValue): bool
+{
+    // Every gateway stores its own spelling of "on" ("oncard", "onzarinpal",
+    // "1", "on", ...). Older installations carry the legacy name of the switch
+    // as well, so the state is derived from the value instead of being compared
+    // with one single string.
+    $value = strtolower(trim((string) $value));
+    if ($value === '') {
+        return false;
+    }
+    $onValue = strtolower(trim((string) $onValue));
+    if ($onValue !== '' && $value === $onValue) {
+        return true;
+    }
+    if ($value === '1' || $value === 'on') {
+        return true;
+    }
+    // "oncard" / "onzarinpal" / ... but never "offcard" / "offnSolutions".
+    if (strpos($value, 'off') === 0) {
+        return false;
+    }
+    return strpos($value, 'on') === 0;
 }
 function generateUUID()
 {
@@ -1259,6 +1375,61 @@ function DirectPayment($order_id, $image = 'images.jpg')
                 }
                 return;
             }
+        }
+        // Agent shop products are not a VPN service: the administrator
+        // delivers them by hand. The buyer gets a confirmation and every
+        // administrator receives the details of the payer and of the product.
+        if (preg_match('/^agentshop:([^|]+)\|?(.*)$/s', (string) ($get_invoice['note'] ?? ''), $agentShopMarker)) {
+            $claimAgentShopInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
+            $claimAgentShopInvoice->execute([$get_invoice['id_invoice']]);
+            clearSelectCache('invoice');
+            if ($claimAgentShopInvoice->rowCount() === 0) {
+                error_log('[DirectPayment] agent shop order already settled id_order=' . $order_id);
+                return;
+            }
+            $agentShopProduct = null;
+            try {
+                $agentShopStmt = $pdo->prepare("SELECT * FROM product WHERE code_product = ? AND agent = 'agentshop' LIMIT 1");
+                $agentShopStmt->execute([trim((string) $agentShopMarker[1])]);
+                $agentShopProduct = $agentShopStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $e) {
+                error_log('[DirectPayment] agent shop product lookup: ' . $e->getMessage());
+            }
+            $agentShopName = (string) ($agentShopProduct['name_product'] ?? ($get_invoice['name_product'] ?? '—'));
+            $agentShopNote = trim((string) $agentShopMarker[2]);
+            $agentShopBuyerName = trim((string) ($Balance_id['username'] ?? ''));
+            $agentShopBuyerText = ($textbotlang['users']['agentShop']['paid'] ?? "✅ پرداخت شما تایید شد.\nمحصول: {name}\nمبلغ: {price} تومان\n\nاین محصول به صورت دستی برای شما ارسال می‌شود.");
+            $agentShopBuyerText = strtr($agentShopBuyerText, [
+                '{name}' => $agentShopName,
+                '{price}' => number_format($orderPrice),
+            ]);
+            sendmessage($Balance_id['id'], $agentShopBuyerText, null, 'HTML');
+            $agentShopAdminText = "🛒 <b>سفارش فروشگاه نمایندگی</b>\n"
+                . "👤 کاربر: " . $Balance_id['id'] . ($agentShopBuyerName !== '' ? " (" . $agentShopBuyerName . ")" : '') . "\n"
+                . "🏷 محصول: " . $agentShopName . "\n"
+                . "💳 مبلغ پرداختی: " . number_format($orderPrice) . " تومان\n"
+                . "🧾 شماره فاکتور: " . $get_invoice['id_invoice'] . "\n"
+                . ($agentShopNote !== '' ? "📝 توضیحات: " . $agentShopNote . "\n" : '')
+                . "⚠️ این سفارش باید دستی برای خریدار ارسال شود.";
+            if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
+                telegram('sendmessage', [
+                    'chat_id' => $setting['Channel_Report'],
+                    'message_thread_id' => $buyreport,
+                    'text' => $agentShopAdminText,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+            foreach ((array) $admin_ids as $agentShopAdminId) {
+                if (trim((string) $agentShopAdminId) === '') {
+                    continue;
+                }
+                telegram('sendmessage', [
+                    'chat_id' => $agentShopAdminId,
+                    'text' => $agentShopAdminText,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+            return;
         }
         // Agent panel packages are delivered as an agent login + wallet credit
         // instead of a VPN service.
@@ -2720,15 +2891,23 @@ function applyKeyboardLabels($rows, array $labels)
 function languagechange($path_dir = null, string $lang = 'fa')
 {
     global $from_id;
+    // The language file is ~340 KB and used to be parsed twice per request
+    // (once by index.php and once by keyboard.php). It is parsed once now.
+    static $cache = [];
     $user_lang = select("user", "*", "id", $from_id);
     $lang = $user_lang ? $user_lang['lang'] : $lang;
     $allowed = ['fa', 'en', 'ar', 'ru', 'zh'];
     if (!in_array($lang, $allowed, true))
         $lang = 'fa';
     $base_dir = $path_dir ?: __DIR__;
+    $cacheKey = $base_dir . '|' . $lang;
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
     $texts = require $base_dir . '/lang/' . $lang . '.php';
     if (is_array($texts))
         bottext_apply_overrides($texts, $lang);
+    $cache[$cacheKey] = $texts;
     return $texts;
 }
 function bottext_apply_overrides(array &$base, $lang)

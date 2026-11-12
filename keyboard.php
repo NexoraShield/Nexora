@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once __DIR__ . '/nexora_style.php';
+require_once __DIR__ . '/gateways.php';
 $setting = select("setting", "*", null, null, "select");
 $textbotlang = languagechange();
 //-----------------------------[  text panel  ]-------------------------------
@@ -338,104 +339,107 @@ $payment_status_nowpayment = getPaySettingValue("statusnowpayment");
 $step_payment = [
     'inline_keyboard' => []
 ];
-if ($PaySettingcard == "oncard" && intval($users['cardpayment']) == 1) {
+if (nexora_pay_switch_is_on($PaySettingcard, "oncard") && intval($users['cardpayment']) == 1) {
     if ($PaySettingpv == "oncardpv") {
         $step_payment['inline_keyboard'][] = [
-            ['text' => $textbotlang['textbot']['cartToCart'], 'url' => "https://t.me/$usernamecart"],
+            ['text' => $textbotlang['textbot']['cartToCart'], 'url' => "https://t.me/$usernamecart", 'style' => nexora_gateway_native_style('card')],
         ];
     } else {
         $step_payment['inline_keyboard'][] = [
-            ['text' => $textbotlang['textbot']['cartToCart'], 'callback_data' => "cart_to_offline"],
+            ['text' => $textbotlang['textbot']['cartToCart'], 'callback_data' => "cart_to_offline", 'style' => nexora_gateway_native_style('card')],
         ];
     }
 }
 if (($paymentexits == 0 && $paymentverify == "onpayverify"))
     unset($step_payment['inline_keyboard']);
-if ($PaySettingnow == "onnowpayment") {
+if (nexora_pay_switch_is_on($PaySettingnow, "onnowpayment")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['nowPayment'], 'callback_data' => "plisio"]
+        ['text' => $textbotlang['textbot']['nowPayment'], 'callback_data' => "plisio", 'style' => nexora_gateway_native_style('plisio')]
     ];
 }
-if ($payment_status_nowpayment == "1") {
+if (nexora_pay_switch_is_on($payment_status_nowpayment, "1")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['cryptoPayment'], 'callback_data' => "nowpayment"]
+        ['text' => $textbotlang['textbot']['cryptoPayment'], 'callback_data' => "nowpayment", 'style' => nexora_gateway_native_style('nowpayment')]
     ];
 }
-if ($affilnecurrency == "ondigi") {
+if (nexora_pay_switch_is_on($affilnecurrency, "ondigi")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['nowPaymentTron'], 'callback_data' => "digitaltron"]
+        ['text' => $textbotlang['textbot']['nowPaymentTron'], 'callback_data' => "digitaltron", 'style' => nexora_gateway_native_style('digi')]
     ];
 }
-if ($Swapino == "onSwapinoBot") {
+if (nexora_pay_switch_is_on($Swapino, "onSwapinoBot")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay2'], 'callback_data' => "iranpay1"]
+        ['text' => $textbotlang['textbot']['iranPay2'], 'callback_data' => "iranpay1", 'style' => nexora_gateway_native_style('iranpay1')]
     ];
 }
-if ($trnadoo == "onternado") {
+if (nexora_pay_switch_is_on($trnadoo, "onternado")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay3'], 'callback_data' => "iranpay2"]
+        ['text' => $textbotlang['textbot']['iranPay3'], 'callback_data' => "iranpay2", 'style' => nexora_gateway_native_style('iranpay2')]
     ];
 }
 // Both halves matter: the admin has switched it on, *and* the key and endpoint
 // exist. A gateway shown without them takes the buyer to a page that cannot be
 // created — the button is the last place to find that out.
 if (
-    $abangateway4 == "oniranpay4"
+    nexora_pay_switch_is_on($abangateway4, "oniranpay4")
     && trim((string) getPaySettingValue("apiiranpay4", "")) !== ""
     && trim((string) getPaySettingValue("apiiranpay4", "")) !== "0"
     && function_exists('abangatewayEndpoint') && abangatewayEndpoint() !== null
 ) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay4'], 'callback_data' => "iranpay4"]
+        ['text' => $textbotlang['textbot']['iranPay4'], 'callback_data' => "iranpay4", 'style' => nexora_gateway_native_style('iranpay4')]
     ];
 }
-if ($arzireyali3 == "oniranpay3" && $paymentexits >= 2) {
+if (nexora_pay_switch_is_on($arzireyali3, "oniranpay3") && $paymentexits >= 2) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay1'], 'callback_data' => "iranpay3"]
+        ['text' => $textbotlang['textbot']['iranPay1'], 'callback_data' => "iranpay3", 'style' => nexora_gateway_native_style('iranpay3')]
     ];
 }
-if ($PaySettingaqayepardakht == "onaqayepardakht") {
+if (nexora_pay_switch_is_on($PaySettingaqayepardakht, "onaqayepardakht")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['aqayePardakht'], 'callback_data' => "aqayepardakht"]
+        ['text' => $textbotlang['textbot']['aqayePardakht'], 'callback_data' => "aqayepardakht", 'style' => nexora_gateway_native_style('aqayepardakht')]
     ];
 }
-if ($zarinpal == "onzarinpal") {
+if (nexora_pay_switch_is_on($zarinpal, "onzarinpal")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['zarinPal'], 'callback_data' => "zarinpal"]
+        ['text' => $textbotlang['textbot']['zarinPal'], 'callback_data' => "zarinpal", 'style' => nexora_gateway_native_style('zarinpal')]
     ];
 }
 $variza = getPaySettingValue("variza_status", "offvariza");
 if (
-    $variza == "onvariza"
+    nexora_pay_switch_is_on($variza, "onvariza")
     && trim((string) getPaySettingValue("variza_api_token", "")) !== ""
     && trim((string) getPaySettingValue("variza_api_token", "")) !== "0"
     && trim((string) getPaySettingValue("variza_webhook_secret", "")) !== ""
     && trim((string) getPaySettingValue("variza_webhook_secret", "")) !== "0"
 ) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['variza'], 'callback_data' => "variza"]
+        ['text' => $textbotlang['textbot']['variza'], 'callback_data' => "variza", 'style' => nexora_gateway_native_style('variza')]
     ];
 }
 $frenzyexStatus = getPaySettingValue("frenzyexstatus", "offfrenzyex");
+$frenzyexBase = trim((string) getPaySettingValue("frenzyex_base_url", ""));
 if (
-    ($frenzyexStatus === "onfrenzyex" || $frenzyexStatus === "1" || $frenzyexStatus === "on")
+    nexora_pay_switch_is_on($frenzyexStatus, "onfrenzyex")
     && trim((string) getPaySettingValue("frenzyex_api_key", "")) !== ""
     && trim((string) getPaySettingValue("frenzyex_api_key", "")) !== "0"
     && trim((string) getPaySettingValue("frenzyex_callback_secret", "")) !== ""
     && trim((string) getPaySettingValue("frenzyex_callback_secret", "")) !== "0"
+    && $frenzyexBase !== ""
+    && $frenzyexBase !== "0"
 ) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['frenzyexPayment'] ?? '💳 پرداخت با فرنزي اکس', 'callback_data' => "frenzyex"]
+        ['text' => $textbotlang['textbot']['frenzyexPayment'] ?? '💳 پرداخت با فرنزي اکس', 'callback_data' => "frenzyex", 'style' => nexora_gateway_native_style('frenzyex')]
     ];
 }
-if ($paymentstatussnotverify == "onverifypay") {
+if (nexora_pay_switch_is_on($paymentstatussnotverify, "onverifypay")) {
     $step_payment['inline_keyboard'][] = [
         ['text' => $textbotlang['textbot']['paymentNotVerify'], 'callback_data' => "paymentnotverify"]
     ];
 }
-if (intval($paymentsstartelegram) == 1) {
+if (nexora_pay_switch_is_on($paymentsstartelegram, "1")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['starTelegram'], 'callback_data' => "startelegrams"]
+        ['text' => $textbotlang['textbot']['starTelegram'], 'callback_data' => "startelegrams", 'style' => nexora_gateway_native_style('star')]
     ];
 }
 $step_payment['inline_keyboard'][] = [
@@ -1620,6 +1624,15 @@ $nowpayment_setting_keyboard = json_encode([
         [['text' => $textbotlang['keyboard']['backToGateways'], 'callback_data' => "paygwlist"]],
     ]
 ]);
+$frenzyexManage = json_encode([
+    'inline_keyboard' => [
+        [['text' => $textbotlang['keyboard']['frenzyexApiKey'] ?? '🔑 کلید API فرنزی ایکس', 'callback_data' => "paygwopt-frenzyexApiKey"]],
+        [['text' => $textbotlang['keyboard']['frenzyexCallbackSecret'] ?? '🔒 سکرت کال‌بک فرنزی ایکس', 'callback_data' => "paygwopt-frenzyexCallbackSecret"]],
+        [['text' => $textbotlang['keyboard']['frenzyexBaseUrl'] ?? '🌐 آدرس درگاه فرنزی ایکس', 'callback_data' => "paygwopt-frenzyexBaseUrl"]],
+        [['text' => $textbotlang['keyboard']['cashbackFrenzyex'] ?? '🎁 کش‌بک فرنزی ایکس', 'callback_data' => "paygwopt-cashbackFrenzyex"]],
+        [['text' => $textbotlang['keyboard']['backToGateways'], 'callback_data' => "paygwlist"]],
+    ]
+]);
 $paymentGateways = [
     'card' => ['label' => $textbotlang['keyboard']['cartToCartGateway'], 'setting' => 'Cartstatus', 'on' => 'oncard', 'off' => 'offcard', 'keyboard' => $CartManage],
     'plisio' => ['label' => 'Plisio', 'setting' => 'nowpaymentstatus', 'on' => 'onnowpayment', 'off' => 'offnowpayment', 'keyboard' => $NowPaymentsManage],
@@ -1633,13 +1646,14 @@ $paymentGateways = [
     'variza' => ['label' => $textbotlang['keyboard']['varizaGateway'], 'setting' => 'variza_status', 'on' => 'onvariza', 'off' => 'offvariza', 'keyboard' => $keyboardvariza],
     'digi' => ['label' => $textbotlang['keyboard']['cryptoOfflinePayment'], 'setting' => 'digistatus', 'on' => 'ondigi', 'off' => 'offdigi', 'keyboard' => $tronnowpayments],
     'star' => ['label' => 'Star Telegram', 'setting' => 'statusstar', 'on' => '1', 'off' => '0', 'keyboard' => $Startelegram],
+    'frenzyex' => ['label' => $textbotlang['keyboard']['frenzyexGateway'] ?? 'FrenzyEx', 'setting' => 'frenzyexstatus', 'on' => 'onfrenzyex', 'off' => 'offfrenzyex', 'keyboard' => $frenzyexManage],
 ];
 function paymentGatewaysKeyboard()
 {
     global $paymentGateways, $textbotlang;
     $rows = [];
     foreach ($paymentGateways as $key => $gateway) {
-        $mark = getPaySettingValue($gateway['setting'], $gateway['off']) == $gateway['on'] ? '✅' : '❌';
+        $mark = nexora_pay_switch_is_on(getPaySettingValue($gateway['setting'], $gateway['off']), $gateway['on']) ? '✅' : '❌';
         $rows[] = [['text' => "$mark {$gateway['label']}", 'callback_data' => "paygw-$key"]];
     }
     $rows[] = [['text' => $textbotlang['keyboard']['gatewaysGeneralSettings'], 'callback_data' => "none"]];
