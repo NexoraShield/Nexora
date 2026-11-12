@@ -6488,14 +6488,6 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentStmt = $pdo->prepare("SELECT * FROM product WHERE agent = 'agentshop' AND status_product = 'active' ORDER BY display_order, id");
     $agentStmt->execute();
     $agentItems = $agentStmt->fetchAll(PDO::FETCH_ASSOC);
-    if (!$agentItems) {
-        if ($datain == "agentshop") {
-            Editmessagetext($from_id, $message_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
-        } else {
-            sendmessage($from_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
-        }
-        return;
-    }
     $agentRows = [];
     $agentShowPrice = getShopSetting("statusshowprice")['value'] != "offshowprice";
     foreach ($agentItems as $agentItem) {
@@ -6510,6 +6502,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentRows[] = [nexora_style_btn($agentTopup['label'], "topup_agentshop", ['btn_style' => $agentTopup['style']])];
     $agentKeyboard = json_encode(['inline_keyboard' => $agentRows]);
     $agentIntro = $textbotlang['users']['agentShop']['intro'] . "\n\n" . $textbotlang['users']['agentShop']['steps'];
+    if (!$agentItems) {
+        $agentIntro = $textbotlang['users']['agentShop']['empty'] . "\n\n" . $agentIntro;
+    }
     if ($datain == "agentshop") {
         Editmessagetext($from_id, $message_id, $agentIntro, $agentKeyboard, 'HTML');
     } else {
@@ -6599,14 +6594,6 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     $agentPanelItems = nexora_agent_panel_products(true);
-    if (!$agentPanelItems) {
-        if ($datain == "agentpanelshop") {
-            Editmessagetext($from_id, $message_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
-        } else {
-            sendmessage($from_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
-        }
-        return;
-    }
     $agentPanelRows = [];
     $agentPanelShowPrice = getShopSetting("statusshowprice")['value'] != "offshowprice";
     foreach ($agentPanelItems as $agentPanelItem) {
@@ -6621,6 +6608,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentPanelRows[] = [nexora_style_btn($agentPanelTopup['label'], "topup_agentpanelshop", ['btn_style' => $agentPanelTopup['style']])];
     $agentPanelKeyboard = json_encode(['inline_keyboard' => $agentPanelRows]);
     $agentPanelIntro = $textbotlang['users']['agentPanelShop']['intro'] . "\n\n" . $textbotlang['users']['agentPanelShop']['steps'];
+    if (!$agentPanelItems) {
+        $agentPanelIntro = $textbotlang['users']['agentPanelShop']['empty'] . "\n\n" . $agentPanelIntro;
+    }
     if ($datain == "agentpanelshop") {
         Editmessagetext($from_id, $message_id, $agentPanelIntro, $agentPanelKeyboard, 'HTML');
     } else {
