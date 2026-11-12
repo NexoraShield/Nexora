@@ -213,7 +213,7 @@ include __DIR__ . '/inc/layout_head.php';
           foreach ($products as $p): ?>
             <tr>
               <td class="cf"><?= $i++ ?></td>
-              <td class="cs"><?= htmlspecialchars($p['name_product'] ?? '') ?></td>
+              <td class="cs"><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($p['name_product'] ?? '')) : htmlspecialchars($p['name_product'] ?? '') ?></td>
               <td class="cn cs"><?= number_format((int) ($p['price_product'] ?? 0)) ?> <span class="cf"><?= $textbotlang['panel']['productFieldServiceDays'] ?></span></td>
               <td class="cn"><?= htmlspecialchars($p['Volume_constraint'] ?? '—') ?> <span class="cf">GB</span></td>
               <td class="cn"><?= htmlspecialchars($p['Service_time'] ?? '—') ?> <span class="cf"><?= $textbotlang['panel']['productFieldPriceToman'] ?></span></td>

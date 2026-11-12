@@ -111,7 +111,7 @@ include __DIR__ . '/inc/layout_head.php';
           foreach ($categories as $c): ?>
             <tr>
               <td class="cf"><?= $i++ ?></td>
-              <td class="cs"><?= htmlspecialchars($c['remark'] ?? '') ?></td>
+              <td class="cs"><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($c['remark'] ?? '')) : htmlspecialchars($c['remark'] ?? '') ?></td>
               <td>
                 <div style="display:flex;gap:5px;justify-content:flex-end">
                   <button class="btn btn-ghost btn-sm btn-icon" title="<?= htmlspecialchars($textbotlang['panel']['productEditBtn']) ?>"

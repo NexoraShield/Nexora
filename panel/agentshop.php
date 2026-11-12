@@ -142,7 +142,7 @@ else: ?>
       <?php foreach ($items as $it): ?>
         <tr>
           <td><?= nexora_agentshop_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
-          <td><?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
+          <td><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($it['name_product'] ?? '')) : htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
           <td><?= number_format((float) ($it['price_product'] ?? 0)) ?></td>
           <td><?= (int) ($it['Volume_constraint'] ?? 0) ?> GB</td>
           <td><?= (int) ($it['Service_time'] ?? 0) ?> روز</td>

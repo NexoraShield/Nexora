@@ -196,8 +196,41 @@ if (!function_exists('nexora_emoji_image_url')) {
     }
 }
 
-if (!function_exists('nexora_emoji_preview_html')) {
+if (!function_exists('nexora_emoji_text_to_html')) {
     /**
+     * Turns a label that may carry premium emoji tags into HTML.
+     *
+     * The tag becomes the picture of the custom emoji, so the web panel shows
+     * the same emoji the bot uses instead of the raw "<tg-emoji ...>" text.
+     */
+    function nexora_emoji_text_to_html(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+        if (stripos($text, '<tg-emoji') === false) {
+            return htmlspecialchars($text);
+        }
+        $result = '';
+        $offset = 0;
+        $pattern = '#<tg-emoji\b[^>]*\bemoji-id\s*=\s*"(\d+)"[^>]*>(.*?)</tg-emoji>#isu';
+        while (preg_match($pattern, $text, $m, PREG_OFFSET_CAPTURE, $offset)) {
+            $start = $m[0][1];
+            $result .= htmlspecialchars(substr($text, $offset, $start - $offset));
+            $id = $m[1][0];
+            $fallback = trim(strip_tags((string) $m[2][0]));
+            $url = 'https://t.me/i/emoji/' . $id . '.webp';
+            $result .= '<img class="nx-emoji" src="' . htmlspecialchars($url) . '"'
+                . ' alt="' . htmlspecialchars($fallback) . '"'
+                . ' title="' . htmlspecialchars($fallback) . '" loading="lazy">';
+            $offset = $start + strlen((string) $m[0][0]);
+        }
+        $result .= htmlspecialchars(substr($text, $offset));
+        return $result;
+    }
+}
+
+if (!function_exists('nexora_emoji_preview_html')) {    /**
      * The premium emoji of a button as a picture.
      *
      * When the emoji cannot be resolved, nothing is shown at all: the raw id

@@ -34,5 +34,8 @@ function nexora_agentshop_preview($name, $style, $emoji, $colors): string
     $bg = $colors[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($colors[$style])) ? '#fff' : 'inherit';
     $icon = function_exists('nexora_emoji_preview_html') ? nexora_emoji_preview_html($emoji) : '';
-    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
+    $label = function_exists('nexora_emoji_text_to_html')
+        ? nexora_emoji_text_to_html((string) $name)
+        : htmlspecialchars((string) $name);
+    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . $label . '</span>';
 }

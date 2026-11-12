@@ -83,7 +83,10 @@ function nexora_btnstyle_preview($name, $style, $emoji, $STYLE_COLORS): string
     $bg = $STYLE_COLORS[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($STYLE_COLORS[$style])) ? '#fff' : 'inherit';
     $icon = function_exists('nexora_emoji_preview_html') ? nexora_emoji_preview_html($emoji) : '';
-    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
+    $label = function_exists('nexora_emoji_text_to_html')
+        ? nexora_emoji_text_to_html((string) $name)
+        : htmlspecialchars((string) $name);
+    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . $label . '</span>';
 }
 
 function nexora_btnstyle_style_select($selected): string
@@ -119,7 +122,7 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="action" value="product">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
           <td><?= nexora_btnstyle_preview($p['name_product'] ?? '', (string) ($p['btn_style'] ?? ''), (string) ($p['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
-          <td class="cs"><?= htmlspecialchars($p['name_product'] ?? '') ?></td>
+          <td class="cs"><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($p['name_product'] ?? '')) : htmlspecialchars($p['name_product'] ?? '') ?></td>
           <td><?= nexora_btnstyle_style_select($p['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($p['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>
@@ -142,7 +145,7 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="action" value="category">
           <input type="hidden" name="edit_id" value="<?= (int) $c['id'] ?>">
           <td><?= nexora_btnstyle_preview($c['remark'] ?? '', (string) ($c['btn_style'] ?? ''), (string) ($c['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
-          <td class="cs"><?= htmlspecialchars($c['remark'] ?? '') ?></td>
+          <td class="cs"><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($c['remark'] ?? '')) : htmlspecialchars($c['remark'] ?? '') ?></td>
           <td><?= nexora_btnstyle_style_select($c['btn_style'] ?? '') ?></td>
           <td><input type="text" name="btn_emoji_id" class="input ms-emoji-field" data-ms-max="1" dir="ltr" style="max-width:170px" placeholder="emoji id" value="<?= htmlspecialchars((string) ($c['btn_emoji_id'] ?? '')) ?>"></td>
           <td><button type="submit" class="btn btn-primary btn-sm">ذخیره</button></td>

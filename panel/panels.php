@@ -90,8 +90,8 @@ $flashErr = get_flash('error'); ?>
           <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
           <input type="hidden" name="action" value="edit">
           <input type="hidden" name="edit_id" value="<?= (int) $p['id'] ?>">
-          <td><span style="display:inline-block;background:<?= $bg ?>;color:<?= $fg ?>;border-radius:8px;padding:4px 12px;font-size:.8rem"><?= nexora_emoji_preview_html($em) . htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?></span></td>
-          <td class="cs"><?= htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?><br><small style="opacity:.6"><?= htmlspecialchars($p['type'] ?? '') ?></small></td>
+          <td><span style="display:inline-block;background:<?= $bg ?>;color:<?= $fg ?>;border-radius:8px;padding:4px 12px;font-size:.8rem"><?= nexora_emoji_preview_html($em) . (function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($p['name_panel'] ?? '')) : htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '')) ?></span></td>
+          <td class="cs"><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($p['name_panel'] ?? '')) : htmlspecialchars(stripCustomEmojiTags($p['name_panel']) ?? '') ?><br><small style="opacity:.6"><?= htmlspecialchars($p['type'] ?? '') ?></small></td>
           <td>
             <select name="status" class="select" style="min-width:90px">
               <option value="active" <?= ($p['status'] ?? '') === 'active' ? ' selected' : '' ?>>فعال</option>

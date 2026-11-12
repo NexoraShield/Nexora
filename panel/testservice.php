@@ -41,7 +41,10 @@ function nexora_testservice_preview($name, $style, $emoji, $colors): string
     $bg = $colors[$style] ?? 'var(--surface-3)';
     $fg = ($style !== '' && isset($colors[$style])) ? '#fff' : 'inherit';
     $icon = function_exists('nexora_emoji_preview_html') ? nexora_emoji_preview_html($emoji) : '';
-    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
+    $label = function_exists('nexora_emoji_text_to_html')
+        ? nexora_emoji_text_to_html((string) $name)
+        : htmlspecialchars((string) $name);
+    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . $label . '</span>';
 }
 // The name of the panel without the premium emoji tag (only for the display)
 function nexora_testservice_panel_label(string $name): string
@@ -196,10 +199,10 @@ include __DIR__ . '/inc/layout_head.php';
       ?>
         <tr>
           <td><?= nexora_testservice_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $colors) ?></td>
-          <td><?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
+          <td><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($it['name_product'] ?? '')) : htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
           <td><?= (int) ($it['Volume_constraint'] ?? 0) ?></td>
           <td><?= (int) ($it['Service_time'] ?? 0) ?></td>
-          <td><?= htmlspecialchars(nexora_testservice_panel_label((string) ($it['Location'] ?? ''))) ?></td>
+          <td><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($it['Location'] ?? '')) : htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
           <td style="min-width:160px"><?= htmlspecialchars($inboundText) ?></td>
           <td style="min-width:200px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
           <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
