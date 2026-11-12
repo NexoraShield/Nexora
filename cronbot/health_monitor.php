@@ -25,7 +25,11 @@ foreach ($panels as $panel) {
         if (!$reachable) {
             error_log("[health] Panel " . $panel['name_panel'] . " is unreachable");
             // Notify admin
-            $adminId = $setting['adminnumber'] ?? '';
+            $adminId = '';
+            $adminRow = select("admin", "id_admin", null, null, "FETCH_COLUMN");
+            if (is_array($adminRow) && $adminRow) {
+                $adminId = (string) $adminRow[0];
+            }
             if ($adminId) {
                 $msg = "⚠️ پنل " . $panel['name_panel'] . " غیرقابل دسترس است!";
                 sendmessage($adminId, $msg, null, 'HTML');

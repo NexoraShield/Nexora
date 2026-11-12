@@ -836,7 +836,8 @@ function channel(array $id_channel)
             'user_id' => $from_id
         ]);
         if ($response['ok']) {
-            if (!in_array($response['result']['status'], ['member', 'creator', 'administrator'])) {
+            $status = is_array($response['result'] ?? null) ? (string)($response['result']['status'] ?? '') : '';
+            if (!in_array($status, ['member', 'creator', 'administrator'])) {
                 $channel_link[] = $channel;
             }
         }
