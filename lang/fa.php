@@ -1714,6 +1714,7 @@ n2',
                         'updated' => '✅ لینک برنامه با موفقیت بروزرسانی گردید.',
                 ],
                 'btnKeyboard' => [
+                          'advancedFeatures' => '🚀 قابلیت های پیشرفته',
                         'addPanel' => '🖥 اضافه کردن پنل',
                         'manageUser' => '👤 مدیریت کاربر',
                         'managementPanel' => '✏️ مدیریت پنل',

@@ -172,6 +172,202 @@ if ($datain == "paygwback") {
     $confirmationText = $miniAppInstructionText . $textbotlang['Admin']['report']['msgHidden'];
     Editmessagetext($from_id, $message_id, $confirmationText, $confirmationKeyboard, 'HTML');
     return;
+} elseif ($text == $textbotlang['Admin']['btnKeyboard']['advancedFeatures'] && $adminrulecheck['rule'] == "administrator") {
+    // ---------------- [ advanced features ] ----------------
+    $advancedRows = [
+        [['text' => '📦 محصولات فروشگاه', 'callback_data' => "adv_products"]],
+        [['text' => '🗂 دسته‌بندی‌ها', 'callback_data' => "adv_categories"]],
+        [['text' => '🖥 پنل‌ها', 'callback_data' => "adv_panels"]],
+        [['text' => '💳 درگاه‌های پرداخت', 'callback_data' => "adv_gateways"]],
+        [['text' => '🎫 تیکت‌های پشتیبانی', 'callback_data' => "adv_tickets"]],
+        [['text' => '💾 بکاپ‌گیری فوری', 'callback_data' => "adv_backup"]],
+        [['text' => '⚙️ صف عملیات', 'callback_data' => "adv_queue"]],
+        [['text' => '🩺 سلامت پنل‌ها', 'callback_data' => "adv_health"]],
+        [['text' => '🔑 توکن API', 'callback_data' => "adv_token"]],
+        [['text' => '🎨 رنگ و ایموجی دکمه‌ها', 'callback_data' => "adv_colors"]],
+        [['text' => '🛒 فروشگاه نمایندگی', 'callback_data' => "adv_agentshop"]],
+        [['text' => '🖥 فروش پنل به نمایندگان', 'callback_data' => "adv_agentpanel"]],
+        [['text' => '🤖 برنامه‌های آماده', 'callback_data' => "adv_apps"]],
+        [['text' => '🤝 یادداشت‌های همکاری', 'callback_data' => "adv_collab"]],
+        [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "admin"]],
+    ];
+    $advancedKeyboard = json_encode(['inline_keyboard' => $advancedRows]);
+    sendmessage($from_id, "🚀 <b>قابلیت‌های پیشرفته</b>\n\nهمان امکاناتی که در پنل تحت وب دارید، مستقیم داخل ربات:\nیکی از گزینه‌ها را انتخاب کنید:", $advancedKeyboard, 'HTML');
+} elseif (preg_match('/^adv_(products|categories|panels|gateways|tickets|queue|health|token|colors|agentshop|agentpanel|apps|collab)$/', $datain, $advancedMatch) && $adminrulecheck['rule'] == "administrator") {
+    // ---------------- [ advanced features: details ] ----------------
+    $advancedTopic = (string) $advancedMatch[1];
+    $advancedTitle = '';
+    $advancedLines = [];
+    try {
+        switch ($advancedTopic) {
+            case 'products':
+                $advancedTitle = '📦 محصولات فروشگاه';
+                foreach (select("product", "*", null, null, "fetchAll") as $row) {
+                    $inbounds = json_decode((string) ($row['inbounds'] ?? ''), true);
+                    $advancedLines[] = '• <b>' . $row['name_product'] . '</b> — ' . number_format((float) $row['price_product']) . ' تومان | '
+                        . $row['Volume_constraint'] . ' GB | ' . $row['Service_time'] . ' روز | '
+                        . $row['Location'] . ' | agent=' . $row['agent']
+                        . (is_array($inbounds) && $inbounds ? ' | inbound=' . implode(',', array_slice($inbounds, 0, 2)) : ' | inbound=پیش‌فرض پنل');
+                }
+                break;
+            case 'categories':
+                $advancedTitle = '🗂 دسته‌بندی‌ها';
+                foreach (select("category", "*", null, null, "fetchAll") as $row) {
+                    $advancedLines[] = '• <b>' . $row['remark'] . '</b>';
+                }
+                break;
+            case 'panels':
+                $advancedTitle = '🖥 پنل‌ها';
+                foreach (select("marzban_panel", "*", null, null, "fetchAll") as $row) {
+                    $advancedLines[] = '• <b>' . $row['name_panel'] . '</b> | ' . $row['type'] . ' | ' . $row['status']
+                        . ' | ' . $row['url_panel'];
+                }
+                break;
+            case 'gateways':
+                $advancedTitle = '💳 درگاه‌های پرداخت';
+                $gatewayNames = ['statusstar' => '⭐ استر', 'zarinpalstatus' => '🟡 زرین‌پال', 'statusiranpay3' => '💸 ایران‌پی ۳', 'statusiranpay4' => '💳 آبان‌گیت', 'statusaqayepardakht' => '🔵 آقای پرداخت', 'statusnowpayment' => '💰 نوم‌پیمنت', 'plisio' => '🪙 پلیسیو', 'variza_status' => '💳 واریزا', 'frenzyexstatus' => '💎 فرنزی‌اکس', 'Cartstatus' => '💳 کارت به کارت'];
+                foreach (select("PaySetting", "*", null, null, "fetchAll") as $row) {
+                    $name = (string) $row['NamePay'];
+                    if (!isset($gatewayNames[$name])) {
+                        continue;
+                    }
+                    $value = (string) $row['ValuePay'];
+                    $on = in_array(strtolower($value), ['onstar', 'zarinpal', 'oniranpay3', 'oniranpay4', 'onaqayepardakht', 'onnowpayment', 'onplisio', 'onvariza', 'onfrenzyex', 'oncard'], true)
+                        || strpos($value, 'on') === 0;
+                    $advancedLines[] = '• ' . $gatewayNames[$name] . ': ' . ($on ? '✅ فعال' : '⚪️ غیرفعال');
+                }
+                break;
+            case 'tickets':
+                $advancedTitle = '🎫 تیکت‌های پشتیبانی';
+                $tickets = select("support_message", "*", null, null, "fetchAll");
+                if (is_array($tickets)) {
+                    foreach (array_slice($tickets, 0, 20) as $row) {
+                        $advancedLines[] = '• #' . $row['id'] . ' | ' . $row['iduser'] . ' | ' . $row['status'] . ' | ' . mb_substr((string) ($row['text'] ?? ''), 0, 60);
+                    }
+                    if (!$tickets) {
+                        $advancedLines[] = 'تیکتی ثبت نشده است.';
+                    }
+                }
+                break;
+            case 'queue':
+                $advancedTitle = '⚙️ صف عملیات';
+                $queue = select("op_queue", "*", null, null, "fetchAll");
+                if (is_array($queue)) {
+                    foreach (array_slice($queue, 0, 20) as $row) {
+                        $advancedLines[] = '• #' . $row['id'] . ' | ' . $row['op_type'] . ' | ' . $row['status'] . ' | تلاش‌ها: ' . $row['attempts'];
+                    }
+                    if (!$queue) {
+                        $advancedLines[] = 'صف خالی است.';
+                    }
+                }
+                break;
+            case 'health':
+                $advancedTitle = '🩺 سلامت پنل‌ها';
+                foreach (select("marzban_panel", "*", null, null, "fetchAll") as $row) {
+                    $inbounds = json_decode((string) ($row['inbounds'] ?? ''), true);
+                    $hasInbound = is_array($inbounds) && $inbounds ? '✅' : '⭕️';
+                    $advancedLines[] = '• <b>' . $row['name_panel'] . '</b> | وضعیت: ' . $row['status']
+                        . ' | اتصال: ' . $hasInbound . ' | نسخه: ' . $row['version_panel'];
+                }
+                break;
+            case 'token':
+                $advancedTitle = '🔑 توکن API';
+                $apiToken = trim((string) (select("setting", "api_token", null, null, "select")['api_token'] ?? ''));
+                if ($apiToken === '') {
+                    $apiToken = 'nx_' . substr(hash('sha256', 'api-token-' . $domainhosts), 0, 40);
+                    update("setting", "api_token", $apiToken, null, null);
+                }
+                $advancedLines[] = 'توکن شما:';
+                $advancedLines[] = '<code>' . $apiToken . '</code>';
+                $advancedLines[] = 'آدرس: <code>https://' . $domainhosts . '/api/user.php</code>';
+                $advancedLines[] = 'روش: <code>POST</code> با هدر <code>Token: ...</code> یا فیلد <code>token</code> در JSON';
+                break;
+            case 'colors':
+                $advancedTitle = '🎨 رنگ و ایموجی دکمه‌ها';
+                foreach (select("PaySetting", "*", null, null, "fetchAll") as $row) {
+                    $name = (string) $row['NamePay'];
+                    if (strpos($name, 'nx_bb_style_') !== 0 && strpos($name, 'nx_bb_emoji_') !== 0) {
+                        continue;
+                    }
+                    $advancedLines[] = '• ' . str_replace(['nx_bb_style_', 'nx_bb_emoji_'], ['رنگ ', 'ایموجی '], $name) . ': ' . ((string) $row['ValuePay'] === '' ? '—' : $row['ValuePay']);
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز رنگ یا ایموجی‌ای برای دکمه‌ها تنظیم نشده است.';
+                }
+                break;
+            case 'agentshop':
+                $advancedTitle = '🛒 فروشگاه نمایندگی (محصولات)';
+                foreach (select("product", "*", "agent", "agentshop", "fetchAll") as $row) {
+                    $advancedLines[] = '• <b>' . $row['name_product'] . '</b> — ' . number_format((float) $row['price_product']) . ' تومان | ' . $row['Volume_constraint'] . ' GB | ' . $row['Service_time'] . ' روز | ' . $row['Location'] . ' | ' . $row['status_product'];
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز محصولی برای فروشگاه نمایندگی تعریف نشده است.';
+                }
+                break;
+            case 'agentpanel':
+                $advancedTitle = '🖥 فروش پنل به نمایندگان';
+                foreach (nexora_agent_panel_products(false) as $row) {
+                    $advancedLines[] = '• <b>' . $row['name'] . '</b> — ' . number_format((float) $row['price']) . ' تومان | اعتبار پنل: ' . number_format((float) $row['credit']) . ' تومان | ' . $row['status_product'];
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز پنلی برای فروش به نمایندگان تعریف نشده است.';
+                }
+                break;
+            case 'apps':
+                $advancedTitle = '🤖 برنامه‌های آماده';
+                foreach (select("app", "*", null, null, "fetchAll") as $row) {
+                    $advancedLines[] = '• <b>' . $row['name'] . '</b> — ' . $row['link'];
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز برنامه‌ای ثبت نشده است.';
+                }
+                break;
+            case 'collab':
+                $advancedTitle = '🤝 یادداشت‌های همکاری';
+                foreach (select("collab_notes", "*", null, null, "fetchAll") as $row) {
+                    $advancedLines[] = '• <b>' . $row['title'] . '</b>' . (!empty($row['pinned']) ? ' 📌' : '') . ' — ' . mb_substr((string) $row['body'], 0, 60);
+                }
+                if (!$advancedLines) {
+                    $advancedLines[] = 'هنوز یادداشتی ثبت نشده است.';
+                }
+                break;
+        }
+    } catch (Throwable $e) {
+        error_log('advanced features (' . $advancedTopic . '): ' . $e->getMessage());
+        $advancedTitle = '⚠️ خطا';
+        $advancedLines[] = 'دریافت اطلاعات با خطا مواجه شد: ' . $e->getMessage();
+    }
+    if (count($advancedLines) > 40) {
+        $advancedLines = array_slice($advancedLines, 0, 40);
+    }
+    $advancedBack = json_encode(['inline_keyboard' => [[['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => "admin"]]]]);
+    $advancedText = '<b>' . $advancedTitle . '</b>' . "\n\n" . (count($advancedLines) ? implode("\n", $advancedLines) : 'موردی برای نمایش وجود ندارد.');
+    sendmessage($from_id, $advancedText, $advancedBack, 'HTML');
+} elseif ($datain == "adv_backup") {
+    if ($adminrulecheck['rule'] != "administrator") {
+        return;
+    }
+    $backupFile = sys_get_temp_dir() . '/nexora_admin_backup_' . date('Ymd_His') . '.sql';
+    $backupCmd = 'mysqldump -h ' . escapeshellarg((string) $dbhost)
+        . ' -u ' . escapeshellarg((string) $usernamedb)
+        . ' -p' . escapeshellarg((string) $passworddb)
+        . ' --no-tablespaces --ssl-mode=DISABLED ' . escapeshellarg((string) $dbname)
+        . ' > ' . escapeshellarg($backupFile) . ' 2>/dev/null';
+    $backupOut = [];
+    $backupRc = 0;
+    @exec($backupCmd, $backupOut, $backupRc);
+    if ($backupRc === 0 && is_file($backupFile) && filesize($backupFile) > 100) {
+        telegram('sendDocument', [
+            'chat_id' => $from_id,
+            'document' => new CURLFile($backupFile),
+            'caption' => "💾 بکاپ دیتابیس\n🕒 " . date('Y/m/d H:i:s') . "\n📦 " . number_format(filesize($backupFile)) . " bytes",
+        ]);
+        @unlink($backupFile);
+        sendmessage($from_id, "✅ بکاپ دیتابیس ساخته و برای شما ارسال شد.", null, 'HTML');
+    } else {
+        @unlink($backupFile);
+        sendmessage($from_id, "⭕️ ساخت بکاپ ناموفق بود. دسترسی mysqldump روی سرور را بررسی کنید.", null, 'HTML');
+    }
 } elseif ($text == $textbotlang['Admin']['backMenuBtn']) {
     if ($buyreport == "0" || $otherservice == "0" || $otherreport == "0" || $paymentreports == "0" || $reporttest == "0" || $errorreport == "0") {
         sendmessage($from_id, $textbotlang['Admin']['activeBotText'], $setting_panel, 'HTML');

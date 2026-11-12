@@ -1715,6 +1715,7 @@ Send the token above in the <code>Token</code> header of every request.',
                         'updated' => '✅ The app link was updated successfully.',
                 ],
                 'btnKeyboard' => [
+                          'advancedFeatures' => '🚀 Advanced features',
                         'addPanel' => '🖥 Add panel',
                         'manageUser' => '👤 User management',
                         'managementPanel' => '✏️ Panel management',

@@ -1715,6 +1715,7 @@ n2',
                         'updated' => '✅ 应用链接更新成功。',
                 ],
                 'btnKeyboard' => [
+                          'advancedFeatures' => '🚀 高级功能',
                         'addPanel' => '🖥 添加面板',
                         'manageUser' => '👤 用户管理',
                         'managementPanel' => '✏️ 面板管理',
