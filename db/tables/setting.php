@@ -12,7 +12,7 @@ $cronStatus = json_encode([
     'uptime_node' => false,
     'uptime_panel' => false,
 ]);
-$keyboardMain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}],[{"text":"text_agentpanelshop"}]]}';
+$keyboardMain = '{"keyboard":[[{"text":"text_sell","style":"primary"},{"text":"text_extend","style":"primary"}],[{"text":"text_usertest","style":"primary"},{"text":"text_wheel_luck","style":"primary"}],[{"text":"text_Purchased_services","style":"primary"},{"text":"accountwallet","style":"primary"}],[{"text":"text_affiliates","style":"primary"},{"text":"text_Tariff_list","style":"primary"}],[{"text":"text_support","style":"primary"},{"text":"text_help","style":"primary"}],[{"text":"text_agentpanel","style":"primary"},{"text":"text_requestagent","style":"primary"}],[{"text":"text_agentshop","style":"primary"}],[{"text":"text_agentpanelshop","style":"primary"}]]}';
 
 return [
     'create' => <<<SQL

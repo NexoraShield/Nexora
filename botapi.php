@@ -36,7 +36,7 @@ function walkKeyboardButtons($replyMarkup, callable $handler)
                 if (!is_array($button) || !isset($button['text']) || !is_string($button['text'])) {
                     continue;
                 }
-                $updated = $handler($button);
+                $updated = $handler($button, $markupKey);
                 if ($updated !== $button) {
                     $markup[$markupKey][$rowKey][$btnKey] = $updated;
                     $changed = true;
@@ -52,11 +52,19 @@ function walkKeyboardButtons($replyMarkup, callable $handler)
 }
 function applyCustomEmojiToMarkup($replyMarkup)
 {
-    return walkKeyboardButtons($replyMarkup, function ($button) {
-        $label = splitCustomEmojiLabel($button['text']);
+    return walkKeyboardButtons($replyMarkup, function ($button, $markupKey = 'inline_keyboard') {
+        // An inline keyboard button can show the premium emoji as an icon, so
+        // the fallback character is removed from the text (otherwise the emoji
+        // would be shown twice). A reply keyboard has no icon field, there the
+        // fallback character has to stay - otherwise the emoji is lost.
+        $keepFallback = ($markupKey !== 'inline_keyboard');
+        $label = splitCustomEmojiLabel($button['text'], $keepFallback);
         $button['text'] = $label['text'];
-        if ($label['icon'] !== '' && !isset($button['icon_custom_emoji_id'])) {
+        if (!$keepFallback && $label['icon'] !== '' && !isset($button['icon_custom_emoji_id'])) {
             $button['icon_custom_emoji_id'] = $label['icon'];
+        }
+        if ($keepFallback) {
+            unset($button['icon_custom_emoji_id']);
         }
         return $button;
     });
@@ -133,7 +141,7 @@ function customEmojiBlocked($token = null, $block = false)
                     unset($stored[$storedKey]);
                 }
             }
-            $stored[$key] = $now + 21600;
+            $stored[$key] = $now + 1800;
             $encoded = json_encode($stored);
             if ($encoded !== false) {
                 @file_put_contents($cacheFile, $encoded, LOCK_EX);

@@ -37,11 +37,46 @@ if ($method == "POST" && is_array($keyboard)) {
         exit;
     }
     $keyboardmain = ['keyboard' => $keyboard];
+    // The colour of a button is kept when the layout is saved: the editor
+    // only sends the text of the buttons, so the colour of the old layout is
+    // copied over. A button that never had a colour gets the blue default.
+    $oldLayout = json_decode((string) (select("setting", "keyboardmain", null, null, "select")['keyboardmain'] ?? ''), true);
+    if (is_array($oldLayout) && isset($oldLayout['keyboard']) && is_array($oldLayout['keyboard'])) {
+        $oldStyles = [];
+        foreach ($oldLayout['keyboard'] as $oldRow) {
+            foreach ((array) $oldRow as $oldButton) {
+                if (!is_array($oldButton) || !isset($oldButton['text'])) {
+                    continue;
+                }
+                $style = trim((string) ($oldButton['style'] ?? ''));
+                if ($style === '') {
+                    continue;
+                }
+                $oldStyles[(string) $oldButton['text']] = $style;
+            }
+        }
+        foreach ($keyboard as $rowKey => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            foreach ($row as $btnKey => $button) {
+                if (!is_array($button) || !isset($button['text'])) {
+                    continue;
+                }
+                if (isset($button['style']) && trim((string) $button['style']) !== '') {
+                    continue;
+                }
+                $text = (string) $button['text'];
+                $keyboard[$rowKey][$btnKey]['style'] = $oldStyles[$text] ?? 'primary';
+            }
+        }
+        $keyboardmain = ['keyboard' => $keyboard];
+    }
     update("setting", "keyboardmain", json_encode($keyboardmain), null, null);
     echo json_encode(['ok' => true]);
     exit;
 } else {
-    $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}],[{"text":"text_agentpanelshop"}]]}';
+    $keyboardmain = '{"keyboard":[[{"text":"text_sell","style":"primary"},{"text":"text_extend","style":"primary"}],[{"text":"text_usertest","style":"primary"},{"text":"text_wheel_luck","style":"primary"}],[{"text":"text_Purchased_services","style":"primary"},{"text":"accountwallet","style":"primary"}],[{"text":"text_affiliates","style":"primary"},{"text":"text_Tariff_list","style":"primary"}],[{"text":"text_support","style":"primary"},{"text":"text_help","style":"primary"}],[{"text":"text_agentpanel","style":"primary"},{"text":"text_requestagent","style":"primary"}],[{"text":"text_agentshop","style":"primary"}],[{"text":"text_agentpanelshop","style":"primary"}]]}';
     $action = filter_input(INPUT_GET, 'action');
     if ($action === "reaset") {
         csrf_check_get();

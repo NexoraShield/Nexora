@@ -18,6 +18,7 @@ return [
                 'msg_emoji_unsupported' => '⚠️ 此机器人无法显示高级表情。
 文本已保存，但会用普通表情代替高级表情。
 如需启用，机器人所有者需拥有 Telegram Premium 订阅，或机器人拥有在 Fragment 购买的用户名。',
+                'msg_emoji_hint' => '💎 您可以在发送文本时一并发送高级表情符号，显示效果与您发送的完全一致。',
                 'msg_closed' => '已关闭。',
                 'langs' => [
                         'fa' => '🇮🇷 فارسی',
@@ -26,6 +27,38 @@ return [
                         'zh' => '🇨🇳 中文',
                 ],
                 'items' => [
+                        [
+                                'label' => '按钮：购买代理面板',
+                                'key' => 'textbot.agentShop',
+                        ],
+                        [
+                                'label' => '按钮：购买代理面板商城',
+                                'key' => 'textbot.agentPanelShop',
+                        ],
+                        [
+                                'label' => '按钮：代理面板',
+                                'key' => 'textbot.agentPanel',
+                        ],
+                        [
+                                'label' => '按钮：申请代理',
+                                'key' => 'textbot.requestAgent',
+                        ],
+                        [
+                                'label' => '按钮：面板充值',
+                                'key' => 'textbot.topUpButton',
+                        ],
+                        [
+                                'label' => '按钮：返回',
+                                'key' => 'users.backbtn',
+                        ],
+                        [
+                                'label' => '按钮：返回管理面板',
+                                'key' => 'Admin.backAdminBtn',
+                        ],
+                        [
+                                'label' => '按钮：返回主菜单',
+                                'key' => 'Admin.backMenuBtn',
+                        ],
                         [
                                 'label' => '欢迎文本',
                                 'key' => 'users.text_start',

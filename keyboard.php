@@ -1725,6 +1725,17 @@ function keyboard_list_text($lang)
     global $textbotlang;
     $keyboard_text = ['inline_keyboard' => []];
     $keyboard_list_text = $textbotlang['bottext']['items'];
+    // The texts that were already customised are marked with a green dot.
+    $changed = [];
+    $row = select("setting", "text_edit", null, null, "select");
+    $map = json_decode((string) ($row['text_edit'] ?? ''), true);
+    if (is_array($map) && isset($map[$lang]) && is_array($map[$lang])) {
+        foreach ($map[$lang] as $group => $pairs) {
+            foreach ((array) $pairs as $key => $value) {
+                $changed[$group . '.' . $key] = true;
+            }
+        }
+    }
     $keyboard_text['inline_keyboard'][] = [
         ['text' => ($lang == 'fa' ? "✅" : "") . $textbotlang['bottext']['langs']['fa'], 'callback_data' => "bt_lang:fa"],
         ['text' => ($lang == 'en' ? "✅" : "") . $textbotlang['bottext']['langs']['en'], 'callback_data' => "bt_lang:en"],
@@ -1732,7 +1743,11 @@ function keyboard_list_text($lang)
         ['text' => ($lang == 'zh' ? "✅" : "") . $textbotlang['bottext']['langs']['zh'], 'callback_data' => "bt_lang:zh"],
     ];
     foreach ($keyboard_list_text as $data) {
-        $keyboard_text['inline_keyboard'][] = [['text' => $data['label'], 'callback_data' => "bt_edit|$lang|{$data['key']}"]];
+        $label = (string) ($data['label'] ?? '');
+        if ($label !== '' && isset($changed[(string) ($data['key'] ?? '')])) {
+            $label = '🟢 ' . $label;
+        }
+        $keyboard_text['inline_keyboard'][] = [['text' => $label, 'callback_data' => "bt_edit|$lang|{$data['key']}"]];
     }
     $keyboard_text['inline_keyboard'][] = [['text' => $textbotlang['bottext']['btn_close'], 'callback_data' => 'bt_close']];
     return json_encode($keyboard_text);

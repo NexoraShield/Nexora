@@ -557,7 +557,10 @@ if (!function_exists('nexora_apply_bb_style')) {
                     }
                     if ($styleKey !== null) {
                         $native = nexora_btn_style($map['style'][$styleKey]);
-                        if ($native !== '' && !isset($btn['style'])) {
+                        // A colour that was chosen in the web panel always wins:
+                        // the keyboard layout only carries the default colour
+                        // of the button.
+                        if ($native !== '' && (!isset($btn['style']) || $btn['style'] !== $native)) {
                             $btn['style'] = $native; $changed = true;
                         }
                     }

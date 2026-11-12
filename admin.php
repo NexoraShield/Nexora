@@ -9805,7 +9805,7 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     if (!in_array($bt_lang, ['fa', 'en', 'ru', 'zh'], true)) {
         $bt_lang = 'fa';
     }
-    sendmessage($from_id, $textbotlang['Admin']['askNewText'] . "\n\n" . $textbotlang['bottext']['reset_hint'], $backadmin, 'HTML');
+    sendmessage($from_id, $textbotlang['Admin']['askNewText'] . "\n\n" . ($textbotlang['bottext']['msg_emoji_hint'] ?? '') . "\n\n" . $textbotlang['bottext']['reset_hint'], $backadmin, 'HTML');
     savedata("clear", "bt_lang", $bt_lang);
     savedata("save", "bt_key", $bt_key);
     step("get_new_text", $from_id);
@@ -9837,6 +9837,23 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
         sendmessage($from_id, $textbotlang['bottext']['msg_empty'], $backadmin, 'HTML');
         return;
     }
+    // A premium emoji is stored as a <tg-emoji> tag. Before the text is saved
+    // it is sent as a preview: when Telegram refuses it (the bot cannot use
+    // premium emoji or the id is wrong) the plain text with the normal emoji
+    // is stored instead, so the edit is never lost and the button keeps
+    // working.
+    $bt_emojiRejected = false;
+    if ($bt_new !== '0' && stripos($bt_new, '<tg-emoji') !== false) {
+        $bt_wasBlocked = customEmojiBlocked();
+        sendmessage($from_id, $bt_new, null, 'HTML');
+        if (!$bt_wasBlocked && customEmojiBlocked()) {
+            $bt_plain = trim(preg_replace('/[ \t]+/u', ' ', stripCustomEmojiTags($bt_new)));
+            if ($bt_plain !== '') {
+                $bt_new = $bt_plain;
+                $bt_emojiRejected = true;
+            }
+        }
+    }
     $bt_map = (isset($setting['text_edit']) && $setting['text_edit']) ? json_decode($setting['text_edit'], true) : [];
     if (!is_array($bt_map)) {
         $bt_map = [];
@@ -9861,11 +9878,8 @@ if ($datain == "settimecornday" && $adminrulecheck['rule'] == "administrator") {
     $textbotlang = languagechange();
     $bt_home = strtr($textbotlang['bottext']['home_text'], ['{lang}' => $textbotlang['bottext']['langs'][$bt_lang] ?? $bt_lang]);
     sendmessage($from_id, $bt_reset ? $textbotlang['bottext']['msg_reset_done'] : $textbotlang['bottext']['msg_saved'], $keyboardadmin, 'HTML');
-    if (!$bt_reset && stripos($bt_new, '<tg-emoji') !== false) {
-        sendmessage($from_id, $bt_new, null, 'HTML');
-        if (customEmojiBlocked()) {
-            sendmessage($from_id, $textbotlang['bottext']['msg_emoji_unsupported'], null, 'HTML');
-        }
+    if ($bt_emojiRejected) {
+        sendmessage($from_id, $textbotlang['bottext']['msg_emoji_unsupported'], null, 'HTML');
     }
     sendmessage($from_id, $bt_home, keyboard_list_text($bt_lang), 'HTML');
 }

@@ -18,6 +18,7 @@ Current language: <b>{lang}</b>',
                 'msg_emoji_unsupported' => '⚠️ Premium emoji cannot be displayed by this bot.
 The text was saved, but a regular emoji is shown instead of the premium one.
 To enable it, the bot owner needs a Telegram Premium subscription, or the bot must own a username purchased on Fragment.',
+                'msg_emoji_hint' => '💎 You can send a premium emoji together with the text; it is shown exactly the way you send it.',
                 'msg_closed' => 'Closed.',
                 'langs' => [
                         'fa' => '🇮🇷 فارسی',
@@ -26,6 +27,38 @@ To enable it, the bot owner needs a Telegram Premium subscription, or the bot mu
                         'zh' => '🇨🇳 中文',
                 ],
                 'items' => [
+                        [
+                                'label' => 'Button: Buy agent panel',
+                                'key' => 'textbot.agentShop',
+                        ],
+                        [
+                                'label' => 'Button: Buy agent panel shop',
+                                'key' => 'textbot.agentPanelShop',
+                        ],
+                        [
+                                'label' => 'Button: Agent panel',
+                                'key' => 'textbot.agentPanel',
+                        ],
+                        [
+                                'label' => 'Button: Agent request',
+                                'key' => 'textbot.requestAgent',
+                        ],
+                        [
+                                'label' => 'Button: Top up the panel',
+                                'key' => 'textbot.topUpButton',
+                        ],
+                        [
+                                'label' => 'Button: Back',
+                                'key' => 'users.backbtn',
+                        ],
+                        [
+                                'label' => 'Button: Back to the admin panel',
+                                'key' => 'Admin.backAdminBtn',
+                        ],
+                        [
+                                'label' => 'Button: Back to the main menu',
+                                'key' => 'Admin.backMenuBtn',
+                        ],
                         [
                                 'label' => 'Welcome text',
                                 'key' => 'users.text_start',

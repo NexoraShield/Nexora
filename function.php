@@ -2479,7 +2479,13 @@ function stripCustomEmojiTags($value)
     $stripped = preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', $value);
     return is_string($stripped) ? $stripped : $value;
 }
-function splitCustomEmojiLabel($value)
+// Split a label that may contain premium emoji tags.
+// $keepFallback = true keeps the fallback character of the first tag in the
+// plain text. Inline keyboard buttons get the premium emoji as an icon, so
+// the character has to be removed there, but a reply keyboard has no icon
+// field: there the character is the only visible trace of the emoji and it
+// must not be dropped (that is how a premium emoji "disappeared").
+function splitCustomEmojiLabel($value, $keepFallback = false)
 {
     $text = is_string($value) ? $value : '';
     if ($text === '' || stripos($text, '<tg-emoji') === false) {
@@ -2488,10 +2494,10 @@ function splitCustomEmojiLabel($value)
     $icon = '';
     $stripped = preg_replace_callback(
         '#<tg-emoji\b[^>]*\bemoji-id\s*=\s*"(\d+)"[^>]*>(.*?)</tg-emoji>#isu',
-        function ($match) use (&$icon) {
+        function ($match) use (&$icon, $keepFallback) {
             if ($icon === '') {
                 $icon = $match[1];
-                return '';
+                return $keepFallback ? $match[2] : '';
             }
             return $match[2];
         },
@@ -2506,6 +2512,32 @@ function splitCustomEmojiLabel($value)
         return ['text' => $fallback, 'icon' => ''];
     }
     return ['text' => $stripped, 'icon' => $icon];
+}
+// Every plain text form a label can be pressed with. A customer can send the
+// button text, the text with the fallback character or the text that was
+// shown before the label was edited - all of them must lead to the same
+// action, otherwise the button silently stops working.
+function customEmojiLabelForms($value, $default = null): array
+{
+    $forms = [];
+    $add = function ($candidate) use (&$forms) {
+        if (!is_string($candidate)) {
+            return;
+        }
+        $candidate = trim(preg_replace('/[ \t]+/u', ' ', $candidate));
+        if ($candidate === '' || isset($forms[$candidate])) {
+            return;
+        }
+        $forms[$candidate] = true;
+    };
+    if (is_string($value) && stripos($value, '<tg-emoji') !== false) {
+        $add(customEmojiLabelText($value));
+        $add(stripCustomEmojiTags($value));
+        if (is_string($default) && $default !== '' && $default !== $value) {
+            $add($default);
+        }
+    }
+    return array_keys($forms);
 }
 function customEmojiLabelText($value)
 {
@@ -2526,7 +2558,14 @@ function restoreCustomEmojiLabel($value)
         return $value;
     }
     $map = customEmojiLabels();
-    return $map[$value] ?? $value;
+    if (isset($map[$value])) {
+        return $map[$value];
+    }
+    $trimmed = trim($value);
+    if ($trimmed !== '' && $trimmed !== $value && isset($map[$trimmed])) {
+        return $map[$trimmed];
+    }
+    return $value;
 }
 function applyKeyboardLabels($rows, array $labels)
 {
@@ -2585,10 +2624,14 @@ function bottext_apply_overrides(array &$base, $lang)
         foreach ($pairs as $k => $v) {
             if (!is_string($v))
                 continue;
+            // The default text is remembered so a keyboard that was built
+            // before the edit keeps working after the label was changed.
+            $defaultLabel = $base[$group][$k] ?? null;
             $base[$group][$k] = $v;
-            foreach ([customEmojiLabelText($v), stripCustomEmojiTags($v)] as $plain) {
-                if (is_string($plain) && $plain !== $v && $plain !== '')
+            foreach (customEmojiLabelForms($v, $defaultLabel) as $plain) {
+                if ($plain !== $v && !isset($emojiLabels[$plain])) {
                     $emojiLabels[$plain] = $v;
+                }
             }
         }
     }

@@ -13,7 +13,17 @@ require_once 'keyboard.php';
 require_once 'vendor/autoload.php';
 require_once 'panels.php';
 $textbotlang = languagechange();
-$text = restoreCustomEmojiLabel($text);
+// A premium emoji label is restored to its tagged form, so a button that was
+// renamed still works. While an administrator is typing a new text the
+// message must stay untouched, otherwise the new text would silently be
+// replaced by the old one.
+$__nexora_textSteps = ['get_new_text', 'adv_test_name', 'adv_topup_name', 'adv_topup_button_name'];
+$__nexora_userRow = select("user", "step", "id", $from_id, "select");
+$__nexora_editingText = is_array($__nexora_userRow) && in_array((string) ($__nexora_userRow['step'] ?? ''), $__nexora_textSteps, true);
+if (!$__nexora_editingText) {
+    $text = restoreCustomEmojiLabel($text);
+}
+unset($__nexora_textSteps, $__nexora_userRow, $__nexora_editingText);
 #-----------telegram_ip_ranges------------#
 if (!checktelegramip())
     die("Unauthorized access");
