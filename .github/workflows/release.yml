@@ -44,6 +44,11 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.name }}
         run: |
+          # Keep manifest.sha256 in sync with the bundle contents, otherwise
+          # install.sh's integrity check fails on a fresh download.
+          find . -type f ! -name manifest.sha256 ! -name install.sh ! -name .gitignore \
+            ! -path './.git/*' ! -path './.github/*' ! -path './graphify-out/*' \
+            -print0 | sort -z | xargs -0 sha256sum | sed 's| \./| |' > manifest.sha256
           FILE="nexorabot-host-${TAG}.zip"
           zip -r -q "../${FILE}" . -x '.git/*' '.github/*' 'graphify-out/*' '.gitignore' 'install.sh'
           mv "../${FILE}" .

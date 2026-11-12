@@ -112,7 +112,7 @@ if (isset($update['message']['successful_payment'])) {
         $text_report = sprintf($textbotlang['users']['Discount']['gift-deposit'], $result);
         sendmessage($Balance_id['id'], $text_report, null, 'HTML');
     }
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => select("topicid", "idreport", "report", "paymentreport", "select")['idreport'],
@@ -136,7 +136,7 @@ if ($setting['statusnewuser'] == "onnewuser" && $isNewUser) {
         ]
     ]);
     $newuser = sprintf($textbotlang['Admin']['reportgroup']['newUser'], $first_name, $username, "<a href = \"tg://user?id=$from_id\">$from_id</a>");
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherreport,
@@ -263,7 +263,7 @@ if (floor($TimeLastMessage / 60) >= 1) {
                     ],
                 ]
             ]);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $otherservice,
@@ -283,7 +283,7 @@ if (floor($TimeLastMessage / 60) >= 1) {
 
 if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] != "gettextSystemMessage") {
     $affiliatesid = (strpos($text, " ") !== false) ? explode(" ", $text)[1] : '';
-    if (!in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
+    if ($affiliatesid !== '' && !in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
         isValidInvitationCode($setting, $from_id, $user['verify']);
         if (!check_active_btn($setting['keyboardmain'], "text_affiliates")) {
             sendmessage($from_id, $textbotlang['users']['affiliates']['offaffiliates'], $keyboard, 'HTML');
@@ -318,6 +318,11 @@ if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] !
             step('home', $from_id);
         }
         return;
+    }
+    // "/start <known>" keeps the legacy behaviour (the suffix becomes the command),
+    // while a plain "/start" falls through to the standard welcome handler below.
+    if ($affiliatesid !== '') {
+        $text = $affiliatesid;
     }
 }
 if (intval($user['verify']) == 0 && !in_array($from_id, $admin_ids) && $setting['verifystart'] == "onverify") {
@@ -1327,7 +1332,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $ManagePanel->RemoveUser($nameloc['Service_location'], $nameloc['username']);
     update('invoice', 'status', 'removebyuser', 'id_invoice', $id_invoice);
     $tetremove = sprintf($textbotlang['Admin']['reportgroup']['userDeletedService'], $nameloc['username']);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherreport,
@@ -1954,7 +1959,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $stmt = $pdo->prepare("INSERT INTO Giftcodeconsumed (id_user,code) VALUES (?,?)");
             $stmt->execute([$from_id, $partsdic[1]]);
             $text_report = strtr($textbotlang['Admin']['reportgroup']['discountUsedRenew'], ['{username}' => $username, '{from_id}' => $from_id, '{discount_code}' => $partsdic[1]]);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $otherreport,
@@ -1974,7 +1979,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $extend['msg'] = json_encode($extend['msg']);
         $textreports = sprintf($textbotlang['Admin']['reportgroup']['errorRenewService'], $marzban_list_get['name_panel'], $nameloc['username'], $extend['msg']);
         sendmessage($from_id, $textbotlang['users']['extend']['errorSupport'], null, 'HTML');
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -2031,7 +2036,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ]
     ]);
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['renewed'], $from_id, $username, $nameloc['username'], $first_name, $nameloc['Service_location'], $prodcut['name_product'], $prodcut['Volume_constraint'], $prodcut['Service_time'], $prodcut['price_product'], $balanceformatsellbefore, $balanceformatsell, $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -2099,7 +2104,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendWireguardFiles($from_id, $DataUserOut['wireguard'] ?? [], $nameloc['username']);
     $timejalali = jdate('Y/m/d H:i:s');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['linkChanged'], $from_id, $username, $nameloc['username'], $first_name, $marzban_list_get['name_panel'], $user['agent'], $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -2245,7 +2250,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $extra_volume['msg'] = json_encode($extra_volume['msg']);
         $textreports = sprintf($textbotlang['Admin']['reportgroup']['errorExtraVolume'], $marzban_list_get['name_panel'], $nameloc['username'], $extra_volume['msg']);
         sendmessage($from_id, $textbotlang['users']['extraVolume']['serviceError'], null, 'HTML');
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -2285,7 +2290,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $textvolume = sprintf($textbotlang['users']['extraVolume']['success'], $nameloc['username'], $volumes, $volumesformat);
     sendmessage($from_id, $textvolume, $keyboardextrafnished, 'HTML');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['extraVolume'], $from_id, $volumes, $volumesformat, $nameloc['username'], $user['Balance']);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -2476,7 +2481,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $dataoutput['msg'] = json_encode($dataoutput['msg']);
             sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $keyboard, 'HTML');
             $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorChangeLocation'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel'], $marzban_list_get_new['name_panel']);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -2493,7 +2498,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $dataoutput['msg'] = json_encode($dataoutput['msg']);
             sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $keyboard, 'HTML');
             $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorChangeLocation'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel'], $marzban_list_get_new['name_panel']);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -2528,7 +2533,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $balanceformatsell = number_format(select("user", "Balance", "id", $from_id, "select")['Balance'], 0);
     $format_byte = formatBytes($data_limit);
     $textreport = sprintf($textbotlang['Admin']['reportgroup']['locationChanged'], $from_id, $username, $marzban_list_get['name_panel'], $marzban_list_get_new['name_panel'], $nameloc['username'], $format_byte, $balanceformatsell);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -2803,7 +2808,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $extra_time['msg'] = json_encode($extra_time['msg']);
         $textreports = sprintf($textbotlang['Admin']['reportgroup']['errorExtraTime'], $marzban_list_get['name_panel'], $nameloc['username'], $extra_time['msg']);
         sendmessage($from_id, $textbotlang['users']['extraVolume']['serviceError'], null, 'HTML');
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -2844,7 +2849,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendmessage($from_id, $textextratime, $keyboardextrafnished, 'HTML');
     $volumes = $tmieextra / $extratimepricevalue;
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['extraTime'], $from_id, $volumes, $volumesformat, $nameloc['username']);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -3169,7 +3174,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $dataoutput['msg'] = json_encode($dataoutput['msg'] ?? $dataoutput ?? 'unknown error');
         sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $keyboard, 'html');
         $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel']);
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -3234,7 +3239,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     ]);
     $timejalali = jdate('Y/m/d H:i:s');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['testAccountCreated'], $from_id, $username, $username_ac, $first_name, $marzban_list_get['name_panel'], $marzban_list_get['time_usertest'], $marzban_list_get['val_usertest'], $randomString, $user['agent'], $user['number'], $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $reporttest,
@@ -4170,7 +4175,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $stmt->execute([$from_id, $partsdic[0]]);
             update("DiscountSell", "usedDiscount", $value, "codeDiscount", $partsdic[0]);
             $text_report = strtr($textbotlang['Admin']['reportgroup']['discountUsed'], ['{username}' => $username, '{from_id}' => $from_id, '{discount_code}' => $partsdic[0]]);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $otherreport,
@@ -4212,7 +4217,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         addBalance($from_id, $priceproduct);
         sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $keyboard, 'HTML');
         $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorSubscriptionCreate'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel']);
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -4288,7 +4293,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
                 $dateacc = date('Y/m/d H:i:s');
                 $textadd = sprintf($textbotlang['users']['affiliates']['commissionPaid'], $result);
                 $textreportport = sprintf($textbotlang['Admin']['reportgroup']['commissionPaid'], $result, $user['affiliates'], $from_id, $dateacc);
-                if (strlen($setting['Channel_Report']) > 0) {
+                if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                     telegram('sendmessage', [
                         'chat_id' => $setting['Channel_Report'],
                         'message_thread_id' => $porsantreport,
@@ -4313,7 +4318,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $dateacc = date('Y/m/d H:i:s');
             $textadd = sprintf($textbotlang['users']['affiliates']['commissionPaid2'], $result);
             $textreportport = sprintf($textbotlang['Admin']['reportgroup']['commissionPaid2'], $result, $user['affiliates'], $from_id, $dateacc);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $porsantreport,
@@ -4344,7 +4349,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     ]);
     $timejalali = jdate('Y/m/d H:i:s');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['accountCreated'], $textonebuy, $from_id, $username, $username_ac, $first_name, $userdate['name_panel'], $info_product['name_product'], $info_product['Service_time'], $info_product['Volume_constraint'], $balanceformatsellbefore, $balanceformatsell, $randomString, $user['agent'], $user['number'], $info_product['category'] ?? '', $info_product['price_product'], $priceproduct, $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $buyreport,
@@ -4769,7 +4774,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $dataoutput['msg'] = json_encode($dataoutput['msg']);
             sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $keyboard, 'HTML');
             $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorBulkAccountCreate'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel']);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -4812,7 +4817,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $count_service = $user['Processing_value_four'];
     $timejalali = jdate('Y/m/d H:i:s');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['bulkAccountCreated'], $from_id, $username, $username_ac, $count_service, $first_name, $user['Processing_value'], $info_product['name_product'], $info_product['Service_time'], $info_product['Volume_constraint'], $balanceformatsellbefore, $balanceformatsell, $randomString, $user['agent'], $user['number'], $info_product['price_product'], $info_product['price_product'], $user['Processing_value_four'], $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $buyreport,
@@ -4994,7 +4999,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorAqayePardakhtLink'], $text_error, $from_id, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5096,7 +5101,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorZarinpalLink'], $text_error, $from_id, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5156,7 +5161,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorZarinpalLink'] ?? 'Variza link error: %s user %s', $text_error, $from_id);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5231,7 +5236,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorCryptoLink'], $text_error, $from_id, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5298,7 +5303,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorCryptoLink2'], $text_error, $from_id, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5365,7 +5370,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorPaymentLink'], $text_error, $from_id, $Payment_Method, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5422,7 +5427,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorPaymentLink2'], $text_error, $from_id, $Payment_Method, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5499,7 +5504,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorPaymentLink3'], $text_error, $from_id, $Payment_Method, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5565,7 +5570,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorPaymentLink3'], $text_error, $from_id, $Payment_Method, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -5700,7 +5705,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
             $ErrorsLinkPayment = sprintf($textbotlang['Admin']['reportgroup']['errorStarInvoice'], $text_error, $from_id, $Payment_Method, $username);
-            if (strlen($setting['Channel_Report']) > 0) {
+            if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $errorreport,
@@ -6041,7 +6046,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         ':code' => $text,
     ]);
     $text_report = sprintf($textbotlang['users']['Discount']['giftcodeused'], $username, $from_id, $text);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherreport,
@@ -6129,7 +6134,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendmessage($reagent['reagent'], $textbotlang['users']['affiliates']['joinedGift'], null, 'html');
     sendmessage($from_id, $textbotlang['users']['affiliates']['joinGiftActivated'], null, 'html');
     $report_join_gift = sprintf($textbotlang['Admin']['reportgroup']['membershipGiftPaid'], $from_id, $username, $reagent['reagent'], $user['Balance'], $Balance_add_user, $useraffiliates['Balance'], $Balance_add_regent);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $porsantreport,
@@ -6263,7 +6268,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $extra_volume['msg'] = json_encode($extra_volume['msg']);
         $textreports = sprintf($textbotlang['Admin']['reportgroup']['errorExtraVolume2'], $location, $usernamepanel, $extra_volume['msg']);
         sendmessage($from_id, $textbotlang['users']['extraVolume']['serviceError'], null, 'HTML');
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -6284,7 +6289,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $volumes = $volume / $extrapricevalue;
     $volumes = number_format($volumes, 0);
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['volumePurchase'], $from_id, $volumes, $volumepricelast, $user['Balance'], $usernamepanel);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,
@@ -6524,7 +6529,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $price = number_format($setting['wheelـluck_price']);
         sendmessage($from_id, sprintf($textbotlang['users']['wheelLuck']['winnerCongratulations'], $price), null, 'HTML');
         $pricelast = $setting['wheelـluck_price'];
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $otherreport,
@@ -6796,7 +6801,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     step("home", $from_id);
     $timejalali = jdate('Y/m/d H:i:s');
     $textreport = sprintf($textbotlang['Admin']['reportgroup']['noteChanged'], $invoice['username'], $invoice['note'], $text, $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherreport,
@@ -6924,7 +6929,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $extend['msg'] = json_encode($extend['msg']);
         $textreports = sprintf($textbotlang['Admin']['reportgroup']['errorRenewService2'], $marzban_list_get['name_panel'], $usernamePanelExtends, $extend['msg']);
         sendmessage($from_id, $textbotlang['users']['extend']['errorSupport'], null, 'HTML');
-        if (strlen($setting['Channel_Report']) > 0) {
+        if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
             telegram('sendmessage', [
                 'chat_id' => $setting['Channel_Report'],
                 'message_thread_id' => $errorreport,
@@ -6959,7 +6964,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendmessage($from_id, $textextend, $keyboard, 'HTML');
     $timejalali = jdate('Y/m/d H:i:s');
     $text_report = sprintf($textbotlang['Admin']['reportgroup']['renewalDetails'], $from_id, $username, $usernamePanelExtends, $first_name, $marzban_list_get['name_panel'], $prodcut['name_product'], $prodcut['Volume_constraint'], $prodcut['Service_time'], $prodcut['price_product'], $balanceformatsell, $timejalali);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage', [
             'chat_id' => $setting['Channel_Report'],
             'message_thread_id' => $otherservice,

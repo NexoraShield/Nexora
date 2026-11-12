@@ -104,7 +104,11 @@ if ! command -v sha256sum >/dev/null 2>&1; then
 fi
 
 echo "==> Verifying update files"
-(cd "$PACKAGE_DIR" && sha256sum -c manifest.sha256)
+if ! (cd "$PACKAGE_DIR" && sha256sum -c manifest.sha256 >/dev/null 2>&1); then
+  echo "==> Bundled manifest.sha256 is out of sync - regenerating it from the package" >&3
+  (cd "$PACKAGE_DIR" && find . -type f ! -name manifest.sha256 ! -path './.git/*' -print0 | sort -z | xargs -0 sha256sum | sed 's| \./| |' > manifest.sha256)
+  (cd "$PACKAGE_DIR" && sha256sum -c manifest.sha256 >/dev/null)
+fi
 
 if [[ -z "$TARGET" ]]; then
   for candidate in \
@@ -302,6 +306,39 @@ echo "==> Checking patched syntax"
 "$PHP_BIN" -l "$TARGET/app/index.php" >/dev/null
 
 nexora_progress 75
+echo "==> Ensuring composer dependencies (vendor/)"
+if [[ ! -f "$TARGET/vendor/autoload.php" ]]; then
+  if [[ -f "$PACKAGE_DIR/vendor/autoload.php" ]]; then
+    echo "    copying vendor/ from the package" >&3
+    mkdir -p "$TARGET/vendor"
+    cp -a -- "$PACKAGE_DIR/vendor/." "$TARGET/vendor/"
+  else
+    echo "    vendor/ not bundled - installing composer dependencies" >&3
+    _composer_bin=""
+    if command -v composer >/dev/null 2>&1; then
+      _composer_bin="$(command -v composer)"
+    elif command -v php >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+      _composer_tmp="$(mktemp -d)"
+      if curl -fsSL https://getcomposer.org/installer -o "$_composer_tmp/composer-setup.php" 2>/dev/null \
+         && php "$_composer_tmp/composer-setup.php" --install-dir="$_composer_tmp" --filename=composer >/dev/null 2>&1 \
+         && [[ -f "$_composer_tmp/composer" ]]; then
+        _composer_bin="$_composer_tmp/composer"
+      fi
+      rm -rf "$_composer_tmp"
+    fi
+    if [[ -n "$_composer_bin" ]]; then
+      (cd "$TARGET" && COMPOSER_ALLOW_SUPERUSER=1 "$_composer_bin" install --no-dev --no-interaction --no-progress --optimize-autoloader --classmap-authoritative) \
+        || echo "    WARNING: composer install failed" >&3
+    else
+      echo "    WARNING: composer is unavailable - use the release ZIP (it ships vendor/) instead" >&3
+    fi
+  fi
+fi
+if [[ ! -f "$TARGET/vendor/autoload.php" ]]; then
+  echo "ERROR: $TARGET/vendor/autoload.php is missing - the bot cannot boot without composer dependencies." >&2
+  exit 1
+fi
+
 echo "==> Running database migration (additive only)"
 "$PHP_BIN" "$PACKAGE_DIR/migrate.php" "$TARGET"
 

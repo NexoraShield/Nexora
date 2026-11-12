@@ -9,7 +9,42 @@ if (!is_file($helperFile)) { fwrite(STDERR, "nexora_style.php not found.\n"); ex
 require $configFile;
 require $helperFile;
 if (!isset($pdo) || !($pdo instanceof PDO)) { fwrite(STDERR, "Database connection (\$pdo) not available.\n"); exit(1); }
+
+// The installed code owns the helper functions the migrations rely on
+// (extendMethodKey / usernameMethodKey / languagechange). Prefer the copy that
+// is already installed in the target, fall back to the packaged one.
+if (!function_exists('extendMethodKey') || !function_exists('languagechange')) {
+    foreach ([$target . '/function.php', __DIR__ . '/function.php'] as $functionFile) {
+        if (!is_file($functionFile)) {
+            continue;
+        }
+        require_once $functionFile;
+        if (function_exists('extendMethodKey') && function_exists('languagechange')) {
+            break;
+        }
+    }
+}
+
 try {
+    // Full schema: tables, missing columns, indexes and data migrations.
+    // This is what the web installer runs (db/bootstrap.php); the CLI updater
+    // must do the same so fresh installs AND upgrades end up complete.
+    $schemaFile = __DIR__ . '/db/Schema.php';
+    if (is_file($schemaFile)) {
+        require_once $schemaFile;
+        $schema = new Schema($pdo, [
+            'adminnumber' => isset($adminnumber) ? $adminnumber : '',
+            'textbotlang' => static function () {
+                return languagechange();
+            },
+        ]);
+        $schema->applyTables(__DIR__ . '/db/tables', require __DIR__ . '/db/tables.php');
+        $schema->runMigrations(__DIR__ . '/db/migrations');
+        $schema->applyIndexes(require __DIR__ . '/db/indexes.php');
+        echo "Schema applied (tables, columns, indexes, migrations).\n";
+    } else {
+        fwrite(STDERR, "WARNING: db/Schema.php not found - only auxiliary tables were ensured.\n");
+    }
     $added = nexora_ensure_style_columns($pdo);
     if (function_exists('nexora_ensure_emoji_table')) nexora_ensure_emoji_table($pdo);
     $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');

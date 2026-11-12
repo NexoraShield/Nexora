@@ -85,7 +85,7 @@ $payment_status = $textbotlang['paymentGateway']['zarinpalErrors'][$response['er
     $cart_number = $response['data']['card_pan'];
     $price = number_format($price);
 $text_report = sprintf($textbotlang['paymentGateway']['reportZarinpal'], $Payment_report['id_user'], $Balance_id['username'], $price, $refcode, $cart_number);
-    if (strlen($setting['Channel_Report']) > 0) {
+    if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
         telegram('sendmessage',[
         'chat_id' => $setting['Channel_Report'],
         'message_thread_id' => $paymentreports,

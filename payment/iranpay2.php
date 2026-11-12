@@ -204,7 +204,7 @@ $statement = $pdo->prepare("UPDATE Payment_report SET dec_not_confirmed = :dec_n
 $statement->bindValue(':dec_not_confirmed', $database);
 $statement->bindValue(':id_order', $Payment_report['id_order']);
 $statement->execute();
-if (strlen($setting['Channel_Report']) > 0) {
+if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
     telegram('sendmessage', [
         'chat_id' => $setting['Channel_Report'],
         'message_thread_id' => $paymentreports,

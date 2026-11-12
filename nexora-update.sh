@@ -33,8 +33,8 @@ fi
 
 cd "$TMPD/pkg"
 
-# Regenerate manifest
-find . -type f ! -name manifest.sha256 -print0 | sort -z | xargs -0 sha256sum | sed 's| \./| |' > manifest.sha256
+# Regenerate manifest (exclude .git so the file list matches what gets installed)
+find . -type f ! -name manifest.sha256 ! -path './.git/*' -print0 | sort -z | xargs -0 sha256sum | sed 's| \./| |' > manifest.sha256
 
 echo "==> Running installer..."
 bash install.sh "$@"

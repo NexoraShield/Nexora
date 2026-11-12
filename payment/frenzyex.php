@@ -59,7 +59,7 @@ if ($pricecashback != "0") {
     sendmessage($Balance_id['id'], $text_report, null, 'HTML');
 }
 $text_reportpayment = sprintf($textbotlang['paymentGateway']['reportFrenzyEx'] ?? "پرداخت FrenzyEx موفق\nکاربر: %s\nآیدی: %s\nمبلغ: %s تومان", $Balance_id['username'], $Balance_id['id'], $payment['price']);
-if (strlen($setting['Channel_Report']) > 0) {
+if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
     telegram('sendmessage', ['chat_id' => $setting['Channel_Report'], 'message_thread_id' => $paymentreports, 'text' => $text_reportpayment, 'parse_mode' => "HTML"]);
 }
 frenzyex_callback_response(200, ['ok' => true, 'order_id' => $orderId]);
