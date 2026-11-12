@@ -208,6 +208,11 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
     $timeout = max(1, (int) $timeout);
     curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(5, $timeout));
+    // The Telegram API is reached over IPv4. A server with a broken IPv6 route
+    // answered with a timeout of five seconds on every single message.
+    if (defined('CURL_IPRESOLVE_V4')) {
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    }
     curl_setopt($ch, CURLOPT_POSTFIELDS, $datas);
 
     $rawResponse = curl_exec($ch);
