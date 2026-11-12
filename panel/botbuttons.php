@@ -34,6 +34,7 @@ $mainMenuMap = [
     'tariffList' => 'text_Tariff_list', 'support' => 'text_support', 'help' => 'text_help',
     'agentPanel' => 'text_agentpanel', 'requestAgent' => 'text_requestagent',
     'agentShop' => 'text_agentshop',
+    'agentPanelShop' => 'text_agentpanelshop',
 ];
 foreach ($mainMenuMap as $sub => $storage) {
     if (isset($textbotlang['textbot'][$sub]) && is_string($textbotlang['textbot'][$sub]) && $textbotlang['textbot'][$sub] !== '') {

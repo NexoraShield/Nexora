@@ -33,6 +33,7 @@ $list_keyboard = [
     'text_agentpanel',
     'text_requestagent',
     'text_agentshop',
+    'text_agentpanelshop',
 ];
 $textbotlang['textbot'] = [
     'text_sell' => $textbotlang['textbot']['sell'],
@@ -48,6 +49,7 @@ $textbotlang['textbot'] = [
     'text_agentpanel' => $textbotlang['textbot']['agentPanel'],
     'text_requestagent' => $textbotlang['textbot']['requestAgent'],
     'text_agentshop' => $textbotlang['textbot']['agentShop'],
+    'text_agentpanelshop' => $textbotlang['textbot']['agentPanelShop'],
 ];
 
 foreach ($keyboardmain['keyboard'] as $keyboard) {

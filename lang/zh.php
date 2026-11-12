@@ -193,6 +193,32 @@ return [
                 'invalidVolume' => '流量无效',
         ],
         'users' => [
+                'agentPanelShop' => [
+                        'intro' => '🖥 <b>代理面板商店</b>
+
+请选择下面的面板：',
+                        'empty' => '⭕️ 目前没有可销售给代理的面板。',
+                        'details' => '🖥 <b>{name}</b>
+
+{description}
+
+💰 价格：<b>{price}</b> 汤曼
+🎁 面板内余额：<b>{credit}</b> 汤曼',
+                        'buyBtn' => '🛒 购买并支付',
+                        'backBtn' => '🔙 返回商店',
+                        'steps' => '购买步骤：
+1️⃣ 选择面板
+2️⃣ 查看价格和说明
+3️⃣ 选择支付方式
+4️⃣ 付款后用户名、密码和面板链接会发送到机器人',
+                        'credentials' => '✅ <b>您的代理面板已就绪</b>
+
+👤 用户名：<code>{username}</code>
+🔑 密码：<code>{password}</code>
+🔗 登录链接：{link}
+
+💰 面板钱包余额：<b>{credit}</b> 汤曼',
+                ],
                 'agentShop' => [
                         'intro' => '🛒 <b>代理面板商店</b>
 
@@ -3579,6 +3605,7 @@ f,n.n2',
                 ],
         ],
         'textbot' => [
+                'agentPanelShop' => '🖥 购买代理面板',
                 'agentShop' => '🛒 购买代理面板',
                 'accountWallet' => '🏦 钱包 + 充值',
                 'addBalance' => '💰 增加余额',

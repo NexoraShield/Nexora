@@ -36,7 +36,8 @@ $replacements = [
     'text_extend' => $textbotlang['textbot']['extend'],
     'text_agentpanel' => $textbotlang['textbot']['agentPanel'],
     'text_requestagent' => $textbotlang['textbot']['requestAgent'],
-    'text_agentshop' => $textbotlang['textbot']['agentShop']
+    'text_agentshop' => $textbotlang['textbot']['agentShop'],
+    'text_agentpanelshop' => $textbotlang['textbot']['agentPanelShop']
 ];
 // Map every button label the web panel can style to its storage key.
 // The panel offers a colour and an emoji for all keyboard.* texts, for the
@@ -151,6 +152,9 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
             }
             if ($keyboard['text'] == "text_agentshop") {
                 $trace_keyboard[$key][$keyboard_key]['callback_data'] = "agentshop";
+            }
+            if ($keyboard['text'] == "text_agentpanelshop") {
+                $trace_keyboard[$key][$keyboard_key]['callback_data'] = "agentpanelshop";
             }
         }
     }

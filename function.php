@@ -1203,6 +1203,39 @@ function DirectPayment($order_id, $image = 'images.jpg')
     $stmtReset->execute([$Balance_id['id']]);
     clearSelectCache('user');
     if ($orderType == "buy") {
+        // Agent panel packages are delivered as an agent login + wallet credit
+        // instead of a VPN service.
+        $agentPanelProduct = nexora_agent_panel_product_by_name($get_invoice['name_product'] ?? '');
+        if ($agentPanelProduct) {
+            $claimAgentInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
+            $claimAgentInvoice->execute([$get_invoice['id_invoice']]);
+            clearSelectCache('invoice');
+            if ($claimAgentInvoice->rowCount() === 0) {
+                error_log('[DirectPayment] agent panel order already settled id_order=' . $order_id);
+                return;
+            }
+            $agentCreds = nexora_agent_panel_deliver($agentPanelProduct, (string) $Balance_id['id']);
+            $agentText = strtr($textbotlang['users']['agentPanelShop']['credentials'], [
+                '{username}' => $agentCreds['username'],
+                '{password}' => $agentCreds['password'],
+                '{link}' => $agentCreds['link'],
+                '{credit}' => number_format($agentCreds['credit']),
+            ]);
+            sendmessage($Balance_id['id'], $agentText, null, 'HTML');
+            $agentReport = sprintf(
+                $textbotlang['Admin']['reportgroup']['paymentApproved'] ?? 'پرداخت تایید شد: %s',
+                $agentPanelProduct['name']
+            );
+            if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
+                telegram('sendmessage', [
+                    'chat_id' => $setting['Channel_Report'],
+                    'message_thread_id' => $buyreport,
+                    'text' => $agentReport,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+            return;
+        }
         $stmt = $pdo->prepare("SELECT * FROM product WHERE name_product = :name_product AND (Location = :Service_location  or Location = '/all')");
         $stmt->bindParam(':name_product', $get_invoice['name_product'], PDO::PARAM_STR);
         $stmt->bindParam(':Service_location', $get_invoice['Service_location'], PDO::PARAM_STR);
@@ -1788,6 +1821,65 @@ function outtypepanel($typepanel, $message)
     if (isset($panelOptions[$typepanel])) {
         sendmessage($from_id, $message, $panelOptions[$typepanel], 'HTML');
     }
+}
+
+// ---------------------------------------------------------------------------
+// Agent panel shop: the panels an agent can buy for himself.
+// ---------------------------------------------------------------------------
+function nexora_agent_panel_products($activeOnly = true): array
+{
+    global $pdo;
+    try {
+        $sql = "SELECT * FROM agent_panel_product" . ($activeOnly ? " WHERE status_product = 'active'" : "") . " ORDER BY display_order, id";
+        return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_products: ' . $e->getMessage());
+        return [];
+    }
+}
+function nexora_agent_panel_product_by_name($name): ?array
+{
+    global $pdo;
+    $name = trim((string) $name);
+    if ($name === '') {
+        return null;
+    }
+    try {
+        $st = $pdo->prepare("SELECT * FROM agent_panel_product WHERE name = ? AND status_product = 'active' LIMIT 1");
+        $st->execute([$name]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+/**
+ * Creates (or re-activates) the agent login of the buyer and credits the
+ * wallet that is shown inside the agent panel. Returns the credentials.
+ */
+function nexora_agent_panel_deliver(array $product, string $userId): array
+{
+    global $pdo, $domainhosts;
+    $username = trim($userId);
+    $pass = 'Nx' . bin2hex(random_bytes(3));
+    try {
+        $hash = password_hash($pass, PASSWORD_DEFAULT);
+        $st = $pdo->prepare("INSERT INTO agent_auth (id_user, pass_hash, created_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE pass_hash = VALUES(pass_hash), created_at = VALUES(created_at)");
+        $st->execute([$username, $hash, time()]);
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_deliver: ' . $e->getMessage());
+    }
+    $credit = floatval($product['credit'] ?? 0);
+    if ($credit > 0) {
+        addBalance($userId, $credit);
+    }
+    $link = 'https://' . (string) $domainhosts . '/agent-panel/';
+    return [
+        'username' => $username,
+        'password' => $pass,
+        'link' => $link,
+        'credit' => $credit,
+    ];
 }
 
 function addBackgroundImage($urlimage, $qrCodeResult, $backgroundPath)

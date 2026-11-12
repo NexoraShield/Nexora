@@ -193,6 +193,32 @@ To enable it, the bot owner needs a Telegram Premium subscription, or the bot mu
                 'invalidVolume' => 'The volume is invalid',
         ],
         'users' => [
+                'agentPanelShop' => [
+                        'intro' => '🖥 <b>Agent panel shop</b>
+
+Choose one of the panels below:',
+                        'empty' => '⭕️ There is no panel available for the agents yet.',
+                        'details' => '🖥 <b>{name}</b>
+
+{description}
+
+💰 Price: <b>{price}</b> Toman
+🎁 Credit inside the panel: <b>{credit}</b> Toman',
+                        'buyBtn' => '🛒 Buy and pay',
+                        'backBtn' => '🔙 Back to the shop',
+                        'steps' => 'How to buy:
+1️⃣ Choose the panel
+2️⃣ Check the price and the details
+3️⃣ Choose a payment method
+4️⃣ After the payment the username, password and panel link are sent to you',
+                        'credentials' => '✅ <b>Your agent panel is ready</b>
+
+👤 Username: <code>{username}</code>
+🔑 Password: <code>{password}</code>
+🔗 Login link: {link}
+
+💰 Panel wallet credit: <b>{credit}</b> Toman',
+                ],
                 'agentShop' => [
                         'intro' => '🛒 <b>Agent panel shop</b>
 
@@ -3579,6 +3605,7 @@ Follow the steps above, then send the address below:
                 ],
         ],
         'textbot' => [
+                'agentPanelShop' => '🖥 Buy agent panel',
                 'agentShop' => '🛒 Buy agent panel',
                 'accountWallet' => '🏦 Wallet + Top-up',
                 'addBalance' => '💰 Increase balance',

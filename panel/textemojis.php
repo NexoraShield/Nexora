@@ -21,6 +21,7 @@ $MENU_KEYS = [
     'text_agentpanel' => ['textbot', 'agentPanel'],
     'text_requestagent' => ['textbot', 'requestAgent'],
     'text_agentshop' => ['textbot', 'agentShop'],
+    'text_agentpanelshop' => ['textbot', 'agentPanelShop'],
 ];
 
 function nexora_textemojis_clean($v): string

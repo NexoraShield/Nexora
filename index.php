@@ -59,7 +59,7 @@ $setting = select("setting", "*");
 $ManagePanel = new ManagePanel();
 $keyboard_check = json_decode($setting['keyboardmain'], true);
 if (is_array($keyboard_check) && preg_match('/[\x{600}-\x{6FF}\x{FB50}-\x{FDFF}]/u', $keyboard_check['keyboard'][0][0]['text'])) {
-    $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}]]}';
+    $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}],[{"text":"text_agentpanelshop"}]]}';
     update("setting", "keyboardmain", $keyboardmain, null, null);
 }
 
@@ -6564,6 +6564,114 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("invoice", "payable_amount", $agentPrice, "id_invoice", $agentRandom);
     update("user", "Processing_value", $agentPrice, "id", $from_id);
     update("user", "Processing_value_one", $agentRandom, "id", $from_id);
+    sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+    step('get_step_payment_buy', $from_id);
+} elseif ($text == $textbotlang['textbot']['agentPanelShop'] || $datain == "agentpanelshop") {
+    // ---------------- [ agent panel shop ] ----------------
+    if (!check_active_btn($setting['keyboardmain'], "text_agentpanelshop")) {
+        sendmessage($from_id, $textbotlang['users']['buttonDisabled'], null, 'HTML');
+        return;
+    }
+    $agentPanelItems = nexora_agent_panel_products(true);
+    if (!$agentPanelItems) {
+        if ($datain == "agentpanelshop") {
+            Editmessagetext($from_id, $message_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
+        } else {
+            sendmessage($from_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
+        }
+        return;
+    }
+    $agentPanelRows = [];
+    $agentPanelShowPrice = getShopSetting("statusshowprice")['value'] != "offshowprice";
+    foreach ($agentPanelItems as $agentPanelItem) {
+        $agentPanelLabel = (string) $agentPanelItem['name'];
+        if ($agentPanelShowPrice) {
+            $agentPanelLabel .= " - " . number_format($agentPanelItem['price']) . $textbotlang['common']['labels']['tomanUnit'];
+        }
+        $agentPanelRows[] = [nexora_style_btn($agentPanelLabel, "agentpanelshop_select_" . (int) $agentPanelItem['id'], $agentPanelItem)];
+    }
+    $agentPanelRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
+    $agentPanelKeyboard = json_encode(['inline_keyboard' => $agentPanelRows]);
+    $agentPanelIntro = $textbotlang['users']['agentPanelShop']['intro'] . "\n\n" . $textbotlang['users']['agentPanelShop']['steps'];
+    if ($datain == "agentpanelshop") {
+        Editmessagetext($from_id, $message_id, $agentPanelIntro, $agentPanelKeyboard, 'HTML');
+    } else {
+        sendmessage($from_id, $agentPanelIntro, $agentPanelKeyboard, 'HTML');
+    }
+    step('agentpanelshop_list', $from_id);
+} elseif (preg_match('/^agentpanelshop_select_(\d+)$/', $datain, $dataget)) {
+    $agentPanelProduct = null;
+    foreach (nexora_agent_panel_products(true) as $agentPanelRow) {
+        if ((int) $agentPanelRow['id'] === (int) $dataget[1]) {
+            $agentPanelProduct = $agentPanelRow;
+            break;
+        }
+    }
+    if (!$agentPanelProduct) {
+        sendmessage($from_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $agentPanelDetails = strtr($textbotlang['users']['agentPanelShop']['details'], [
+        '{name}' => (string) $agentPanelProduct['name'],
+        '{description}' => (string) ($agentPanelProduct['description'] ?? ''),
+        '{price}' => number_format($agentPanelProduct['price']),
+        '{credit}' => number_format($agentPanelProduct['credit']),
+    ]);
+    $agentPanelKeyboard = json_encode([
+        'inline_keyboard' => [
+            [nexora_style_btn($textbotlang['users']['agentPanelShop']['buyBtn'], "agentpanelshop_buy", $agentPanelProduct)],
+            [['text' => $textbotlang['users']['agentPanelShop']['backBtn'], 'callback_data' => "agentpanelshop"]],
+        ]
+    ]);
+    sendmessage($from_id, $agentPanelDetails, $agentPanelKeyboard, 'HTML');
+    update("user", "Processing_value_one", (int) $agentPanelProduct['id'], "id", $from_id);
+    step('agentpanelshop_product', $from_id);
+} elseif ($datain == "agentpanelshop_buy") {
+    $agentPanelProduct = null;
+    foreach (nexora_agent_panel_products(true) as $agentPanelRow) {
+        if ((int) $agentPanelRow['id'] === (int) $user['Processing_value_one']) {
+            $agentPanelProduct = $agentPanelRow;
+            break;
+        }
+    }
+    if (!$agentPanelProduct) {
+        sendmessage($from_id, $textbotlang['users']['agentPanelShop']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $agentPanelPrice = floatval($agentPanelProduct['price']);
+    if (intval($user['pricediscount']) != 0) {
+        $agentPanelPrice = $agentPanelPrice - (($agentPanelPrice * $user['pricediscount']) / 100);
+    }
+    if ($agentPanelPrice <= 0) {
+        sendmessage($from_id, $textbotlang['users']['common']['invalidInput'], $backuser, 'HTML');
+        return;
+    }
+    $agentPanelRandom = bin2hex(random_bytes(4));
+    if (rowExists("invoice", "id_invoice", $agentPanelRandom)) {
+        $agentPanelRandom = rand(1000000, 9999999) . $agentPanelRandom;
+    }
+    $agentPanelNotif = json_encode([
+        'volume' => false,
+        'time' => false,
+    ]);
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->execute([
+        $from_id,
+        $agentPanelRandom,
+        $username,
+        date('Y/m/d H:i:s'),
+        '',
+        $agentPanelProduct['name'],
+        $agentPanelPrice,
+        0,
+        0,
+        'unpaid',
+        (string) ($agentPanelProduct['description'] ?? ''),
+        $agentPanelNotif,
+    ]);
+    update("invoice", "payable_amount", $agentPanelPrice, "id_invoice", $agentPanelRandom);
+    update("user", "Processing_value", $agentPanelPrice, "id", $from_id);
+    update("user", "Processing_value_one", $agentPanelRandom, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
     step('get_step_payment_buy', $from_id);
 } elseif ($text == "/privacy") {
