@@ -153,7 +153,8 @@ try {
   $categories = db_fetchAll($pdo, "SELECT * FROM category ORDER BY display_order, id");
 } catch (Exception $e) {
 }
-$products = db_fetchAll($pdo, "SELECT * FROM product ORDER BY display_order, id");
+// The test services have their own page, they are not products of the shop.
+$products = db_fetchAll($pdo, "SELECT * FROM product WHERE 1=1" . panel_product_test_filter($pdo) . " ORDER BY display_order, id");
 
 $pageTitle = $textbotlang['panel']['productsTitle'];
 $pageLede = $textbotlang['panel']['productsSubtitle'];

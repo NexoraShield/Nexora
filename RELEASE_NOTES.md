@@ -1,4 +1,22 @@
 # Nexora Bot — Release Notes
+## v1.22.71 (2026-11-12) — Test services, gateway names, four bots
+
+**Test services**
+- The test services are not shown in the products any more: not in the list of the web panel, not in the shop of the bot and not in the product list of the admin menu. They are only managed on their own page.
+- The volume of a test service can be entered in megabytes or in gigabytes. Everything below one gigabyte is shown in megabytes, in the panel and in the bot.
+
+**Payment gateways**
+- The name of every gateway can be changed in the finance page of the web panel. The buyer sees that name on the payment button.
+- The colour of a gateway is the colour of its payment button; the payment key of FrenzyEx stays green.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.71
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.71
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.71
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.71 (the installation was at v1.22.41 and is now complete)
+
+---
+
 ## v1.22.70 (2026-11-12) — Fast bot, gateway manager, panel fixes
 
 **Speed**

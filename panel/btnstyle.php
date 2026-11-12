@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     header('Location: btnstyle.php');
     exit;
 }
-$products = db_fetchAll($pdo, "SELECT id, name_product, price_product, btn_style, btn_emoji_id FROM product ORDER BY id");
+$products = db_fetchAll($pdo, "SELECT id, name_product, price_product, btn_style, btn_emoji_id FROM product WHERE 1=1" . panel_product_test_filter($pdo) . " ORDER BY id");
 $categories = db_fetchAll($pdo, "SELECT id, remark, btn_style, btn_emoji_id FROM category ORDER BY id");
 $panels = db_fetchAll($pdo, "SELECT id, name_panel, btn_style, btn_emoji_id FROM marzban_panel ORDER BY id");
 $pageTitle = 'رنگ و ایموجی دکمه‌ها';

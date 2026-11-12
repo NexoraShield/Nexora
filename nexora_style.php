@@ -58,7 +58,7 @@ if (!function_exists('nexora_ensure_style_columns')) {
     function nexora_ensure_style_columns(PDO $pdo): array
     {
         $targets = [
-            'product' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NOT NULL DEFAULT 0']],
+            'product' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NOT NULL DEFAULT 0'], ['is_test', 'TINYINT(1) NOT NULL DEFAULT 0']],
             'category' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NULL DEFAULT 0']],
             'marzban_panel' => [['btn_style', 'VARCHAR(20) NULL'], ['btn_emoji_id', 'VARCHAR(32) NULL'], ['display_order', 'INT NOT NULL DEFAULT 0']],
             'invoice' => [['id_payment', 'VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL']],
@@ -592,6 +592,19 @@ if (!function_exists('nexora_bb_map')) {
                 if ($v === '') continue;
                 if (strpos($k, 'nx_bb_emoji_') === 0) $emoji[substr($k, 12)] = $v;
                 elseif (strpos($k, 'nx_bb_style_') === 0) $style[substr($k, 12)] = $v;
+            }
+            // The colour of a payment gateway is stored under its own name, so
+            // the button of the gateway gets the colour of the web panel.
+            if (function_exists('nexora_payment_gateways') && function_exists('getPaySettingValue')) {
+                foreach (nexora_payment_gateways() as $gatewayKey => $gateway) {
+                    if (isset($style[$gatewayKey])) {
+                        continue;
+                    }
+                    $gatewayStyle = trim((string) getPaySettingValue('nx_gw_style_' . $gatewayKey, ''));
+                    if ($gatewayStyle !== '' && in_array($gatewayStyle, nexora_color_slugs(), true)) {
+                        $style[$gatewayKey] = $gatewayStyle;
+                    }
+                }
             }
             $memo = ['emoji' => $emoji, 'style' => $style];
             return $memo;

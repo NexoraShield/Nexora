@@ -74,6 +74,13 @@ function nexora_keyboard_style_flip(array $replacements = []): array
             $add($textbotlang['Admin'][$adminKey], 'Admin_' . $adminKey);
         }
     }
+    // The name of a payment gateway can be changed in the web panel, so the
+    // button of the gateway is mapped to its key to keep the colour.
+    if (function_exists('nexora_gateway_labels')) {
+        foreach (nexora_gateway_labels() as $gatewayKey => $gatewayLabel) {
+            $add($gatewayLabel, (string) $gatewayKey);
+        }
+    }
     return $flip;
 }
 $temp_addtional_key = [];
@@ -342,11 +349,11 @@ $step_payment = [
 if (nexora_pay_switch_is_on($PaySettingcard, "oncard") && intval($users['cardpayment']) == 1) {
     if ($PaySettingpv == "oncardpv") {
         $step_payment['inline_keyboard'][] = [
-            ['text' => $textbotlang['textbot']['cartToCart'], 'url' => "https://t.me/$usernamecart", 'style' => nexora_gateway_native_style('card')],
+            ['text' => nexora_gateway_label('card'), 'url' => "https://t.me/$usernamecart", 'style' => nexora_gateway_native_style('card')],
         ];
     } else {
         $step_payment['inline_keyboard'][] = [
-            ['text' => $textbotlang['textbot']['cartToCart'], 'callback_data' => "cart_to_offline", 'style' => nexora_gateway_native_style('card')],
+            ['text' => nexora_gateway_label('card'), 'callback_data' => "cart_to_offline", 'style' => nexora_gateway_native_style('card')],
         ];
     }
 }
@@ -354,27 +361,27 @@ if (($paymentexits == 0 && $paymentverify == "onpayverify"))
     unset($step_payment['inline_keyboard']);
 if (nexora_pay_switch_is_on($PaySettingnow, "onnowpayment")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['nowPayment'], 'callback_data' => "plisio", 'style' => nexora_gateway_native_style('plisio')]
+        ['text' => nexora_gateway_label('plisio'), 'callback_data' => "plisio", 'style' => nexora_gateway_native_style('plisio')]
     ];
 }
 if (nexora_pay_switch_is_on($payment_status_nowpayment, "1")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['cryptoPayment'], 'callback_data' => "nowpayment", 'style' => nexora_gateway_native_style('nowpayment')]
+        ['text' => nexora_gateway_label('nowpayment'), 'callback_data' => "nowpayment", 'style' => nexora_gateway_native_style('nowpayment')]
     ];
 }
 if (nexora_pay_switch_is_on($affilnecurrency, "ondigi")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['nowPaymentTron'], 'callback_data' => "digitaltron", 'style' => nexora_gateway_native_style('digi')]
+        ['text' => nexora_gateway_label('digi'), 'callback_data' => "digitaltron", 'style' => nexora_gateway_native_style('digi')]
     ];
 }
 if (nexora_pay_switch_is_on($Swapino, "onSwapinoBot")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay2'], 'callback_data' => "iranpay1", 'style' => nexora_gateway_native_style('iranpay1')]
+        ['text' => nexora_gateway_label('iranpay1'), 'callback_data' => "iranpay1", 'style' => nexora_gateway_native_style('iranpay1')]
     ];
 }
 if (nexora_pay_switch_is_on($trnadoo, "onternado")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay3'], 'callback_data' => "iranpay2", 'style' => nexora_gateway_native_style('iranpay2')]
+        ['text' => nexora_gateway_label('iranpay2'), 'callback_data' => "iranpay2", 'style' => nexora_gateway_native_style('iranpay2')]
     ];
 }
 // Both halves matter: the admin has switched it on, *and* the key and endpoint
@@ -387,22 +394,22 @@ if (
     && function_exists('abangatewayEndpoint') && abangatewayEndpoint() !== null
 ) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay4'], 'callback_data' => "iranpay4", 'style' => nexora_gateway_native_style('iranpay4')]
+        ['text' => nexora_gateway_label('iranpay4'), 'callback_data' => "iranpay4", 'style' => nexora_gateway_native_style('iranpay4')]
     ];
 }
 if (nexora_pay_switch_is_on($arzireyali3, "oniranpay3") && $paymentexits >= 2) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['iranPay1'], 'callback_data' => "iranpay3", 'style' => nexora_gateway_native_style('iranpay3')]
+        ['text' => nexora_gateway_label('iranpay3'), 'callback_data' => "iranpay3", 'style' => nexora_gateway_native_style('iranpay3')]
     ];
 }
 if (nexora_pay_switch_is_on($PaySettingaqayepardakht, "onaqayepardakht")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['aqayePardakht'], 'callback_data' => "aqayepardakht", 'style' => nexora_gateway_native_style('aqayepardakht')]
+        ['text' => nexora_gateway_label('aqayepardakht'), 'callback_data' => "aqayepardakht", 'style' => nexora_gateway_native_style('aqayepardakht')]
     ];
 }
 if (nexora_pay_switch_is_on($zarinpal, "onzarinpal")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['zarinPal'], 'callback_data' => "zarinpal", 'style' => nexora_gateway_native_style('zarinpal')]
+        ['text' => nexora_gateway_label('zarinpal'), 'callback_data' => "zarinpal", 'style' => nexora_gateway_native_style('zarinpal')]
     ];
 }
 $variza = getPaySettingValue("variza_status", "offvariza");
@@ -414,7 +421,7 @@ if (
     && trim((string) getPaySettingValue("variza_webhook_secret", "")) !== "0"
 ) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['variza'], 'callback_data' => "variza", 'style' => nexora_gateway_native_style('variza')]
+        ['text' => nexora_gateway_label('variza'), 'callback_data' => "variza", 'style' => nexora_gateway_native_style('variza')]
     ];
 }
 $frenzyexStatus = getPaySettingValue("frenzyexstatus", "offfrenzyex");
@@ -439,7 +446,7 @@ if (nexora_pay_switch_is_on($paymentstatussnotverify, "onverifypay")) {
 }
 if (nexora_pay_switch_is_on($paymentsstartelegram, "1")) {
     $step_payment['inline_keyboard'][] = [
-        ['text' => $textbotlang['textbot']['starTelegram'], 'callback_data' => "startelegrams", 'style' => nexora_gateway_native_style('star')]
+        ['text' => nexora_gateway_label('star'), 'callback_data' => "startelegrams", 'style' => nexora_gateway_native_style('star')]
     ];
 }
 $step_payment['inline_keyboard'][] = [
@@ -1654,7 +1661,8 @@ function paymentGatewaysKeyboard()
     $rows = [];
     foreach ($paymentGateways as $key => $gateway) {
         $mark = nexora_pay_switch_is_on(getPaySettingValue($gateway['setting'], $gateway['off']), $gateway['on']) ? '✅' : '❌';
-        $rows[] = [['text' => "$mark {$gateway['label']}", 'callback_data' => "paygw-$key"]];
+        $label = function_exists('nexora_gateway_label') ? nexora_gateway_label($key) : $gateway['label'];
+        $rows[] = [['text' => "$mark {$label}", 'callback_data' => "paygw-$key"]];
     }
     $rows[] = [['text' => $textbotlang['keyboard']['gatewaysGeneralSettings'], 'callback_data' => "none"]];
     $rows[] = [

@@ -216,6 +216,21 @@ function panel_load_panels(PDO $pdo): array
 }
 
 /**
+ * The test services have their own page, so they are left out of the product
+ * list. A database that does not know the column yet simply shows everything.
+ */
+function panel_product_test_filter(PDO $pdo): string
+{
+    static $filter = null;
+    if ($filter !== null) {
+        return $filter;
+    }
+    $columns = array_map('strtolower', panel_table_columns($pdo, 'product'));
+    $filter = in_array('is_test', $columns, true) ? ' AND is_test = 0' : '';
+    return $filter;
+}
+
+/**
  * The name of a panel without its premium emoji tag (only for the display).
  */
 function panel_plain_name(string $name): string

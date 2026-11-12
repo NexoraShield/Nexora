@@ -207,6 +207,9 @@ if ($datain == "paygwback") {
             case 'products':
                 $advancedTitle = '📦 محصولات فروشگاه';
                 foreach (select("product", "*", null, null, "fetchAll") as $row) {
+                    if (isset($row['is_test']) && (int) $row['is_test'] === 1) {
+                        continue;
+                    }
                     $inbounds = json_decode((string) ($row['inbounds'] ?? ''), true);
                     $advancedLines[] = '• <b>' . $row['name_product'] . '</b> — ' . number_format((float) $row['price_product']) . ' تومان | '
                         . $row['Volume_constraint'] . ' GB | ' . $row['Service_time'] . ' روز | '
@@ -2248,7 +2251,7 @@ elseif ($datain == "systemsms") {
     update("user", "Processing_value_tow", $typeagent, "id", $from_id);
     $product = [];
     $panel = select("marzban_panel", "*", "code_panel", $user['Processing_value_one'], "select");
-    $getdataproduct = $pdo->prepare("SELECT * FROM product WHERE (Location = ? or Location = '/all') AND agent = ? ORDER BY display_order, id");
+    $getdataproduct = $pdo->prepare("SELECT * FROM product WHERE (Location = ? or Location = '/all') AND agent = ? AND is_test = 0 ORDER BY display_order, id");
     $getdataproduct->bindValue(1, $panel['name_panel'], PDO::PARAM_STR);
     $getdataproduct->bindValue(2, $typeagent, PDO::PARAM_STR);
     $getdataproduct->execute();
@@ -6104,7 +6107,8 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     $gatewayStatusText = $textbotlang['Admin']['Status'][$gatewayIsOn ? 'statuson' : 'statusoff'];
     $gatewayRows = json_decode($gateway['keyboard'], true)['inline_keyboard'];
     array_unshift($gatewayRows, [['text' => $gatewayStatusText, 'callback_data' => "paygwtoggle-$gatewayKey"]]);
-    Editmessagetext($from_id, $message_id, sprintf($textbotlang['Admin']['gateway']['detail'], $gateway['label'], $gatewayStatusText), json_encode(['inline_keyboard' => $gatewayRows]));
+    $gatewayLabel = function_exists('nexora_gateway_label') ? nexora_gateway_label($gatewayKey) : $gateway['label'];
+    Editmessagetext($from_id, $message_id, sprintf($textbotlang['Admin']['gateway']['detail'], $gatewayLabel, $gatewayStatusText), json_encode(['inline_keyboard' => $gatewayRows]));
 } elseif ($text == ($textbotlang['keyboard']['frenzyexApiKey'] ?? '🔑 کلید API فرنزی ایکس') && $adminrulecheck['rule'] == "administrator") {
     sendmessage($from_id, ($textbotlang['Admin']['gateway']['askFrenzyexApiKey'] ?? 'کلید API درگاه فرنزی ایکس را ارسال کنید:'), $backadmin, 'HTML');
     step('frenzyexapikey', $from_id);
@@ -6271,7 +6275,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     update("PaySetting", "ValuePay", $text, "NamePay", "chashbackvariza");
 } elseif ($text == $textbotlang['keyboard']['addConfig']) {
     $product = [];
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE Location = :text or Location = '/all' ORDER BY display_order, id");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :text or Location = '/all') AND is_test = 0 ORDER BY display_order, id");
     $stmt->bindParam(':text', $user['Processing_value'], PDO::PARAM_STR);
     $stmt->execute();
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -6600,7 +6604,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
         return;
     }
     $userdata = json_decode($user['Processing_value'], true);
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE Location = :mp16 AND agent = :mp17");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE Location = :mp16 AND agent = :mp17 AND is_test = 0");
     $stmt->execute([':mp16' => $userdata['namepanel'], ':mp17' => $userdata['agent']]);
     $product = $stmt->fetchAll();
     if ($product == false) {
@@ -6637,7 +6641,7 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
         return;
     }
     $userdata = json_decode($user['Processing_value'], true);
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE Location = :mp22 AND agent = :mp23");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE Location = :mp22 AND agent = :mp23 AND is_test = 0");
     $stmt->execute([':mp22' => $userdata['namepanel'], ':mp23' => $userdata['agent']]);
     $product = $stmt->fetchAll();
     if ($product == false) {

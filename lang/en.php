@@ -260,7 +260,7 @@ Choose one of the test services:',
 
 {description}
 
-💾 Volume: <b>{volume}</b> GB
+💾 Volume: <b>{volume}</b>
 ⏳ Duration: <b>{time}</b> hours
 📍 Panel: <b>{location}</b>',
                         'buyBtn' => '🧪 Get the test service',
@@ -302,7 +302,7 @@ Choose one of the products below:',
 {description}
 
 💰 Price: <b>{price}</b> Toman
-💾 Volume: <b>{volume}</b> GB
+💾 Volume: <b>{volume}</b>
 ⏳ Duration: <b>{time}</b> days
 📍 Panel: <b>{location}</b>
 

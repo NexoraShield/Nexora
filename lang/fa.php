@@ -260,7 +260,7 @@ return [
 
 {description}
 
-💾 حجم: <b>{volume}</b> گیگابایت
+💾 حجم: <b>{volume}</b>
 ⏳ مدت: <b>{time}</b> ساعت
 📍 پنل: <b>{location}</b>',
                         'buyBtn' => '🧪 دریافت سرویس تست',
@@ -304,7 +304,7 @@ return [
 {description}
 
 💰 قیمت: <b>{price}</b> تومان
-💾 حجم: <b>{volume}</b> گیگابایت
+💾 حجم: <b>{volume}</b>
 ⏳ مدت: <b>{time}</b> روز
 📍 پنل: <b>{location}</b>
 

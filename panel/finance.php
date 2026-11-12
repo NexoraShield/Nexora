@@ -46,6 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($style !== '' && in_array($style, nexora_color_slugs(), true)) {
             finance_save_setting($pdo, 'nx_gw_style_' . $key, $style);
         }
+        // the name the buyer sees on the payment button
+        $label = trim((string) ($_POST['gw_label'] ?? ''));
+        if ($label !== '') {
+            finance_save_setting($pdo, 'nx_gw_label_' . $key, mb_substr($label, 0, 60, 'UTF-8'));
+        } elseif (array_key_exists('gw_label', $_POST)) {
+            // an empty field removes the custom name
+            $pdo->prepare("DELETE FROM PaySetting WHERE NamePay = ?")->execute(['nx_gw_label_' . $key]);
+        }
         // the on / off switch
         $status = trim((string) ($_POST['gw_status'] ?? ''));
         if ($status === 'on' || $status === 'off') {
@@ -77,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // The colour of every gateway: the one that was picked in the panel, otherwise
 // the default of the gateway.
 $colors = nexora_gateway_color_map();
+// The name of every gateway: the one that was picked in the panel, otherwise
+// the default of the gateway.
+$gatewayLabels = nexora_gateway_labels();
 
 $pageTitle = '💰 مالی و درگاه‌های پرداخت';
 $pageLede = 'همه درگاه‌های پرداخت را اینجا مدیریت کنید: روشن و خاموش کردن، انتخاب رنگ دکمه پرداخت و تنظیم کلیدهای هر درگاه.';
@@ -128,6 +139,8 @@ foreach ($gateways as $g) {
     $label = $palette[$style]['label'] ?? $style;
     $native = nexora_btn_style($style);
     $isOn = nexora_pay_switch_is_on(getPaySettingValue($gateway['setting'], $gateway['off']), $gateway['on']);
+    $customLabel = (string) ($gatewayLabels[$key] ?? '');
+    $customLabel = ($customLabel !== (string) ($gateway['label'] ?? '')) ? $customLabel : '';
     $i++;
 ?>
 <div class="card fade-up d<?= min($i, 4) ?>" style="margin-bottom:16px;border-right:3px solid <?= $hex ?>">
@@ -158,6 +171,13 @@ foreach ($gateways as $g) {
                         <option value="on" <?= $isOn ? 'selected' : '' ?>>فعال</option>
                         <option value="off" <?= $isOn ? '' : 'selected' ?>>غیرفعال</option>
                     </select>
+                </label>
+                <label class="field">
+                    <span>نام درگاه (روی دکمه پرداخت مشتری)</span>
+                    <input class="input" type="text" name="gw_label" dir="rtl"
+                        value="<?= htmlspecialchars($customLabel) ?>"
+                        placeholder="<?= htmlspecialchars($gateway['label']) ?>">
+                    <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر خالی باشد، نام پیش‌فرض («<?= htmlspecialchars($gateway['label']) ?>») استفاده می‌شود.</small>
                 </label>
                 <label class="field">
                     <span>رنگ دکمه پرداخت</span>

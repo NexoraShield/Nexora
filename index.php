@@ -1563,7 +1563,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $mainvolume = $mainvolume[$user['agent']];
     $maxvolume = json_decode($marzban_list_get['maxvolume'], true);
     $maxvolume = $maxvolume[$user['agent']];
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND one_buy_status = '0'");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND is_test = 0 AND one_buy_status = '0'");
     $stmt->execute([
         ':service_location' => $marzban_list_get['name_panel'],
         ':agent' => $user['agent'],
@@ -1585,7 +1585,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     if ($setting['statuscategory'] == "offcategory") {
-        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND one_buy_status = '0' ORDER BY display_order, id");
+        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND is_test = 0 AND one_buy_status = '0' ORDER BY display_order, id");
         $stmt->execute([
             ':service_location' => $nameloc['Service_location'],
             ':agent' => $user['agent'],
@@ -1654,7 +1654,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $monthenumber = $dataget[1];
     $userdate = json_decode($user['Processing_value'], true);
     $nameloc = select("invoice", "*", "id_invoice", $userdate['id_invoice'], "select");
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND Service_time = :monthe AND one_buy_status = '0' ORDER BY display_order, id");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND is_test = 0 AND Service_time = :monthe AND one_buy_status = '0' ORDER BY display_order, id");
     $stmt->execute([
         ':service_location' => $nameloc['Service_location'],
         ':agent' => $user['agent'],
@@ -1745,7 +1745,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $product['Volume_constraint'] = $userdate['volume'];
         step("home", $from_id);
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND code_product = :code_product AND one_buy_status = '0'");
+        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND is_test = 0 AND code_product = :code_product AND one_buy_status = '0'");
         $stmt->execute([
             ':service_location' => $nameloc['Service_location'],
             ':agent' => $user['agent'],
@@ -1898,7 +1898,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $prodcut['Volume_constraint'] = $userdata['data_limit'];
         $prodcut['inbounds'] = $marzban_list_get['inboundid'];
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND code_product = :code_product AND one_buy_status = '0'");
+        $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :service_location OR Location = '/all') AND agent = :agent AND is_test = 0 AND code_product = :code_product AND one_buy_status = '0'");
         $stmt->execute([
             ':service_location' => $nameloc['Service_location'],
             ':agent' => $user['agent'],
@@ -3112,8 +3112,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $testRows = [];
         foreach ($testProducts as $testProduct) {
             $testLabel = (string) $testProduct['name_product'];
-            if (floatval($testProduct['Volume_constraint']) > 0) {
-                $testLabel .= ' - ' . rtrim(rtrim(number_format((float) $testProduct['Volume_constraint'], 1), '0'), '.') . ' GB';
+            $testVolume = nexora_format_volume($testProduct['Volume_constraint'] ?? 0);
+            if ($testVolume !== '') {
+                $testLabel .= ' - ' . $testVolume;
             }
             $testRows[] = [nexora_style_btn($testLabel, "testproduct_" . $testProduct['code_product'], $testProduct)];
         }
@@ -3697,7 +3698,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
                     sendmessage($from_id, $textbotlang['users']['sell']['selectCategory'], KeyboardCategory($location, $user['agent'], $backtarget), 'HTML');
                 }
             } else {
-                $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent ORDER BY display_order, id";
+                $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 ORDER BY display_order, id";
                 $queryParams = [':loc' => $location, ':agent' => $user['agent']];
                 $marzban_list_get = select("marzban_panel", "*", "name_panel", $location, "select");
                 $statuscustomvolume = json_decode($marzban_list_get['customvolume'], true)[$user['agent']];
@@ -3792,7 +3793,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $marzban_list_get = select("marzban_panel", "*", "name_panel", $location, "select");
             Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['selectCategory'], KeyboardCategory($location, $user['agent'], "buybacktow"));
         } else {
-            $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent ORDER BY display_order, id";
+            $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 ORDER BY display_order, id";
             $queryParams = [':loc' => $location, ':agent' => $user['agent']];
             $statuscustomvolume = json_decode($marzban_list_get['customvolume'], true)[$user['agent']];
             if (in_array(usernameMethodKey($marzban_list_get['MethodUsername']), ['customUsername', 'customUsernameRandom'], true)) {
@@ -3830,10 +3831,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $categorynames = select("category", "remark", "id", $categorynames, "select")['remark'];
     $userdate = json_decode($user['Processing_value'], true);
     if (isset($userdate['monthproduct'])) {
-        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND category = :category AND Service_time = :stime ORDER BY display_order, id";
+        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 AND category = :category AND Service_time = :stime ORDER BY display_order, id";
         $queryParams = [':loc' => $userdate['name_panel'], ':agent' => $user['agent'], ':category' => $categorynames, ':stime' => $userdate['monthproduct']];
     } else {
-        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND category = :category ORDER BY display_order, id";
+        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 AND category = :category ORDER BY display_order, id";
         $queryParams = [':loc' => $userdate['name_panel'], ':agent' => $user['agent'], ':category' => $categorynames];
     }
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $userdate['name_panel'], "select");
@@ -3876,7 +3877,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
         Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['selectCategory'], KeyboardCategory($marzban_list_get['name_panel'], $user['agent'], $back));
     } else {
-        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND Service_time = :stime ORDER BY display_order, id";
+        $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 AND Service_time = :stime ORDER BY display_order, id";
         $queryParams = [':loc' => $userdate['name_panel'], ':agent' => $user['agent'], ':stime' => $monthenumber];
         $marzban_list_get = select("marzban_panel", "*", "name_panel", $userdate['name_panel'], "select");
         $statuscustomvolume = json_decode($marzban_list_get['customvolume'] ?? '[]', true)[$user['agent']] ?? null;
@@ -4112,7 +4113,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $info_product['price_product'] = ($parts[2] * $custompricevalue) + ($parts[1] * $customtimevalueprice);
         $info_product['data_limit_reset'] = "no_reset";
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM product WHERE code_product = :code_product AND (Location = :location OR Location = '/all') AND agent = :agent AND status_product != 'disable' LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM product WHERE code_product = :code_product AND (Location = :location OR Location = '/all') AND agent = :agent AND is_test = 0 AND status_product != 'disable' LIMIT 1");
         $stmt->execute([
             ':code_product' => $user['Processing_value_one'],
             ':location' => $userdate['name_panel'],
@@ -4567,7 +4568,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     } else {
         $statuscustom = false;
     }
-    $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent ORDER BY display_order, id";
+    $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 ORDER BY display_order, id";
     $queryParams = [':loc' => $location, ':agent' => $user['agent']];
     Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['serviceSelect'], KeyboardProduct($marzban_list_get['name_panel'], $query, $user['pricediscount'], $datakeyboard, $statuscustom, "backuser", null, "customsellvolumeom", $queryParams));
 } elseif ($datain == "customsellvolumeom") {
@@ -4724,7 +4725,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $info_product['price_product'] = ($parts[2] * $custompricevalue) + ($parts[1] * $customtimevalueprice);
         $info_product['data_limit_reset'] = "no_reset";
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM product WHERE code_product = :code_product AND (Location = :location OR Location = '/all') AND agent = :agent AND status_product != 'disable' AND one_buy_status = '0' LIMIT 1");
+        $stmt = $pdo->prepare("SELECT * FROM product WHERE code_product = :code_product AND (Location = :location OR Location = '/all') AND agent = :agent AND is_test = 0 AND status_product != 'disable' AND one_buy_status = '0' LIMIT 1");
         $stmt->bindValue(':code_product', $user['Processing_value_one'], PDO::PARAM_STR);
         $stmt->bindValue(':location', $user['Processing_value'], PDO::PARAM_STR);
         $stmt->bindValue(':agent', $user['agent'], PDO::PARAM_STR);
@@ -6730,7 +6731,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $testDetails = strtr($textbotlang['users']['testService']['details'], [
         '{name}' => (string) $testProduct['name_product'],
         '{description}' => (string) ($testProduct['note'] ?? ''),
-        '{volume}' => (string) $testProduct['Volume_constraint'],
+        '{volume}' => nexora_format_volume($testProduct['Volume_constraint'] ?? 0),
         '{time}' => (string) $testProduct['Service_time'],
         '{location}' => (string) $testProduct['Location'],
     ]);
@@ -7295,7 +7296,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     $location = $location['name_panel'];
     update("user", "Processing_value", $location, "id", $from_id);
-    $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent ORDER BY display_order, id";
+    $query = "SELECT * FROM product WHERE (Location = :loc OR Location = '/all') AND agent = :agent AND is_test = 0 ORDER BY display_order, id";
     $queryParams = [':loc' => $location, ':agent' => $user['agent']];
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $location, "select");
     if (empty($marzban_list_get)) {
@@ -7319,7 +7320,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     deletemessage($from_id, $message_id);
     $codeproduct = $dataget[1];
     $username = $dataget[2];
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :processing_value OR Location = '/all') AND agent = :agent AND code_product = :code_product AND one_buy_status = '0'");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :processing_value OR Location = '/all') AND agent = :agent AND is_test = 0 AND code_product = :code_product AND one_buy_status = '0'");
     $stmt->execute([
         ':processing_value' => $user['Processing_value'],
         ':agent' => $user['agent'],
@@ -7342,7 +7343,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $codeproduct = $dataget[1];
     $usernamePanelExtends = $dataget[2];
     deletemessage($from_id, $message_id);
-    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :processing_value OR Location = '/all') AND agent = :agent AND code_product = :code_product AND one_buy_status = '0'");
+    $stmt = $pdo->prepare("SELECT * FROM product WHERE (Location = :processing_value OR Location = '/all') AND agent = :agent AND is_test = 0 AND code_product = :code_product AND one_buy_status = '0'");
     $stmt->execute([
         ':processing_value' => $user['Processing_value'],
         ':agent' => $user['agent'],

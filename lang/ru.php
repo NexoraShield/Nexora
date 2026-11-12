@@ -260,7 +260,7 @@ return [
 
 {description}
 
-💾 Объём: <b>{volume}</b> GB
+💾 Объём: <b>{volume}</b>
 ⏳ Срок: <b>{time}</b> часов
 📍 Панель: <b>{location}</b>',
                         'buyBtn' => '🧪 Получить тестовый сервис',

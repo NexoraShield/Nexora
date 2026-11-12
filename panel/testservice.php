@@ -81,6 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
         } else {
             try {
                 $inbounds = trim((string) ($_POST['inbounds'] ?? ''));
+                $volumeUnit = strtolower(trim((string) ($_POST['volume_unit'] ?? 'gb'))) === 'mb' ? 'mb' : 'gb';
+                $volume = nexora_volume_to_gb($_POST['volume_product'] ?? 0, $volumeUnit);
                 if ($action === 'add') {
                     $code = bin2hex(random_bytes(2));
                     db_query(
@@ -90,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                             $name,
                             $code,
                             0,
-                            (int) ($_POST['volume_product'] ?? 0),
+                            $volume,
                             (int) ($_POST['time_product'] ?? 0),
                             $panel,
                             'f',
@@ -111,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                         "UPDATE product SET name_product=?,Volume_constraint=?,Service_time=?,Location=?,note=?,status_product=?,is_test=1,btn_style=?,btn_emoji_id=?,inbounds=? WHERE id=?",
                         [
                             $name,
-                            (int) ($_POST['volume_product'] ?? 0),
+                            $volume,
                             (int) ($_POST['time_product'] ?? 0),
                             $panel,
                             (string) ($_POST['note_product'] ?? ''),
@@ -200,7 +202,7 @@ include __DIR__ . '/inc/layout_head.php';
         <tr>
           <td><?= nexora_testservice_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $colors) ?></td>
           <td><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($it['name_product'] ?? '')) : htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
-          <td><?= (int) ($it['Volume_constraint'] ?? 0) ?></td>
+          <td><?= htmlspecialchars(nexora_format_volume($it['Volume_constraint'] ?? 0) ?: '—') ?></td>
           <td><?= (int) ($it['Service_time'] ?? 0) ?></td>
           <td><?= function_exists('nexora_emoji_text_to_html') ? nexora_emoji_text_to_html((string) ($it['Location'] ?? '')) : htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
           <td style="min-width:160px"><?= htmlspecialchars($inboundText) ?></td>
@@ -213,7 +215,8 @@ include __DIR__ . '/inc/layout_head.php';
             <button class="btn btn-primary btn-sm" type="button" onclick='openEditTest(<?= json_encode([
                 'id' => (int) $it['id'],
                 'name_product' => (string) ($it['name_product'] ?? ''),
-                'volume_product' => (int) ($it['Volume_constraint'] ?? 0),
+                'volume_product' => (float) ($it['Volume_constraint'] ?? 0),
+                'volume_unit' => nexora_volume_unit($it['Volume_constraint'] ?? 0),
                 'time_product' => (int) ($it['Service_time'] ?? 0),
                 'namepanel' => (string) ($it['Location'] ?? ''),
                 'note_product' => (string) ($it['note'] ?? ''),
@@ -264,7 +267,16 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
         <input type="hidden" name="action" value="add">
         <div class="form-grid">
           <label class="field"><span>نام سرویس تست</span><input class="input" name="name_product" required></label>
-          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="1" required></label>
+          <label class="field"><span>حجم</span>
+            <div style="display:flex;gap:8px">
+              <input class="input" type="number" name="volume_product" value="1" step="any" min="0" required style="flex:1">
+              <select name="volume_unit" class="select" style="max-width:120px">
+                <option value="gb">گیگابایت</option>
+                <option value="mb">مگابایت</option>
+              </select>
+            </div>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">حجم را می‌توانید به مگابایت یا گیگابایت وارد کنید.</small>
+          </label>
           <label class="field"><span>مدت (ساعت)</span><input class="input" type="number" name="time_product" value="1" required></label>
           <label class="field"><span>پنل</span>
             <select name="namepanel" id="ts_add_panel" class="select" required onchange="tsFilterInbounds(document.getElementById('ts_add_inbounds'))">
@@ -308,7 +320,16 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
         <input type="hidden" name="edit_id" id="ts_edit_id">
         <div class="form-grid">
           <label class="field"><span>نام سرویس تست</span><input class="input" name="name_product" id="ts_edit_name" required></label>
-          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" id="ts_edit_volume" value="0" required></label>
+          <label class="field"><span>حجم</span>
+            <div style="display:flex;gap:8px">
+              <input class="input" type="number" name="volume_product" id="ts_edit_volume" value="0" step="any" min="0" required style="flex:1">
+              <select name="volume_unit" id="ts_edit_volume_unit" class="select" style="max-width:120px">
+                <option value="gb">گیگابایت</option>
+                <option value="mb">مگابایت</option>
+              </select>
+            </div>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">حجم را می‌توانید به مگابایت یا گیگابایت وارد کنید.</small>
+          </label>
           <label class="field"><span>مدت (ساعت)</span><input class="input" type="number" name="time_product" id="ts_edit_time" value="0" required></label>
           <label class="field"><span>پنل</span>
             <select name="namepanel" id="ts_edit_panel" class="select" required onchange="tsFilterInbounds(document.getElementById('ts_edit_inbounds'))">
@@ -376,7 +397,13 @@ window.openEditTest = function (p) {
     p = p || {};
     document.getElementById('ts_edit_id').value = p.id || '';
     document.getElementById('ts_edit_name').value = p.name_product || '';
-    document.getElementById('ts_edit_volume').value = p.volume_product || 0;
+    var tsVolume = parseFloat(p.volume_product) || 0;
+    var tsUnit = p.volume_unit || 'gb';
+    document.getElementById('ts_edit_volume').value = tsUnit === 'mb' ? Math.round(tsVolume * 1024 * 100) / 100 : tsVolume;
+    var tsUnitSelect = document.getElementById('ts_edit_volume_unit');
+    if (tsUnitSelect) {
+        tsUnitSelect.value = tsUnit;
+    }
     document.getElementById('ts_edit_time').value = p.time_product || 0;
     document.getElementById('ts_edit_note').value = p.note_product || '';
     document.getElementById('ts_edit_emoji').value = p.btn_emoji_id || '';

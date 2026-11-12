@@ -260,7 +260,7 @@ return [
 
 {description}
 
-💾 流量：<b>{volume}</b> GB
+💾 流量：<b>{volume}</b>
 ⏳ 时长：<b>{time}</b> 小时
 📍 面板：<b>{location}</b>',
                         'buyBtn' => '🧪 获取测试服务',
@@ -302,7 +302,7 @@ return [
 {description}
 
 💰 价格：<b>{price}</b> 汤曼
-💾 流量：<b>{volume}</b> GB
+💾 流量：<b>{volume}</b>
 ⏳ 时长：<b>{time}</b> 天
 📍 面板：<b>{location}</b>
 

@@ -759,6 +759,50 @@ function getPaySettingValue($name, $default = null)
  * therefore also looked up without its emoji tag, otherwise every panel with
  * a premium emoji in its name could not be selected.
  */
+/**
+ * The volume of a service in a readable unit. The volume is stored in
+ * gigabytes, a small service is shown in megabytes.
+ */
+function nexora_format_volume($gb): string
+{
+    $gb = (float) $gb;
+    if ($gb <= 0) {
+        return '';
+    }
+    if ($gb < 1) {
+        $mb = $gb * 1024;
+        $text = rtrim(rtrim(number_format($mb, 2), '0'), '.');
+        return $text . ' مگابایت';
+    }
+    $text = rtrim(rtrim(number_format($gb, 2), '0'), '.');
+    return $text . ' گیگابایت';
+}
+
+/**
+ * The volume of a service in the unit that fits it best: megabytes below one
+ * gigabyte, gigabytes above.
+ */
+function nexora_volume_unit($gb): string
+{
+    return ((float) $gb) < 1 ? 'mb' : 'gb';
+}
+
+/**
+ * The volume in gigabytes, no matter if it was entered in gigabytes or in
+ * megabytes.
+ */
+function nexora_volume_to_gb($value, string $unit = 'gb'): float
+{
+    $value = (float) $value;
+    if ($value <= 0) {
+        return 0.0;
+    }
+    if (strtolower($unit) === 'mb') {
+        return round($value / 1024, 6);
+    }
+    return round($value, 4);
+}
+
 function nexora_panel_by_name($name): ?array
 {
     global $pdo;

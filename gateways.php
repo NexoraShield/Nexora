@@ -207,8 +207,54 @@ if (!function_exists('nexora_payment_gateways')) {
     }
 }
 
-if (!function_exists('nexora_gateway_color_map')) {
+if (!function_exists('nexora_gateway_labels')) {
     /**
+     * The name of every gateway. The administrator can change it in the web
+     * panel, and the buyer then sees that name on the payment button.
+     */
+    function nexora_gateway_labels(): array
+    {
+        static $labels = null;
+        if ($labels !== null) {
+            return $labels;
+        }
+        $labels = [];
+        foreach (nexora_payment_gateways() as $key => $gateway) {
+            $labels[$key] = (string) ($gateway['label'] ?? $key);
+        }
+        try {
+            if (function_exists('getPaySettingValue')) {
+                foreach ($labels as $key => $label) {
+                    $custom = trim((string) getPaySettingValue('nx_gw_label_' . $key, ''));
+                    if ($custom !== '') {
+                        $labels[$key] = $custom;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // the defaults stay
+        }
+        return $labels;
+    }
+}
+
+if (!function_exists('nexora_gateway_label')) {
+    /**
+     * The name of one gateway, the one the administrator chose.
+     */
+    function nexora_gateway_label(string $key): string
+    {
+        $labels = nexora_gateway_labels();
+        $label = trim((string) ($labels[$key] ?? ''));
+        if ($label === '') {
+            $gateway = nexora_payment_gateways();
+            $label = (string) ($gateway[$key]['label'] ?? $key);
+        }
+        return $label !== '' ? $label : $key;
+    }
+}
+
+if (!function_exists('nexora_gateway_color_map')) {    /**
      * The colour of every gateway: the one the administrator picked in the web
      * panel, otherwise the default of the gateway.
      */
