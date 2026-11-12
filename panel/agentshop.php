@@ -205,7 +205,7 @@ else: ?>
           <label class="field"><span>پنل</span>
             <select name="namepanel" class="select" required>
               <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', (string) $pn['name_panel']))) ?></option>
               <?php endforeach; ?>
             </select>
           </label>
@@ -253,7 +253,7 @@ else: ?>
           <label class="field"><span>پنل</span>
             <select name="namepanel" id="edit_panel" class="select" required>
               <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(trim((string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', (string) $pn['name_panel']))) ?></option>
               <?php endforeach; ?>
             </select>
           </label>
