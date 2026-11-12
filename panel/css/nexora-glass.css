@@ -136,3 +136,33 @@ td .nx-emoji {
     vertical-align: middle;
     margin: 0;
 }
+
+/* The list of the inbounds of a panel in the test service form */
+.ts-inbounds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 140px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    background: var(--sf2);
+}
+
+.ts-inbound {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    background: var(--sf3);
+    border: 1px solid var(--bd);
+    font-size: .76rem;
+    cursor: pointer;
+}
+
+.ts-inbound input {
+    accent-color: var(--ac);
+    margin: 0;
+}

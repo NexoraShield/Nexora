@@ -53,16 +53,39 @@ function nexora_testservice_panel_label(string $name): string
 {
     return function_exists('panel_plain_name') ? panel_plain_name($name) : $name;
 }
-// The inbounds of a panel
+// The inbounds of a panel. The value is a json list, but an installation that
+// saved a single inbound without json has to be read as well.
 function nexora_testservice_inbounds(array $panel): array
 {
-    $raw = json_decode((string) ($panel['inbounds'] ?? ''), true);
-    $out = [];
-    if (is_array($raw)) {
-        foreach ($raw as $v) {
+    return nexora_testservice_inbound_values((string) ($panel['inbounds'] ?? ''));
+}
+
+// The inbounds of a product as a list of values
+function nexora_testservice_inbound_values($raw): array
+{
+    $raw = trim((string) $raw);
+    if ($raw === '' || $raw === 'null') {
+        return [];
+    }
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $out = [];
+        foreach ($decoded as $v) {
             if (is_scalar($v) && (string) $v !== '') {
                 $out[] = (string) $v;
             }
+        }
+        return array_values(array_unique($out));
+    }
+    // a single value that was saved without json
+    if (is_scalar($decoded) && (string) $decoded !== '') {
+        return [(string) $decoded];
+    }
+    $out = [];
+    foreach (explode(',', $raw) as $v) {
+        $v = trim($v);
+        if ($v !== '') {
+            $out[] = $v;
         }
     }
     return array_values(array_unique($out));
@@ -82,7 +105,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
             flash('error', 'پنل را انتخاب کنید.');
         } else {
             try {
-                $inbounds = trim((string) ($_POST['inbounds'] ?? ''));
+                $inboundList = [];
+                foreach ((array) ($_POST['inbounds'] ?? []) as $inboundValue) {
+                    $inboundValue = trim((string) $inboundValue);
+                    if ($inboundValue !== '') {
+                        $inboundList[] = $inboundValue;
+                    }
+                }
+                $inbounds = $inboundList ? json_encode(array_values(array_unique($inboundList))) : '';
                 $volumeUnit = strtolower(trim((string) ($_POST['volume_unit'] ?? 'gb'))) === 'mb' ? 'mb' : 'gb';
                 $volume = nexora_volume_to_gb($_POST['volume_product'] ?? 0, $volumeUnit);
                 if ($action === 'add') {
@@ -198,8 +228,8 @@ include __DIR__ . '/inc/layout_head.php';
         <tr><td colspan="12" style="text-align:center;color:var(--mute);padding:22px">هنوز سرویس تستی تعریف نشده است. تا وقتی سرویس تست تعریف نکنید، سرویس تست قبلی (بر اساس تنظیمات هر پنل) مثل قبل کار می‌کند.</td></tr>
       <?php endif; ?>
       <?php foreach ($items as $it):
-        $inbounds = json_decode((string) ($it['inbounds'] ?? ''), true);
-        $inboundText = is_array($inbounds) && $inbounds ? implode('، ', array_map('strval', $inbounds)) : 'پیش‌فرض پنل';
+        $inbounds = nexora_testservice_inbound_values((string) ($it['inbounds'] ?? ''));
+        $inboundText = $inbounds ? implode('، ', $inbounds) : 'پیش‌فرض پنل';
       ?>
         <tr>
           <td><?= nexora_testservice_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $colors) ?></td>
@@ -226,7 +256,7 @@ include __DIR__ . '/inc/layout_head.php';
                 'btn_emoji_id' => (string) ($it['btn_emoji_id'] ?? ''),
                 'status_product' => (string) ($it['status_product'] ?? 'active'),
                 'position' => (int) ($it['display_order'] ?? 0),
-                'inbounds' => is_array($inbounds) ? $inbounds : [],
+                'inbounds' => $inbounds,
             ], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>✏️ ویرایش</button>
             <form method="POST" style="display:inline">
               <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
@@ -244,16 +274,18 @@ include __DIR__ . '/inc/layout_head.php';
 <?php
 // the form of the inbounds (shared by the add and the edit modal)
 $tsInboundField = function (string $id, array $selected = []) use ($panelInbounds) {
-    $h = '<select name="inbounds" id="' . htmlspecialchars($id) . '" class="select" onchange="tsFilterInbounds(this)">';
-    $h .= '<option value="">پیش‌فرض پنل</option>';
+    $selected = array_map('strval', $selected);
+    $h = '<div id="' . htmlspecialchars($id) . '" class="ts-inbounds">';
+    $h .= '<label class="ts-inbound" data-panel=""><input type="checkbox" name="inbounds[]" value=""> پیش‌فرض پنل</label>';
     foreach ($panelInbounds as $panelName => $list) {
         foreach ($list as $inb) {
-            $sel = in_array((string) $inb, array_map('strval', $selected), true) ? ' selected' : '';
-            $h .= '<option value="' . htmlspecialchars((string) $inb) . '" data-panel="' . htmlspecialchars((string) $panelName) . '"' . $sel . '>'
-                . htmlspecialchars((string) $inb) . '</option>';
+            $chk = in_array((string) $inb, $selected, true) ? ' checked' : '';
+            $h .= '<label class="ts-inbound" data-panel="' . htmlspecialchars((string) $panelName) . '">'
+                . '<input type="checkbox" name="inbounds[]" value="' . htmlspecialchars((string) $inb) . '"' . $chk . '> '
+                . htmlspecialchars((string) $inb) . '</label>';
         }
     }
-    return $h . '</select>';
+    return $h . '</div>';
 };
 ?>
 
@@ -369,30 +401,32 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
 
 <script>
 // Only the inbounds of the selected panel are offered.
-window.tsFilterInbounds = function (select) {
-    if (!select) return;
+window.tsFilterInbounds = function (box) {
+    if (!box) return;
     var panelSelect = null;
-    if (select.id === 'ts_add_inbounds') {
+    if (box.id === 'ts_add_inbounds') {
         panelSelect = document.getElementById('ts_add_panel');
-    } else if (select.id === 'ts_edit_inbounds') {
+    } else if (box.id === 'ts_edit_inbounds') {
         panelSelect = document.getElementById('ts_edit_panel');
     }
     var panel = panelSelect ? panelSelect.value : '';
-    var keep = select.value;
-    for (var i = 0; i < select.options.length; i++) {
-        var opt = select.options[i];
-        if (!opt.value) continue;
-        var owner = opt.getAttribute('data-panel') || '';
+    var labels = box.querySelectorAll('.ts-inbound');
+    for (var i = 0; i < labels.length; i++) {
+        var label = labels[i];
+        var input = label.querySelector('input[type=checkbox]');
+        var owner = label.getAttribute('data-panel') || '';
         if (owner && panel && owner !== panel) {
-            opt.hidden = true;
-            opt.disabled = true;
+            label.style.display = 'none';
+            if (input) {
+                input.checked = false;
+                input.disabled = true;
+            }
         } else {
-            opt.hidden = false;
-            opt.disabled = false;
+            label.style.display = '';
+            if (input) {
+                input.disabled = false;
+            }
         }
-    }
-    if (keep && select.selectedIndex >= 0 && select.options[select.selectedIndex].disabled) {
-        select.selectedIndex = 0;
     }
 };
 window.openEditTest = function (p) {
@@ -421,8 +455,9 @@ window.openEditTest = function (p) {
     var inb = document.getElementById('ts_edit_inbounds');
     if (inb) {
         var wanted = (p.inbounds || []).map(function (v) { return String(v); });
-        for (var j = 0; j < inb.options.length; j++) {
-            inb.options[j].selected = wanted.indexOf(inb.options[j].value) !== -1;
+        var boxes = inb.querySelectorAll('input[type=checkbox]');
+        for (var j = 0; j < boxes.length; j++) {
+            boxes[j].checked = boxes[j].value !== '' && wanted.indexOf(boxes[j].value) !== -1;
         }
         window.tsFilterInbounds(inb);
     }
