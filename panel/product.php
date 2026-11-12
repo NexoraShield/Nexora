@@ -282,8 +282,8 @@ include __DIR__ . '/inc/layout_head.php';
             <select name="namepanel" class="select">
               <option value=""><?= $textbotlang['panel']['productFieldNote'] ?></option>
               <?php foreach ($panels as $pl): ?>
-                <option value="<?= htmlspecialchars(stripCustomEmojiTags($pl['name_panel']) ?? $pl['id']) ?>">
-                  <?= htmlspecialchars(stripCustomEmojiTags($pl['name_panel']) ?? $pl['id']) ?>
+                <option value="<?= htmlspecialchars((string) $pl['name_panel']) ?>">
+                  <?= htmlspecialchars(stripCustomEmojiTags((string) $pl['name_panel'])) ?>
                 </option><?php endforeach; ?>
             </select>
           </div>
@@ -367,8 +367,8 @@ include __DIR__ . '/inc/layout_head.php';
             <select name="namepanel" id="edit_panel" class="select">
               <option value=""><?= $textbotlang['panel']['productDetailLocation'] ?></option>
               <?php foreach ($panels as $pl): ?>
-                <option value="<?= htmlspecialchars(stripCustomEmojiTags($pl['name_panel']) ?? $pl['id']) ?>">
-                  <?= htmlspecialchars(stripCustomEmojiTags($pl['name_panel']) ?? $pl['id']) ?>
+                <option value="<?= htmlspecialchars((string) $pl['name_panel']) ?>">
+                  <?= htmlspecialchars(stripCustomEmojiTags((string) $pl['name_panel'])) ?>
                 </option><?php endforeach; ?>
             </select>
           </div>
