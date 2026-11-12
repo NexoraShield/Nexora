@@ -16,5 +16,21 @@ window.openEditModal = function (p) {
         }
     }
 
+    // per product inbound checkboxes
+    var inbWrap = document.getElementById('edit_inbounds');
+    if (inbWrap) {
+        var selectedInbounds = [];
+        try {
+            var parsedInbounds = JSON.parse(p.inbounds || '[]');
+            if (Array.isArray(parsedInbounds)) {
+                selectedInbounds = parsedInbounds.map(function (v) { return String(v); });
+            }
+        } catch (e) { }
+        var inbBoxes = inbWrap.querySelectorAll('input[name="inbounds_product[]"]');
+        for (var j = 0; j < inbBoxes.length; j++) {
+            inbBoxes[j].checked = selectedInbounds.indexOf(inbBoxes[j].value) !== -1;
+        }
+    }
+
     openModal('editModal');
 };

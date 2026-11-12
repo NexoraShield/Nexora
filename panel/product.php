@@ -3,6 +3,59 @@ require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
 require_auth();
 
+// A product can define its own inbound(s). When the product has no inbound
+// of its own the panel default is used (see panels/Api/Marzban.php).
+function nexora_product_inbound_list($panel): array
+{
+    $raw = json_decode((string) ($panel['inbounds'] ?? ''), true);
+    $out = [];
+    if (is_array($raw)) {
+        foreach ($raw as $v) {
+            if (is_scalar($v) && (string) $v !== '') {
+                $out[] = (string) $v;
+            }
+        }
+    }
+    return array_values(array_unique($out));
+}
+function nexora_product_inbound_value($post): ?string
+{
+    $list = $post['inbounds_product'] ?? [];
+    if (!is_array($list)) {
+        $list = ($list === '' || $list === null) ? [] : [$list];
+    }
+    $list = array_values(array_unique(array_filter(array_map('strval', $list), fn($v) => $v !== '')));
+    if (!$list) {
+        return null;
+    }
+    return json_encode(array_values($list));
+}
+function nexora_product_inbound_field($panels, $selected = [], $prefix = ''): string
+{
+    $selected = array_map('strval', (array) $selected);
+    $h = '<div style="max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px">';
+    $any = false;
+    foreach ($panels as $pl) {
+        $list = nexora_product_inbound_list($pl);
+        if (!$list) {
+            continue;
+        }
+        $any = true;
+        $h .= '<div style="margin-bottom:6px"><b style="font-size:.75rem">' . htmlspecialchars((string) $pl['name_panel']) . '</b>';
+        foreach ($list as $inb) {
+            $chk = in_array($inb, $selected, true) ? ' checked' : '';
+            $h .= '<label style="display:flex;gap:6px;align-items:center;font-size:.78rem;padding:2px 0;cursor:pointer">'
+                . '<input type="checkbox" name="inbounds_product[]" value="' . htmlspecialchars($inb) . '"' . $chk . '>'
+                . '<span style="direction:ltr">' . htmlspecialchars($inb) . '</span></label>';
+        }
+        $h .= '</div>';
+    }
+    if (!$any) {
+        $h .= '<div style="font-size:.78rem;color:var(--mute)">برای این پنل هنوز اینباندی تنظیم نشده است. ابتدا از صفحه پنل‌ها گزینه «تنظیم پروتکل و اینباند» را بزنید.</div>';
+    }
+    return $h . '</div>';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
   csrf_check_post();
   $name = trim($_POST['name_product'] ?? '');
@@ -20,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
   try {
     db_query(
       $pdo,
-      "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status) VALUES (?,?,?,?,?,?,?,'no_reset',?,?,'{}','0')",
-      [$name, $code, (int) ($_POST['price_product'] ?? 0), (int) ($_POST['volume_product'] ?? 0), (int) ($_POST['time_product'] ?? 0), $_POST['namepanel'] ?? '', $_POST['agent_product'] ?? '', $_POST['note_product'] ?? '', $_POST['category_product'] ?? '']
+      "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status,inbounds) VALUES (?,?,?,?,?,?,?,'no_reset',?,?,'{}','0',?)",
+      [$name, $code, (int) ($_POST['price_product'] ?? 0), (int) ($_POST['volume_product'] ?? 0), (int) ($_POST['time_product'] ?? 0), $_POST['namepanel'] ?? '', $_POST['agent_product'] ?? '', $_POST['note_product'] ?? '', $_POST['category_product'] ?? '', nexora_product_inbound_value($_POST)]
     );
     db_query($pdo, "UPDATE product SET display_order = id WHERE id = ?", [$pdo->lastInsertId()]);
     flash('success', $textbotlang['panel']['productAddedPrefix'] . $name . $textbotlang['panel']['productAddedSuffix']);
@@ -41,8 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
       $pdo->beginTransaction();
       db_query(
         $pdo,
-        "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,Location=?,agent=?,note=?,category=? WHERE id=?",
-        [$name, (int) ($_POST['price_product'] ?? 0), (int) ($_POST['volume_product'] ?? 0), (int) ($_POST['time_product'] ?? 0), $_POST['namepanel'] ?? '', $_POST['agent_product'] ?? '', $_POST['note_product'] ?? '', $_POST['category_product'] ?? '', $pid]
+        "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,Location=?,agent=?,note=?,category=?,inbounds=? WHERE id=?",
+        [$name, (int) ($_POST['price_product'] ?? 0), (int) ($_POST['volume_product'] ?? 0), (int) ($_POST['time_product'] ?? 0), $_POST['namepanel'] ?? '', $_POST['agent_product'] ?? '', $_POST['note_product'] ?? '', $_POST['category_product'] ?? '', nexora_product_inbound_value($_POST), $pid]
       );
       if (isset($_POST['position'])) {
         move_display_order($pdo, 'product', $pid, (int) $_POST['position']);
@@ -126,6 +179,7 @@ include __DIR__ . '/inc/layout_head.php';
             <th><?= $textbotlang['panel']['productEditProductTitle'] ?></th>
             <th><?= $textbotlang['panel']['productFieldProductName'] ?></th>
             <th><?= $textbotlang['panel']['productFieldVolumeGb'] ?></th>
+            <th>اینباند</th>
           </tr>
         </thead>
         <tbody>
@@ -138,6 +192,7 @@ include __DIR__ . '/inc/layout_head.php';
               <td class="cn"><?= htmlspecialchars($p['Volume_constraint'] ?? '—') ?> <span class="cf">GB</span></td>
               <td class="cn"><?= htmlspecialchars($p['Service_time'] ?? '—') ?> <span class="cf"><?= $textbotlang['panel']['productFieldPriceToman'] ?></span></td>
               <td class="cf"><?= htmlspecialchars(trunc($p['Location'] ?? '—', 16)) ?></td>
+              <td class="cm" style="font-size:.72rem"><?php $__ib = json_decode((string) ($p['inbounds'] ?? ''), true); echo is_array($__ib) && $__ib ? htmlspecialchars(implode('، ', array_slice(array_map('strval', $__ib), 0, 2))) : '<span class="cf">پیش‌فرض پنل</span>'; ?></td>
               <td><?php if (!empty($p['category'])): ?><span
                     class="tag tag-info"><?= htmlspecialchars($p['category']) ?></span><?php else: ?><span
                     class="cf">—</span><?php endif; ?></td>
@@ -223,6 +278,11 @@ include __DIR__ . '/inc/layout_head.php';
             <label><?= $textbotlang['panel']['productColDescription'] ?></label>
             <input type="text" name="note_product" class="input" placeholder="<?= htmlspecialchars($textbotlang['panel']['productDescriptionOptional']) ?>">
           </div>
+          <div class="field full">
+            <label>اینباند اختصاصی محصول (اختیاری)</label>
+            <?= nexora_product_inbound_field($panels, [], 'add') ?>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر اینباندی انتخاب نشود، اینباند پیش‌فرض پنل استفاده می‌شود. سرویس‌های این محصول با اینباند ساخته می‌شوند.</small>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -297,6 +357,11 @@ include __DIR__ . '/inc/layout_head.php';
           <div class="field full">
             <label><?= $textbotlang['panel']['productUnlimitedLabel'] ?></label>
             <input type="text" name="note_product" id="edit_note" class="input">
+          </div>
+          <div class="field full">
+            <label>اینباند اختصاصی محصول (اختیاری)</label>
+            <div id="edit_inbounds"><?= nexora_product_inbound_field($panels, [], 'edit') ?></div>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر اینباندی انتخاب نشود، اینباند پیش‌فرض پنل استفاده می‌شود.</small>
           </div>
         </div>
       </div>
