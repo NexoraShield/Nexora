@@ -249,7 +249,7 @@ else: ?>
               <?php endforeach; ?>
             </select>
           </label>
-          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'edit_btn_style') ?></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'btn_style', 'edit_btn_style') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="edit_status" class="select">

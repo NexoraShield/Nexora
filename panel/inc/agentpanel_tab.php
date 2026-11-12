@@ -23,9 +23,11 @@ function nexora_agentpanel_clean_emoji($v): string
     }
     return '';
 }
-function nexora_agentpanel_style_select($selected, string $name = 'btn_style'): string
+function nexora_agentpanel_style_select($selected, string $name = 'btn_style', string $id = ''): string
 {
-    $h = '<select name="' . htmlspecialchars($name) . '" class="select" style="min-width:90px">';
+    $h = '<select name="' . htmlspecialchars($name) . '"'
+        . ($id !== '' ? ' id="' . htmlspecialchars($id) . '"' : '')
+        . ' class="select" style="min-width:90px">';
     foreach (nexora_color_palette() as $slug => $info) {
         $label = $info['label'] ?? $slug;
         if ($slug === '') $label = 'پیش‌فرض';
@@ -209,7 +211,7 @@ foreach (nexora_color_palette() as $slug => $info) {
           <label class="field"><span>نام پنل</span><input class="input" name="name_panel" id="ap_edit_name" required></label>
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" id="ap_edit_price" value="0" required></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="credit" id="ap_edit_credit" value="0" required></label>
-          <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('', 'ap_edit_style') ?></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('', 'btn_style', 'ap_edit_style') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="ap_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="ap_edit_status" class="select">

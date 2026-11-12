@@ -189,7 +189,7 @@ foreach (nexora_color_palette() as $slug => $info) {
           <label class="field"><span>مبلغ پرداختی (تومان)</span><input class="input" type="number" name="topup_price" id="tu_edit_price" value="0" required></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="topup_credit" id="tu_edit_credit" value="0" required></label>
           <label class="field"><span>واحد</span><input class="input" name="topup_unit" id="tu_edit_unit" placeholder="اختیاری"></label>
-          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'tu_edit_style') ?></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'btn_style', 'tu_edit_style') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="tu_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="tu_edit_status" class="select">

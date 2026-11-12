@@ -18,9 +18,11 @@ function nexora_agentshop_clean_emoji($v): string
     }
     return '';
 }
-function nexora_agentshop_style_select($selected, string $name = 'btn_style'): string
+function nexora_agentshop_style_select($selected, string $name = 'btn_style', string $id = ''): string
 {
-    $h = '<select name="' . htmlspecialchars($name) . '" class="select" style="min-width:90px">';
+    $h = '<select name="' . htmlspecialchars($name) . '"'
+        . ($id !== '' ? ' id="' . htmlspecialchars($id) . '"' : '')
+        . ' class="select" style="min-width:90px">';
     foreach (nexora_color_palette() as $slug => $info) {
         $label = $info['label'] ?? $slug;
         if ($slug === '') $label = 'پیش‌فرض';

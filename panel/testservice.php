@@ -25,9 +25,11 @@ function nexora_testservice_clean_emoji($v): string
     }
     return '';
 }
-function nexora_testservice_style_select($selected, string $name = 'btn_style'): string
+function nexora_testservice_style_select($selected, string $name = 'btn_style', string $id = ''): string
 {
-    $h = '<select name="' . htmlspecialchars($name) . '" class="select" style="min-width:90px">';
+    $h = '<select name="' . htmlspecialchars($name) . '"'
+        . ($id !== '' ? ' id="' . htmlspecialchars($id) . '"' : '')
+        . ' class="select" style="min-width:90px">';
     foreach (nexora_color_palette() as $slug => $info) {
         $label = $info['label'] ?? $slug;
         if ($slug === '') $label = 'پیش‌فرض';
@@ -345,7 +347,7 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
           <label class="field"><span>اینباند اختصاصی (اختیاری)</span>
             <?= $tsInboundField('ts_edit_inbounds') ?>
           </label>
-          <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('', 'ts_edit_style') ?></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('', 'btn_style', 'ts_edit_style') ?></label>
           <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="ts_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="ts_edit_status" class="select">
