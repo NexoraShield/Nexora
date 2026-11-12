@@ -1222,10 +1222,11 @@ function DirectPayment($order_id, $image = 'images.jpg')
                 '{credit}' => number_format($agentCreds['credit']),
             ]);
             sendmessage($Balance_id['id'], $agentText, null, 'HTML');
-            $agentReport = sprintf(
-                $textbotlang['Admin']['reportgroup']['paymentApproved'] ?? 'پرداخت تایید شد: %s',
-                $agentPanelProduct['name']
-            );
+            $agentReport = "✅ پرداخت پنل نمایندگی تایید شد\n"
+                . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                . "🖥 پنل: " . $agentPanelProduct['name'] . "\n"
+                . "💰 مبلغ: " . number_format($orderPrice) . " تومان\n"
+                . "🎁 اعتبار پنل: " . number_format(floatval($agentPanelProduct['credit'] ?? 0)) . " تومان";
             if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
