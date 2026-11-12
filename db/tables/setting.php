@@ -64,7 +64,9 @@ return [
         text_edit JSON NULL,
         limitnumber varchar(200) NULL,
         webhook_secret varchar(200) NOT NULL DEFAULT '',
-        api_token varchar(200) NOT NULL DEFAULT ''
+        api_token varchar(200) NOT NULL DEFAULT '',
+        alert_balance varchar(10) NULL,
+        balance_value_alert varchar(30) NULL
         SQL,
     'seedOnCreate' => [
         [

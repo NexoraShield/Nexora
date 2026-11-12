@@ -59,12 +59,18 @@ final class Schema
             foreach ($definition['seedOnCreate'] ?? [] as $row) {
                 $this->insert($table, $row, true);
             }
-        } else {
-            if (!empty($definition['ensureUtf8mb4'])) {
-                ensureTableUtf8mb4($table);
-            }
-            foreach ($definition['columns'] ?? [] as $column) {
+        } elseif (!empty($definition['ensureUtf8mb4'])) {
+            ensureTableUtf8mb4($table);
+        }
+
+        // The columns of the definition are applied to a fresh table as well:
+        // the CREATE statement can be older than a column that was added
+        // later, and a new installation was missing those columns.
+        foreach ($definition['columns'] ?? [] as $column) {
+            try {
                 $this->addColumn($table, $column[0], $column[1] ?? null, $column[2] ?? 'VARCHAR(500)');
+            } catch (Throwable $e) {
+                $this->logFailure("column:{$table}.{$column[0]}", $e);
             }
         }
 

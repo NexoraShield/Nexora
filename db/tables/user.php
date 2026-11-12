@@ -38,7 +38,8 @@ return [
         status_cron VARCHAR(20) NULL DEFAULT '1',
         expire VARCHAR(100) NULL,
         token VARCHAR(100) NULL,
-        lang VARCHAR(5) NULL DEFAULT 'fa'
+        lang VARCHAR(5) NULL DEFAULT 'fa',
+        low_balance_alert_sent VARCHAR(20) NULL DEFAULT '0'
         SQL,
     'columns' => [
         ['username', 'none'],
