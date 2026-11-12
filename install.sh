@@ -272,7 +272,7 @@ if [[ "$FORCE" == "1" ]]; then
         rel="${f#./}"
         mkdir -p "$TARGET/$(dirname "$rel")"
         cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -path './install/*' -print0)
+    done < <(find . -type f -not -path './install.sh' -not -path './migrate.php' -not -path './uninstall.sh' -not -path './manifest.sha256' -not -path './config.php' -not -path './storage/*' -not -path './.git/*' -not -path './install/*' -print0)
     cd "$TARGET"
     echo "    All files copied (FORCE mode)"
 else
@@ -282,7 +282,7 @@ else
         rel="${f#./}"
         mkdir -p "$TARGET/$(dirname "$rel")"
         cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-    done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'config.php' -not -path './storage/*' -not -path './.git/*' -not -name 'nexora-update.sh' -not -path './install/*' -print0)
+    done < <(find . -type f -not -path './install.sh' -not -path './migrate.php' -not -path './uninstall.sh' -not -path './manifest.sha256' -not -path './config.php' -not -path './storage/*' -not -path './.git/*' -not -path './nexora-update.sh' -not -path './install/*' -print0)
     cd "$TARGET"
     echo "    All files copied"
     # Set permissions
