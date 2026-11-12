@@ -193,6 +193,29 @@ return [
                 'invalidVolume' => '流量无效',
         ],
         'users' => [
+                'agentShop' => [
+                        'intro' => '🛒 <b>代理面板商店</b>
+
+请选择下面的商品：',
+                        'empty' => '⭕️ 代理面板商店暂时没有商品。',
+                        'details' => '🛍 <b>{name}</b>
+
+{description}
+
+💰 价格：<b>{price}</b> 汤曼
+💾 流量：<b>{volume}</b> GB
+⏳ 时长：<b>{time}</b> 天
+📍 面板：<b>{location}</b>
+
+付款后将自动创建服务。',
+                        'buyBtn' => '🛒 购买并支付',
+                        'backBtn' => '🔙 返回商店',
+                        'steps' => '购买步骤：
+1️⃣ 选择商品
+2️⃣ 查看价格和说明
+3️⃣ 选择支付方式
+4️⃣ 付款后自动开通',
+                ],
                 'Rules' => '✅ 规则已接受。您现在可以使用机器人的服务了。',
                 'SendMessage' => '📩 向用户发送消息',
                 'back' => '您已返回主页！',
@@ -3556,6 +3579,7 @@ f,n.n2',
                 ],
         ],
         'textbot' => [
+                'agentShop' => '🛒 购买代理面板',
                 'accountWallet' => '🏦 钱包 + 充值',
                 'addBalance' => '💰 增加余额',
                 'affiliates' => '👥 收集下线',

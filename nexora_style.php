@@ -532,9 +532,19 @@ if (!function_exists('nexora_apply_bb_style')) {
                         }
                     }
                     if ($key === null) continue;
+                    // A label can belong to more than one storage key (the back
+                    // button exists for the user and for the admin menu), so
+                    // every candidate is checked for a colour/emoji override.
+                    $candidates = is_array($key) ? $key : [$key];
+                    $emojiKey = null;
+                    $styleKey = null;
+                    foreach ($candidates as $candidate) {
+                        if ($emojiKey === null && isset($map['emoji'][$candidate])) $emojiKey = $candidate;
+                        if ($styleKey === null && isset($map['style'][$candidate])) $styleKey = $candidate;
+                    }
                     $changed = false;
-                    if (isset($map['emoji'][$key])) {
-                        $ref = $map['emoji'][$key];
+                    if ($emojiKey !== null) {
+                        $ref = $map['emoji'][$emojiKey];
                         $icon = '';
                         if (preg_match('/^\d{1,32}$/', $ref)) $icon = $ref;
                         elseif (preg_match('/^\{emoji:([^}]+)\}$/', $ref, $m)) {
@@ -545,8 +555,8 @@ if (!function_exists('nexora_apply_bb_style')) {
                             $btn['icon_custom_emoji_id'] = $icon; $changed = true;
                         }
                     }
-                    if (isset($map['style'][$key])) {
-                        $native = nexora_btn_style($map['style'][$key]);
+                    if ($styleKey !== null) {
+                        $native = nexora_btn_style($map['style'][$styleKey]);
                         if ($native !== '' && !isset($btn['style'])) {
                             $btn['style'] = $native; $changed = true;
                         }

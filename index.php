@@ -59,7 +59,7 @@ $setting = select("setting", "*");
 $ManagePanel = new ManagePanel();
 $keyboard_check = json_decode($setting['keyboardmain'], true);
 if (is_array($keyboard_check) && preg_match('/[\x{600}-\x{6FF}\x{FB50}-\x{FDFF}]/u', $keyboard_check['keyboard'][0][0]['text'])) {
-    $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}]]}';
+    $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}]]}';
     update("setting", "keyboardmain", $keyboardmain, null, null);
 }
 
@@ -6455,6 +6455,117 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     foreach ($admin_ids as $admin) {
         sendmessage($admin, $textrequestagent, $keyboardmanage, 'HTML');
     }
+} elseif ($text == $textbotlang['textbot']['agentShop'] || $datain == "agentshop") {
+    // ---------------- [ agent panel shop ] ----------------
+    if (!check_active_btn($setting['keyboardmain'], "text_agentshop")) {
+        sendmessage($from_id, $textbotlang['users']['buttonDisabled'], null, 'HTML');
+        return;
+    }
+    $agentStmt = $pdo->prepare("SELECT * FROM product WHERE agent = 'agentshop' AND status_product = 'active' ORDER BY display_order, id");
+    $agentStmt->execute();
+    $agentItems = $agentStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$agentItems) {
+        if ($datain == "agentshop") {
+            Editmessagetext($from_id, $message_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
+        } else {
+            sendmessage($from_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
+        }
+        return;
+    }
+    $agentRows = [];
+    $agentShowPrice = getShopSetting("statusshowprice")['value'] != "offshowprice";
+    foreach ($agentItems as $agentItem) {
+        $agentLabel = (string) $agentItem['name_product'];
+        if ($agentShowPrice) {
+            $agentLabel .= " - " . number_format($agentItem['price_product']) . $textbotlang['common']['labels']['tomanUnit'];
+        }
+        $agentRows[] = [nexora_style_btn($agentLabel, "agentshop_select_" . $agentItem['code_product'], $agentItem)];
+    }
+    $agentRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
+    $agentKeyboard = json_encode(['inline_keyboard' => $agentRows]);
+    $agentIntro = $textbotlang['users']['agentShop']['intro'] . "\n\n" . $textbotlang['users']['agentShop']['steps'];
+    if ($datain == "agentshop") {
+        Editmessagetext($from_id, $message_id, $agentIntro, $agentKeyboard, 'HTML');
+    } else {
+        sendmessage($from_id, $agentIntro, $agentKeyboard, 'HTML');
+    }
+    step('agentshop_list', $from_id);
+} elseif (preg_match('/^agentshop_select_([A-Za-z0-9_\-]+)$/', $datain, $dataget)) {
+    $agentCode = (string) $dataget[1];
+    $agentProduct = select("product", "*", "code_product", $agentCode, "select");
+    if (!$agentProduct || $agentProduct['agent'] !== 'agentshop' || $agentProduct['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $agentDetails = strtr($textbotlang['users']['agentShop']['details'], [
+        '{name}' => (string) $agentProduct['name_product'],
+        '{description}' => (string) ($agentProduct['note'] ?? ''),
+        '{price}' => number_format($agentProduct['price_product']),
+        '{volume}' => (string) $agentProduct['Volume_constraint'],
+        '{time}' => (string) $agentProduct['Service_time'],
+        '{location}' => (string) $agentProduct['Location'],
+    ]);
+    $agentKeyboard = json_encode([
+        'inline_keyboard' => [
+            [nexora_style_btn($textbotlang['users']['agentShop']['buyBtn'], "agentshop_buy", $agentProduct)],
+            [['text' => $textbotlang['users']['agentShop']['backBtn'], 'callback_data' => "agentshop"]],
+        ]
+    ]);
+    sendmessage($from_id, $agentDetails, $agentKeyboard, 'HTML');
+    update("user", "Processing_value_one", $agentCode, "id", $from_id);
+    step('agentshop_product', $from_id);
+} elseif ($datain == "agentshop_buy") {
+    $agentCode = (string) $user['Processing_value_one'];
+    $agentProduct = select("product", "*", "code_product", $agentCode, "select");
+    if (!$agentProduct || $agentProduct['agent'] !== 'agentshop' || $agentProduct['status_product'] !== 'active') {
+        sendmessage($from_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
+        return;
+    }
+    $agentPanel = select("marzban_panel", "*", "name_panel", $agentProduct['Location'], "select");
+    if (!$agentPanel) {
+        sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $backuser, 'HTML');
+        return;
+    }
+    $agentPrice = floatval($agentProduct['price_product']);
+    if (intval($user['pricediscount']) != 0) {
+        $agentPrice = $agentPrice - (($agentPrice * $user['pricediscount']) / 100);
+        sendmessage($from_id, sprintf($textbotlang['users']['Discount']['discountapplied'], $user['pricediscount']), null, 'HTML');
+    }
+    if ($agentPrice <= 0) {
+        sendmessage($from_id, $textbotlang['users']['common']['invalidInput'], $backuser, 'HTML');
+        return;
+    }
+    $agentRandom = bin2hex(random_bytes(4));
+    if (rowExists("invoice", "id_invoice", $agentRandom)) {
+        $agentRandom = rand(1000000, 9999999) . $agentRandom;
+    }
+    $agentDate = date('Y/m/d H:i:s');
+    $agentNotif = json_encode([
+        'volume' => false,
+        'time' => false,
+    ]);
+    $agentUsername = generateUsername($from_id, $agentPanel['MethodUsername'], $username, $agentRandom, '', $agentPanel['namecustom'], $user['namecustom']);
+    $agentUsername = strtolower((string) $agentUsername);
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->execute([
+        $from_id,
+        $agentRandom,
+        $agentUsername,
+        $agentDate,
+        $agentProduct['Location'],
+        $agentProduct['name_product'],
+        $agentPrice,
+        $agentProduct['Volume_constraint'],
+        $agentProduct['Service_time'],
+        'unpaid',
+        (string) ($agentProduct['note'] ?? ''),
+        $agentNotif,
+    ]);
+    update("invoice", "payable_amount", $agentPrice, "id_invoice", $agentRandom);
+    update("user", "Processing_value", $agentPrice, "id", $from_id);
+    update("user", "Processing_value_one", $agentRandom, "id", $from_id);
+    sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+    step('get_step_payment_buy', $from_id);
 } elseif ($text == "/privacy") {
     sendmessage($from_id, $textbotlang['textbot']['rules'], null, 'HTML');
 } elseif ($text == $textbotlang['textbot']['wheelLuck'] || $datain == "wheel_luck" || $text == "/gift") {

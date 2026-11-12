@@ -35,8 +35,45 @@ $replacements = [
     'text_wheel_luck' => $textbotlang['textbot']['wheelLuck'],
     'text_extend' => $textbotlang['textbot']['extend'],
     'text_agentpanel' => $textbotlang['textbot']['agentPanel'],
-    'text_requestagent' => $textbotlang['textbot']['requestAgent']
+    'text_requestagent' => $textbotlang['textbot']['requestAgent'],
+    'text_agentshop' => $textbotlang['textbot']['agentShop']
 ];
+// Map every button label the web panel can style to its storage key.
+// The panel offers a colour and an emoji for all keyboard.* texts, for the
+// back buttons and for the main menu entries - but only the main menu labels
+// were mapped here. That is why e.g. the colour of the "back" button was
+// saved in the panel but never applied inside the bot.
+function nexora_keyboard_style_flip(array $replacements = []): array
+{
+    global $textbotlang;
+    $flip = [];
+    $add = function ($label, $key) use (&$flip) {
+        if (!is_string($label) || $label === '' || $key === '') {
+            return;
+        }
+        if (!isset($flip[$label])) {
+            $flip[$label] = [];
+        }
+        if (!in_array($key, $flip[$label], true)) {
+            $flip[$label][] = $key;
+        }
+    };
+    foreach ($replacements as $key => $label) {
+        $add($label, (string) $key);
+    }
+    foreach (($textbotlang['keyboard'] ?? []) as $key => $label) {
+        $add($label, (string) $key);
+    }
+    if (isset($textbotlang['users']['backbtn'])) {
+        $add($textbotlang['users']['backbtn'], 'users_backbtn');
+    }
+    foreach (['backAdminBtn', 'backMenuBtn', 'backToShopMenu'] as $adminKey) {
+        if (isset($textbotlang['Admin'][$adminKey])) {
+            $add($textbotlang['Admin'][$adminKey], 'Admin_' . $adminKey);
+        }
+    }
+    return $flip;
+}
 $temp_addtional_key = [];
 $keyboardLayout = json_decode($setting['keyboardmain'], true);
 $keyboardRows = [];
@@ -112,6 +149,9 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
             if ($keyboard['text'] == "text_requestagent") {
                 $trace_keyboard[$key][$keyboard_key]['callback_data'] = "requestagent";
             }
+            if ($keyboard['text'] == "text_agentshop") {
+                $trace_keyboard[$key][$keyboard_key]['callback_data'] = "agentshop";
+            }
         }
     }
     if ($admin_idss != 0) {
@@ -124,8 +164,7 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
         $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
     }
     if (function_exists('nexora_apply_bb_style')) {
-        $bbFlip = [];
-        foreach ($replacements as $k => $v) { if (is_string($v) && $v !== '' && !isset($bbFlip[$v])) $bbFlip[$v] = $k; }
+        $bbFlip = nexora_keyboard_style_flip($replacements);
         $keyboardcustom = nexora_apply_bb_style($keyboardcustom, $bbFlip);
     }
     $keyboardcustom[] = $temp_addtional_key;
@@ -142,8 +181,7 @@ if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
         $keyboardcustom = nexora_apply_menu_emoji($keyboardcustom, $replacements);
     }
     if (function_exists('nexora_apply_bb_style')) {
-        $bbFlip = [];
-        foreach ($replacements as $k => $v) { if (is_string($v) && $v !== '' && !isset($bbFlip[$v])) $bbFlip[$v] = $k; }
+        $bbFlip = nexora_keyboard_style_flip($replacements);
         $keyboardcustom = nexora_apply_bb_style($keyboardcustom, $bbFlip);
     }
     $keyboardcustom[] = $temp_addtional_key;
@@ -1695,3 +1733,48 @@ function keyboard_list_text($lang)
     return json_encode($keyboard_text);
 }
 // FrenzyEx button already added above (before json_encode)
+
+// Apply the colour / premium emoji configured in the web panel to every
+// keyboard that was built above. Until now only the main menu keyboard was
+// processed, so a colour that was saved in the panel for e.g. the "back"
+// button was never applied inside the bot.
+if (function_exists('nexora_apply_bb_style')) {
+    $__nexoraFlip = nexora_keyboard_style_flip($replacements);
+    foreach (get_defined_vars() as $__nexoraVar => $__nexoraValue) {
+        if (!is_string($__nexoraValue) || $__nexoraValue === '' || $__nexoraValue[0] !== '{') {
+            continue;
+        }
+        $__nexoraDecoded = json_decode($__nexoraValue, true);
+        if (!is_array($__nexoraDecoded)) {
+            continue;
+        }
+        $__nexoraChanged = false;
+        foreach (['keyboard', 'inline_keyboard'] as $__nexoraKey) {
+            if (!isset($__nexoraDecoded[$__nexoraKey]) || !is_array($__nexoraDecoded[$__nexoraKey])) {
+                continue;
+            }
+            foreach ($__nexoraDecoded[$__nexoraKey] as $__nexoraRowKey => $__nexoraRow) {
+                if (!is_array($__nexoraRow)) {
+                    continue;
+                }
+                foreach ($__nexoraRow as $__nexoraBtnKey => $__nexoraBtn) {
+                    if (!is_array($__nexoraBtn) || !isset($__nexoraBtn['text']) || !is_string($__nexoraBtn['text'])) {
+                        continue;
+                    }
+                    $__nexoraStyled = nexora_apply_bb_style([$__nexoraRowKey => [$__nexoraBtnKey => $__nexoraBtn]], $__nexoraFlip);
+                    $__nexoraNew = $__nexoraStyled[$__nexoraRowKey][$__nexoraBtnKey] ?? $__nexoraBtn;
+                    if ($__nexoraNew !== $__nexoraBtn) {
+                        $__nexoraDecoded[$__nexoraKey][$__nexoraRowKey][$__nexoraBtnKey] = $__nexoraNew;
+                        $__nexoraChanged = true;
+                    }
+                }
+            }
+        }
+        if ($__nexoraChanged) {
+            $__nexoraEncoded = json_encode($__nexoraDecoded);
+            if ($__nexoraEncoded !== false) {
+                $$__nexoraVar = $__nexoraEncoded;
+            }
+        }
+    }
+}
