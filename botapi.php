@@ -233,6 +233,10 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
                 || str_contains($description, "message can't be deleted")
                 || str_contains($description, 'message to delete not found')
                 || str_contains($description, 'chat not found')
+                // The channel membership check fails this way whenever the bot
+                // is not an administrator of the channel - it is expected and
+                // must not fill the error log on every message.
+                || str_contains($description, 'member list is inaccessible')
             ));
         if ($allowEmojiFallback && $errorCode === 400 && !$silent && is_array($premiumEmojiPayload)) {
             $retry = telegram($method, stripCustomEmojiPayload($premiumEmojiPayload), $token, false);
