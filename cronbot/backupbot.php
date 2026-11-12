@@ -177,7 +177,18 @@ if ($botlist) {
     }
 }
 
-$backup_file_name = 'backup_' . date("Y-m-d") . '.sql';
+// The dump is written into a dedicated writable directory instead of the code
+// folder: the cron user is not always allowed to write inside cronbot/ and the
+// backup failed with "Unable to open backup file for writing".
+$backupDir = dirname(__DIR__) . '/storage/backup';
+if (!is_dir($backupDir)) {
+    @mkdir($backupDir, 0775, true);
+}
+if (!is_dir($backupDir) || !is_writable($backupDir)) {
+    $backupDir = sys_get_temp_dir();
+}
+$backup_file_name = rtrim($backupDir, '/') . '/backup_' . date("Y-m-d") . '.sql';
+$backup_base_name = basename($backup_file_name);
 $dbhost = empty($dbhost) ? "localhost" : $dbhost;
 $isDumped = false;
 

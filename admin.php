@@ -1809,6 +1809,9 @@ elseif ($datain == "systemsms") {
 } elseif ($user['step'] == "reject-dec") {
     $Payment_report = select("Payment_report", "*", "id_order", $user['Processing_value_one'], "select");
     update("Payment_report", "dec_not_confirmed", $text, "id_order", $user['Processing_value_one']);
+    // The reason is often typed straight in the report channel. It is forwarded
+    // to the customer below, so the raw message must not stay there.
+    deletemessage($from_id, $message_id);
     $text_reject = sprintf($textbotlang['users']['Balance']['rejectedNotice'], $text, $user['Processing_value_one']);
     sendmessage($from_id, $textbotlang['Admin']['Payment']['rejected'], $keyboardadmin, 'HTML');
     sendmessage($user['Processing_value'], $text_reject, null, 'HTML');
