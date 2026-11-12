@@ -302,6 +302,48 @@ if [[ -d "$TARGET/install" ]]; then
   echo "    removed the web installer from the installation directory"
 fi
 
+# ---- cleanup of the leftovers of older installations -------------------
+# The files below are not part of the release: they are helper scripts of an
+# earlier installation, an archive of the old source code or a page that has
+# been replaced. They are reachable from the browser and some of them contain
+# the configuration of the bot.
+echo "==> Cleaning up the leftovers of older installations"
+_cleanup_junk=0
+for _junk in \
+  "$TARGET/ViraNaut-main.zip" \
+  "$TARGET/Nexora-main.zip" \
+  "$TARGET/add_col.php" "$TARGET/add_col2.php" \
+  "$TARGET/probe.php" "$TARGET/probe2.php" "$TARGET/probe3.php" \
+  "$TARGET/editor_test.php" "$TARGET/emoji_test4.php" "$TARGET/menu_test.php" \
+  "$TARGET/panel/frenzyex.php"
+do
+  if [[ -f "$_junk" ]]; then
+    rm -f -- "$_junk"
+    echo "    removed $(basename "$_junk")"
+    _cleanup_junk=1
+  fi
+done
+# The archives of a release and the copies of an old installation next to the
+# current one are moved out of the web root.
+for _old in "$TARGET"/*.zip "$(dirname "$TARGET")"/*_backup_* "$(dirname "$TARGET")"/*-backup-*; do
+  [[ -e "$_old" ]] || continue
+  [[ -d "$_old" ]] || continue
+  mkdir -p "$backup_root"
+  if mv -- "$_old" "$backup_root/" 2>/dev/null; then
+    echo "    moved the old copy out of the web root: $(basename "$_old")"
+    _cleanup_junk=1
+  fi
+done
+for _zip in "$TARGET"/*.zip; do
+  [[ -f "$_zip" ]] || continue
+  rm -f -- "$_zip"
+  echo "    removed $(basename "$_zip")"
+  _cleanup_junk=1
+done
+if [[ "$_cleanup_junk" -eq 0 ]]; then
+  echo "    nothing to clean up"
+fi
+
 nexora_progress 60
 
 if [[ -f "$TARGET/panel/product.php" ]]; then
