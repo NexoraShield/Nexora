@@ -32,10 +32,36 @@ if (!function_exists('nexora_panel_protocol_error_text')) {
     }
 }
 
+if (!function_exists('nexora_panel_protocol_clear_cache')) {
+    function nexora_panel_protocol_clear_cache(): void
+    {
+        if (function_exists('clearSelectCache')) {
+            clearSelectCache('marzban_panel');
+        }
+        $dir = __DIR__ . '/storage/cache';
+        if (!is_dir($dir)) {
+            return;
+        }
+        foreach ((array) glob($dir . '/pc_marzban_panel_*.json') as $file) {
+            @unlink((string) $file);
+        }
+    }
+}
+
 // $username = the name of an account that already exists inside the panel.
 // Returns ['ok' => bool, 'message' => string].
 if (!function_exists('nexora_apply_panel_protocol')) {
     function nexora_apply_panel_protocol(PDO $pdo, string $panelName, string $username): array
+    {
+        $result = nexora_apply_panel_protocol_inner($pdo, $panelName, $username);
+        // the panel is read from the cache, so it has to be cleared
+        nexora_panel_protocol_clear_cache();
+        return $result;
+    }
+}
+
+if (!function_exists('nexora_apply_panel_protocol_inner')) {
+    function nexora_apply_panel_protocol_inner(PDO $pdo, string $panelName, string $username): array
     {
         $panelName = trim($panelName);
         $username = trim($username);
