@@ -349,6 +349,29 @@ fi
 echo "==> Running database migration (additive only)"
 "$PHP_BIN" "$PACKAGE_DIR/migrate.php" "$TARGET"
 
+echo "==> Ensuring the cron dispatcher is installed"
+if [[ -f "$TARGET/cronbot/migrate-crontab.php" ]]; then
+  _cron_user="$(stat -c '%U' "$TARGET" 2>/dev/null || echo root)"
+  if ! id -u "$_cron_user" >/dev/null 2>&1; then
+    _cron_user="root"
+  fi
+  # Dry-run first: the tool rewrites the crontab, so it must only run when it
+  # actually detects this installation.
+  _cron_dry="$("$PHP_BIN" "$TARGET/cronbot/migrate-crontab.php" --dry-run --user="$_cron_user" 2>&1 || true)"
+  _cron_added="$(printf '%s' "$_cron_dry" | sed -n 's/^Dispatcher lines added: //p' | head -1)"
+  if [[ "${_cron_added:-0}" =~ ^[0-9]+$ ]] && [[ "${_cron_added:-0}" -ge 1 ]]; then
+    if "$PHP_BIN" "$TARGET/cronbot/migrate-crontab.php" --apply --user="$_cron_user" >/tmp/nexora_cron.log 2>&1; then
+      echo "    cron dispatcher installed for $_cron_user"
+    else
+      echo "    WARNING: cron dispatcher could not be installed (see /tmp/nexora_cron.log)"
+    fi
+  else
+    echo "    WARNING: no bot root detected for the cron dispatcher - the crontab was left untouched"
+  fi
+else
+  echo "    WARNING: cronbot/migrate-crontab.php not found - cron not configured"
+fi
+
 nexora_progress 85
 echo "==> Applying Nexora display rebrand (exact-match only, safe)"
 "$PHP_BIN" "$PACKAGE_DIR/rebrand.php" "$TARGET" --apply || echo "WARNING: rebrand step had skips (see above)."
