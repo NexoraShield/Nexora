@@ -1,4 +1,46 @@
 # Nexora Bot — Release Notes
+## v1.22.70 (2026-11-12) — Fast bot, gateway manager, panel fixes
+
+**Speed**
+- The colour and emoji map of the buttons is read once per request instead of once per button (hundreds of queries per message).
+- The `PaySetting` table is cached per request; `getPaySettingValue()` no longer bypasses the cache.
+- The language file (340 KB) is parsed once per request instead of twice.
+- The schema repair (`nexora_self_heal`) no longer runs its DDL on every request: the flag is written before the work, every statement is guarded on its own, a lock prevents parallel runs and the opcode cache is no longer wiped.
+- The membership check of the required channels is cached for five minutes and uses a short timeout, so a slow answer of Telegram no longer holds the whole bot back.
+- The `user` row is only written when the user is new.
+
+**Payment gateways**
+- The web panel has a full gateway manager: every gateway with its switch, its colour and its settings.
+- The colour of a gateway is the colour of its payment button in the bot. The payment key of FrenzyEx is green.
+- The second Rial gateway stays off: the admin menu no longer switches it on when it finds an unknown value.
+- A fresh installation does not point at the gateway of another installation any more (the FrenzyEx address starts empty).
+- FrenzyEx is part of the gateway list of the bot, so it can be switched on and off there as well.
+
+**Panel management (bot)**
+- A panel whose name carries a premium emoji can be selected again: the reply keyboard shows the plain text, so the panel is looked up without its emoji tag as well. The panel details and the management keyboard are sent again, and «وضعیت قابلیت‌ها» works.
+- The product of a panel is stored with the exact name of the panel, so it shows up in the shop again.
+
+**Web panel**
+- The premium emoji of a product, a category and a panel is shown as the picture Telegram serves for it instead of the raw `<tg-emoji>` tag. When an emoji cannot be resolved, nothing is shown — the id is never displayed.
+- The agent shop has no inbound or protocol setting any more (its products are not a VPN service) and the administrator receives the details of the buyer and of the ordered product after the payment, so it can be delivered by hand.
+- The page «پنل‌های VPN» no longer ends in a fatal error (the colour palette was missing).
+- The list of the panels is built from the columns the database really has, so a missing column cannot empty the list any more.
+- A new tab «ربات» in the settings: the domain of the bot and the administrator that owns it can be changed there.
+
+**Installer**
+- The composer binary is no longer deleted before it is used (that was the reason the one-line installer stopped at 75 %).
+- The one-line installer prints the reason when it fails instead of ending silently.
+- The exclusion list of the installer used the file name, so every `config.php` was skipped — including `panel/inc/config.php`. A change of the panel bootstrap never reached the servers.
+- The mojibake of the progress bar is fixed.
+- A fresh installation was missing the columns of the newer features (`product.is_test`, `product.btn_style`, `product.btn_emoji_id`, `setting.alert_balance`, `user.low_balance_alert_sent`); the schema now applies them to a fresh table as well.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.70
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.70
+- `153.52.92.153` (arvanpro.projectsdg.site) — fresh installation, v1.22.70
+
+---
+
 ## v1.22.48 (2026-11-01) — One-line Installer Bootstrap
 
 **Changed**

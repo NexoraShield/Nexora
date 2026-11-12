@@ -943,19 +943,36 @@ function channel(array $id_channel)
 {
     global $from_id;
     $channel_link = array();
+    // The membership of a channel does not change every second, so the answer
+    // of Telegram is kept for a few minutes. Without it every message of a
+    // customer who did not join the channel yet waited for the API - and a
+    // slow answer held the whole bot back.
+    $cacheDir = __DIR__ . '/storage/cache';
+    $cacheTtl = 300;
     foreach ($id_channel as $channel) {
         if (isTelegramChatIdEmpty($channel)) {
             continue;
         }
-        $response = telegram('getChatMember', [
-            'chat_id' => $channel,
-            'user_id' => $from_id
-        ]);
-        if ($response['ok']) {
-            $status = is_array($response['result'] ?? null) ? (string)($response['result']['status'] ?? '') : '';
-            if (!in_array($status, ['member', 'creator', 'administrator'])) {
-                $channel_link[] = $channel;
+        $cacheFile = $cacheDir . '/ch_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', (string) $from_id . '_' . $channel) . '.json';
+        $status = null;
+        if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
+            $cached = @file_get_contents($cacheFile);
+            $status = ($cached === false) ? null : @json_decode($cached, true);
+        }
+        if (!is_string($status)) {
+            $response = telegram('getChatMember', [
+                'chat_id' => $channel,
+                'user_id' => $from_id
+            ], null, true, 3);
+            $status = (!empty($response['ok']) && is_array($response['result'] ?? null))
+                ? (string) ($response['result']['status'] ?? '')
+                : 'unknown';
+            if (is_dir($cacheDir) || @mkdir($cacheDir, 0775, true)) {
+                @file_put_contents($cacheFile, json_encode($status), LOCK_EX);
             }
+        }
+        if (!in_array($status, ['member', 'creator', 'administrator'])) {
+            $channel_link[] = $channel;
         }
     }
     if (count($channel_link) == 0) {

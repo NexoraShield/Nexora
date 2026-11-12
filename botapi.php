@@ -161,7 +161,7 @@ function customEmojiBlocked($token = null, $block = false)
     }
     return $state[$key];
 }
-function telegram($method, $datas = [], $token = null, $allowEmojiFallback = true)
+function telegram($method, $datas = [], $token = null, $allowEmojiFallback = true, $timeout = 10)
 {
     global $APIKEY;
 
@@ -205,8 +205,9 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
     }
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    $timeout = max(1, (int) $timeout);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(5, $timeout));
     curl_setopt($ch, CURLOPT_POSTFIELDS, $datas);
 
     $rawResponse = curl_exec($ch);
