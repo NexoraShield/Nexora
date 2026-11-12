@@ -44,6 +44,10 @@ done
 exec 3>&1
 exec 1>/tmp/nexora_install.log 2>&1
 
+# Show the tail of the log when something goes wrong, otherwise the quiet mode
+# hides the reason for a failed update.
+trap 'rc=$?; if [[ $rc -ne 0 ]]; then { echo ""; echo "!!! Update failed (exit $rc). Last lines of /tmp/nexora_install.log:"; tail -20 /tmp/nexora_install.log; } >&3; fi' EXIT
+
 nexora_progress() {
   local pct=$1 filled=0 bar=""
   [ "$pct" -gt 100 ] && pct=100
@@ -54,6 +58,9 @@ nexora_progress() {
   for ((i=filled; i<40; i++)); do bar+="â–‘"; done
   printf '\r  [%s] %3d%%' "$bar" "$pct" >&3
   [ "$pct" -ge 100 ] && printf '\n' >&3
+  # Always succeed: with "set -e" a non-zero return here would abort the whole
+  # installer on the very first progress call.
+  return 0
 }
 
 nexora_progress 5
@@ -133,13 +140,13 @@ if [[ -z "$TARGET" ]]; then
   mkdir -p "$TARGET"
   echo "    Installing to $TARGET"
   cd "$PACKAGE_DIR"
-  for f in $(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'README.md' -not -name 'patch_*.php'); do
+  while IFS= read -r -d '' f; do
     rel="${f#./}"
     mkdir -p "$TARGET/$(dirname "$rel")"
     cp -- "$PACKAGE_DIR/$rel" "$TARGET/$rel"
-  done
+  done < <(find . -type f -not -name 'install.sh' -not -name 'migrate.php' -not -name 'uninstall.sh' -not -name 'manifest.sha256' -not -name 'README.md' -not -name 'patch_*.php' -print0)
   cd "$TARGET"
-  echo "    Fresh installation created at $TARGET"
+  echo "    Fresh installation created at $TARGET" >&3
 fi
 
 TARGET="$(cd -- "$TARGET" 2>/dev/null && pwd)" || {
@@ -366,7 +373,9 @@ echo
 nexora_progress 98
 echo "==> Verifying installation completeness"
 _missing=0
-for _f in nexora_style.php keyboard.php index.php admin.php function.php panel/emojis.php panel/magic.php agent-panel/inc/auth.php migrate.php; do
+# migrate.php / uninstall.sh / install.sh are intentionally NOT installed into the
+# target directory, so they must not be part of the completeness check.
+for _f in nexora_style.php keyboard.php index.php admin.php function.php panel/emojis.php panel/magic.php agent-panel/inc/auth.php; do
   if [[ ! -f "$TARGET/$_f" ]]; then echo "  MISSING FILE: $_f"; _missing=1; fi
 done
 if [[ $_missing -eq 1 ]]; then echo "ERROR: required files missing." >&2; exit 1; fi
