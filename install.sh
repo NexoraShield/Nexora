@@ -118,20 +118,25 @@ if ! (cd "$PACKAGE_DIR" && sha256sum -c manifest.sha256 >/dev/null 2>&1); then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  for candidate in \
-    /var/www/html/nexorabot \
-    /var/www/html/nexorabotconfig \
-    /var/www/nexorabot \
-    /var/www/html/bot \
-    /var/www/html/nexorabotconfig \
-    /var/www/html/nexorabot \
-    /var/www/html/nexorabotconfig
-  do
+  # Detect an existing installation instead of relying on a fixed list of
+  # directory names: a bot that lives in a custom folder (e.g.
+  # /var/www/html/mirzaprobotconfig) must be updated, not installed twice.
+  _fallback_target=""
+  for candidate in /var/www/html/* /var/www/* /srv/http/* /srv/www/* /home/*/public_html /home/*/web /home/* /opt/*; do
+    [[ -d "$candidate" ]] || continue
     if [[ -f "$candidate/function.php" && -f "$candidate/index.php" && -f "$candidate/config.php" && -f "$candidate/keyboard.php" && -f "$candidate/botapi.php" ]]; then
-      TARGET="$candidate"
-      break
+      if grep -q '{API_KEY}' "$candidate/config.php" 2>/dev/null; then
+        # not configured yet - only use it when nothing better is found
+        [[ -z "$_fallback_target" ]] && _fallback_target="$candidate"
+      else
+        TARGET="$candidate"
+        break
+      fi
     fi
   done
+  if [[ -z "$TARGET" && -n "$_fallback_target" ]]; then
+    TARGET="$_fallback_target"
+  fi
 fi
 
 if [[ -z "$TARGET" ]]; then
@@ -451,6 +456,12 @@ nexora_progress 100
 echo "" >&3
 CONFIG_FILE="$TARGET/config.php"
 if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
+  # Without a controlling terminal the prompts cannot run (read </dev/tty
+  # fails and aborts the whole installer), so skip them instead.
+  if ! (: </dev/tty) 2>/dev/null; then
+    echo "  (no interactive terminal - config.php was left as a template)" >&3
+    echo "  Fill in the bot token, admin id and domain in $CONFIG_FILE" >&3
+  else
   echo "=== Ù¾ÛŒÚ©Ø±Ø¨Ù†Ø¯ÛŒ Ø±Ø¨Ø§Øª ===" >&3
   read -p "  Admin numeric ID: " ADMIN_ID </dev/tty
   read -p "  Bot token: " BOT_TOKEN </dev/tty
@@ -463,6 +474,7 @@ if [ -f "$CONFIG_FILE" ] && grep -q '{API_KEY}' "$CONFIG_FILE"; then
   [ -z "$BOT_USERNAME" ] && BOT_USERNAME="{username_bot}"
   sed -i "s|{API_KEY}|${BOT_TOKEN}|; s|{admin_number}|${ADMIN_ID}|; s|{domain_name}|${DOMAIN}|; s|{username_bot}|${BOT_USERNAME}|" "$CONFIG_FILE"
   echo "  âœ“ config.php updated (admin=$ADMIN_ID, bot=@${BOT_USERNAME}, domain=$DOMAIN)" >&3
+  fi
 else
   echo "  (config.php already configured â€” skipping prompts)" >&3
 fi

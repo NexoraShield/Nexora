@@ -28,6 +28,11 @@ $cronStatus['php_cli'] = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
 $cronStatus['pdo_mysql'] = extension_loaded('pdo_mysql');
 
 try {
+    // Job scripts that operate on the installation directory (process_queue,
+    // check_volumes) receive it as the first argument.
+    if (!isset($argv[1]) || !is_dir((string) $argv[1])) {
+        $argv[1] = dirname($cronbotDir);
+    }
     foreach ($cronStatus['pdo_mysql'] ? nexora_cron_jobs() : [] as $job) {
         $script = $cronbotDir . '/' . $job['job'] . '.php';
         if (!is_file($script)) {

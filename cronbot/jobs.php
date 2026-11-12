@@ -22,6 +22,14 @@ function nexora_cron_jobs(): array
         ['job' => 'expireagent', 'schedule' => '*/30 * * * *', 'title' => 'انقضای اشتراک نمایندگان'],
         ['job' => 'backupbot', 'schedule' => '0 */5 * * *', 'title' => 'پشتیبان‌گیری ربات‌ساز'],
         ['job' => 'lottery', 'schedule' => '*/1 * * * *', 'title' => 'قرعه‌کشی و امتیازات'],
+        ['job' => 'frenzyex', 'schedule' => '*/1 * * * *', 'title' => 'پیگیری پرداخت‌های فرنزی‌اکس'],
+        ['job' => 'process_queue', 'schedule' => '*/1 * * * *', 'title' => 'پردازش صف عملیات'],
+        ['job' => 'renewal_reminder', 'schedule' => '0 * * * *', 'title' => 'یادآوری تمدید سرویس'],
+        ['job' => 'traffic_alert', 'schedule' => '0 * * * *', 'title' => 'هشدار مصرف ترافیک'],
+        ['job' => 'health_monitor', 'schedule' => '*/30 * * * *', 'title' => 'پایش سلامت پنل‌ها'],
+        ['job' => 'payment_reminder', 'schedule' => '*/30 * * * *', 'title' => 'یادآوری پرداخت‌های انجام‌نشده'],
+        ['job' => 'check_volumes', 'schedule' => '*/15 * * * *', 'title' => 'بررسی حجم و زمان سرویس‌ها'],
+        ['job' => 'nudge_unpaid', 'schedule' => '*/30 * * * *', 'title' => 'یادآوری فاکتورهای پرداخت‌نشده'],
     ];
 }
 
