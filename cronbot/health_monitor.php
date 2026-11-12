@@ -17,9 +17,12 @@ $panels = $stmt->fetchAll(PDO::FETCH_ASSOC);
 foreach ($panels as $panel) {
     try {
         $start = microtime(true);
-        $result = $ManagePanel->testConnection($panel);
+        // The panel drivers no longer expose testConnection(); the panel API
+        // returns an access token when the panel answers.
+        $check = function_exists('token_panel') ? token_panel($panel['code_panel'], false) : null;
+        $reachable = is_array($check) && isset($check['access_token']);
         $elapsed = round((microtime(true) - $start) * 1000);
-        if (!$result) {
+        if (!$reachable) {
             error_log("[health] Panel " . $panel['name_panel'] . " is unreachable");
             // Notify admin
             $adminId = $setting['adminnumber'] ?? '';

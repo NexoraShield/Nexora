@@ -24,7 +24,6 @@ function nexora_cron_jobs(): array
         ['job' => 'lottery', 'schedule' => '*/1 * * * *', 'title' => 'قرعه‌کشی و امتیازات'],
         ['job' => 'frenzyex', 'schedule' => '*/1 * * * *', 'title' => 'پیگیری پرداخت‌های فرنزی‌اکس'],
         ['job' => 'process_queue', 'schedule' => '*/1 * * * *', 'title' => 'پردازش صف عملیات'],
-        ['job' => 'renewal_reminder', 'schedule' => '0 * * * *', 'title' => 'یادآوری تمدید سرویس'],
         ['job' => 'traffic_alert', 'schedule' => '0 * * * *', 'title' => 'هشدار مصرف ترافیک'],
         ['job' => 'health_monitor', 'schedule' => '*/30 * * * *', 'title' => 'پایش سلامت پنل‌ها'],
         ['job' => 'payment_reminder', 'schedule' => '*/30 * * * *', 'title' => 'یادآوری پرداخت‌های انجام‌نشده'],

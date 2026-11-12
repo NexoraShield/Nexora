@@ -18,7 +18,7 @@ require $configFile;
 require $helperFile;
 if (!isset($pdo) || !($pdo instanceof PDO)) { fwrite(STDERR, "DB connection not available.\n"); exit(1); }
 $ManagePanel = null;
-if (is_file($target . '/panels.php')) { require $target . '/panels.php'; }
+if (is_file($target . '/panels.php')) { require_once $target . '/panels.php'; }
 if (!isset($ManagePanel) || !($ManagePanel instanceof ManagePanel)) { $ManagePanel = new ManagePanel(); }
 
 $maxAttempts = 5;
