@@ -1,4 +1,20 @@
 # Nexora Bot — Release Notes
+## v1.22.73 (2026-11-12) — The test service can really be edited
+
+**The test service of the web panel**
+- The colour of a test service was wiped with every save: the select of the edit form carried the id of the window in its name, so the server never received it. The same bug was in the agent shop, the agent panel shop and the top up.
+- The edit form never showed the colour that was saved, because the select had no id.
+- The inbound was saved as a plain text while the bot reads a json list, so the inbound never reached the panel. The form now offers the inbounds of the selected panel as check boxes, more than one can be chosen and the saved ones stay checked.
+- The inbounds of the panels that were saved in the old format are read correctly as well.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.73
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.73
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.73
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.73
+
+---
+
 ## v1.22.72 (2026-11-12) — The installer cleans up, the menus are complete
 
 **Installer**
