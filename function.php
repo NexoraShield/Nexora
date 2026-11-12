@@ -3165,10 +3165,20 @@ function sanitize_recursive(array $data): array
 
 function check_active_btn($keyboard, $text_var)
 {
-    $trace_keyboard = json_decode($keyboard, true)['keyboard'];
+    $trace_keyboard = json_decode((string) $keyboard, true)['keyboard'] ?? [];
     $status = false;
+    if (!is_array($trace_keyboard)) {
+        return $status;
+    }
     foreach ($trace_keyboard as $key => $callback_set) {
+        if (!is_array($callback_set)) {
+            continue;
+        }
         foreach ($callback_set as $keyboard_key => $keyboard) {
+            // a menu in an older format holds plain texts instead of buttons
+            if (!is_array($keyboard) || !isset($keyboard['text'])) {
+                continue;
+            }
             if ($keyboard['text'] == $text_var) {
                 $status = true;
                 break;

@@ -74,8 +74,12 @@ if (isset($chat_member))
 $first_name = sanitizeUserName($first_name);
 $setting = select("setting", "*");
 $ManagePanel = new ManagePanel();
-$keyboard_check = json_decode($setting['keyboardmain'], true);
-if (is_array($keyboard_check) && preg_match('/[\x{600}-\x{6FF}\x{FB50}-\x{FDFF}]/u', $keyboard_check['keyboard'][0][0]['text'])) {
+$keyboard_check = json_decode((string) ($setting['keyboardmain'] ?? ''), true);
+$keyboardFirstText = '';
+if (is_array($keyboard_check) && isset($keyboard_check['keyboard'][0][0]['text']) && is_string($keyboard_check['keyboard'][0][0]['text'])) {
+    $keyboardFirstText = $keyboard_check['keyboard'][0][0]['text'];
+}
+if ($keyboardFirstText !== '' && preg_match('/[\x{600}-\x{6FF}\x{FB50}-\x{FDFF}]/u', $keyboardFirstText)) {
     $keyboardmain = '{"keyboard":[[{"text":"text_sell"},{"text":"text_extend"}],[{"text":"text_usertest"},{"text":"text_wheel_luck"}],[{"text":"text_Purchased_services"},{"text":"accountwallet"}],[{"text":"text_affiliates"},{"text":"text_Tariff_list"}],[{"text":"text_support"},{"text":"text_help"}],[{"text":"text_agentpanel"},{"text":"text_requestagent"}],[{"text":"text_agentshop"}],[{"text":"text_agentpanelshop"}]]}';
     update("setting", "keyboardmain", $keyboardmain, null, null);
 }

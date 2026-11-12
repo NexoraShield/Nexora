@@ -1,4 +1,22 @@
 # Nexora Bot — Release Notes
+## v1.22.72 (2026-11-12) — The installer cleans up, the menus are complete
+
+**Installer**
+- The installer removes the leftovers of older installations: the web installer, the archive of the old source code, the helper scripts of an earlier installation and the page of the FrenzyEx settings that has been replaced by the finance page.
+- A copy of an old installation next to the current one is moved into the backup folder, so it is no longer reachable from the browser.
+
+**The main menu of the bot**
+- The menu of the bot decides which features are switched on. The shop entries were missing on some installations, so the agent shop, the agent panel purchase and the help were switched off without anybody noticing. They are enabled again on every installation.
+- A menu in an older format no longer ends the bot with a fatal error.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.72
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.72
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.72
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.72
+
+---
+
 ## v1.22.71 (2026-11-12) — Test services, gateway names, four bots
 
 **Test services**

@@ -121,7 +121,16 @@ if (!empty($keyboardRows)) {
 if ($setting['inlinebtnmain'] == "oninline" && !empty($keyboardRows)) {
     $trace_keyboard = $keyboardRows;
     foreach ($trace_keyboard as $key => $callback_set) {
+        if (!is_array($callback_set)) {
+            continue;
+        }
         foreach ($callback_set as $keyboard_key => $keyboard) {
+            // A menu that was saved in an older format holds plain texts
+            // instead of buttons. They are skipped, otherwise the whole bot
+            // would end with a fatal error.
+            if (!is_array($keyboard) || !isset($keyboard['text'])) {
+                continue;
+            }
             if ($keyboard['text'] == "text_sell") {
                 $trace_keyboard[$key][$keyboard_key]['callback_data'] = "buy";
             }
