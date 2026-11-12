@@ -1,5 +1,14 @@
 <?php
 
+if (!function_exists('nexora_color_slugs')) {
+    // the colour palette lives in nexora_style.php, this file needs it for the
+    // colour of a gateway
+    $__nexoraStyleLib = __DIR__ . '/nexora_style.php';
+    if (is_file($__nexoraStyleLib)) {
+        require_once $__nexoraStyleLib;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The payment gateways of the bot.
 //
