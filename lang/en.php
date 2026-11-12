@@ -227,22 +227,28 @@ To enable it, the bot owner needs a Telegram Premium subscription, or the bot mu
         ],
         'users' => [
                 'topUp' => [
-                        'intro' => '💳 <b>Top up the panel</b>
+                        'intro' => '💳 <b>Top up the panel</b> — {panel}
 
 Choose one of the top up options:',
+                        'selectPanel' => '💳 <b>Top up the panel</b>
+
+Choose the panel that should be charged:',
+                        'noPanel' => '⚠️ You do not have an active panel yet. Get your panel first and then charge it.',
                         'empty' => '⭕️ There is no top up option yet.',
                         'details' => '💳 <b>{name}</b>
 
 {description}
 
+🖥 Panel: <b>{panel}</b>
 💰 Amount: <b>{price}</b> Toman
-🎁 Credit added: <b>{credit}</b> Toman',
+🎁 Credit added: <b>{credit}</b>',
                         'buyBtn' => '🛒 Top up and pay',
                         'backBtn' => '🔙 Back',
                         'success' => '✅ The panel was topped up
 
+🖥 Panel: <b>{panel}</b>
 💳 Paid: <b>{price}</b> Toman
-🎁 Credit added: <b>{credit}</b> Toman
+🎁 Credit added: <b>{credit}</b>
 💰 Your balance: <b>{balance}</b> Toman',
                 ],
                 'testService' => [
@@ -1565,6 +1571,10 @@ If you want the time to be unlimited, send the number 0',
                         'nameTooLong' => '❌ The product name must be less than 150 characters',
                         'askNote' => ' 🗒 Send the note for the product. This note is shown in the user\'s proforma invoice.',
                         'askNote2' => ' 🗒 Send the note for the product. This note is shown in the user\'s proforma invoice.',
+                        'askProtocolAccount' => '🔌 Send the username of an account that already exists inside this panel, so the protocol and the inbound of the panel are set with it.
+
+If you do not want to change the protocol, press "Skip".',
+                        'skip' => '⏭ Skip',
                         'askNewPrice' => 'Send the new price',
                         'priceUpdated' => '✅ The product price was updated',
                         'askNewNote' => 'Send the new note',

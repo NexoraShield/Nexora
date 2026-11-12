@@ -26,13 +26,12 @@ if (isset($_GET['dark'])) {
 
 // ---------------------------------------------------------------- data
 $credit = (float) ($me['Balance'] ?? 0);
-$percent = 0;
-try {
-    // The agent panel only loads config.php, so the query is done directly.
-    $row = $pdo->query('SELECT affiliatespercentage FROM setting LIMIT 1')->fetch(PDO::FETCH_ASSOC);
-    $percent = (float) ($row['affiliatespercentage'] ?? 0);
-} catch (Throwable $e) {
-    $percent = 0;
+// The prices of the ready products are 15% below the prices of the bot.
+// When the owner gives this agent a special discount, that one is used.
+$percent = 15.0;
+$agentDiscount = (float) ($me['pricediscount'] ?? 0);
+if ($agentDiscount > 0) {
+    $percent = $agentDiscount;
 }
 
 $subs = [];

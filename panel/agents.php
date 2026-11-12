@@ -69,13 +69,29 @@ try {
 } catch (Throwable $e) {}
 
 $pageTitle = 'مدیریت نمایندگان (Agent Panel)';
-$pageLede = 'مدیریت نمایندگان، قیمت‌گذاری، دسترسی پنل و حذف.';
+$pageLede = 'مدیریت نمایندگان، قیمت‌گذاری، دسترسی پنل، فروش پنل به نمایندگان و شارژ پنل.';
 $activeNav = 'agents';
+$agentTab = (isset($_GET['tab']) && in_array($_GET['tab'], ['panels', 'topup'], true)) ? (string) $_GET['tab'] : 'agents';
 include __DIR__ . '/inc/layout_head.php';
 ?><div class="page-header">
     <h1>👥 مدیریت نمایندگان</h1>
     <p class="page-lede"><?= $pageLede ?></p>
 </div>
+
+<div class="card fade-up" style="margin-bottom:20px"><div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap">
+  <a class="btn <?= $agentTab === 'agents' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=agents">👥 نمایندگان</a>
+  <a class="btn <?= $agentTab === 'panels' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=panels">🖥 فروش پنل به نمایندگان</a>
+  <a class="btn <?= $agentTab === 'topup' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=topup">💳 شارژ پنل نمایندگی</a>
+</div></div>
+
+<?php if ($agentTab === 'topup'):
+    $topupShop = 'agentpanelshop';
+    $topupReturn = 'agents.php';
+    include __DIR__ . '/inc/topup_tab.php';
+elseif ($agentTab === 'panels'):
+    $panelReturn = 'agents.php';
+    include __DIR__ . '/inc/agentpanel_tab.php';
+else: ?>
 
 <div class="card fade-up d1" style="margin-bottom:20px">
     <div class="card-head"><div><div class="card-title">➕ افزودن / ویرایش نماینده</div></div></div>
@@ -157,5 +173,6 @@ include __DIR__ . '/inc/layout_head.php';
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

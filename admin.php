@@ -1,5 +1,6 @@
 <?php
 #----------------[  admin section  ]------------------#
+require_once __DIR__ . '/panel_protocol.php';
 $version = file_get_contents('version');
 $textadmin = ["panel", "/panel", $textbotlang['Admin']['panelAdmin']];
 $text_panel_admin_login_template = sprintf($textbotlang['Admin']['report']['aboutBot'], $version);
@@ -14,6 +15,7 @@ $miniAppInstructionText = sprintf($textbotlang['Admin']['webpanel']['miniAppHelp
 $backmenu_panel_steps = [
     "GetNameNew", "GeturlNew", "GeturlNewx", "GetusernameNew", "GetpaawordNew", "getagentpanel",
     "getuuidadmin", "getlimitnew", "updatetime", "val_usertest", "getinboundiid", "confirmremovepanel",
+    "get_product_protocol",
     "updatemethodusername", "getnamecustom", "updateextendmethod", "setpricechangelocation",
     "GetPriceExtra", "gettypeextra", "GetPricecustomvo", "gettypeextracustom",
     "GetPricetimeextra", "gettypeextratime", "GetPriceExtratime", "gettypeextratimecustom",
@@ -1896,6 +1898,20 @@ elseif ($datain == "systemsms") {
         return;
     }
     savedata("save", "Location", $text);
+    // After the panel is chosen the administrator can give the name of an
+    // account that already exists inside that panel: the protocol and the
+    // inbound of the panel are set with the data of that account.
+    $panelForProtocol = select("marzban_panel", "*", "name_panel", $text, "select");
+    if ($panelForProtocol && $panelForProtocol['type'] != "Manualsale") {
+        $keyboardSkipProtocol = json_encode([
+            'inline_keyboard' => [
+                [['text' => ($textbotlang['Admin']['Product']['skip'] ?? '⏭ Skip'), 'callback_data' => "product_skip_protocol"]],
+            ]
+        ]);
+        sendmessage($from_id, ($textbotlang['Admin']['Product']['askProtocolAccount'] ?? ''), $keyboardSkipProtocol, 'HTML');
+        step('get_product_protocol', $from_id);
+        return;
+    }
     if ($setting['statuscategorygenral'] == "oncategorys") {
         sendmessage($from_id, $textbotlang['Admin']['category']['askName'], KeyboardCategoryadmin(), 'HTML');
         step("getcategory", $from_id);
@@ -1903,6 +1919,37 @@ elseif ($datain == "systemsms") {
     }
     $panel = select("marzban_panel", "*", "name_panel", $text, "select");
     if ($panel['type'] == "Manualsale") {
+        savedata("save", "Service_time", "0");
+        savedata("save", "Volume_constraint", "0");
+        sendmessage($from_id, $textbotlang['Admin']['Product']['getPrice'], $backadmin, 'HTML');
+        step('gettimereset', $from_id);
+        return;
+    }
+    sendmessage($from_id, $textbotlang['Admin']['Product']['getLimit'], $backadmin, 'HTML');
+    step('get_time', $from_id);
+} elseif ($datain == "product_skip_protocol" || $user['step'] == "get_product_protocol") {
+    // the protocol / inbound of the panel is taken from an existing account
+    $userdata = json_decode($user['Processing_value'], true);
+    if (!is_array($userdata)) {
+        $userdata = [];
+    }
+    if ($datain == "product_skip_protocol") {
+        deletemessage($from_id, $message_id);
+    } else {
+        $reference = trim((string) $text);
+        if ($reference !== '' && $reference !== '-' && $reference !== '0') {
+            $protocolResult = nexora_apply_panel_protocol($pdo, (string) ($userdata['Location'] ?? ''), $reference);
+            sendmessage($from_id, ($protocolResult['ok'] ? '✅ ' : '⚠️ ') . $protocolResult['message'], $backadmin, 'HTML');
+        }
+    }
+    // the product creation continues
+    if ($setting['statuscategorygenral'] == "oncategorys") {
+        sendmessage($from_id, $textbotlang['Admin']['category']['askName'], KeyboardCategoryadmin(), 'HTML');
+        step("getcategory", $from_id);
+        return;
+    }
+    $panel = select("marzban_panel", "*", "name_panel", $userdata['Location'] ?? '', "select");
+    if ($panel && $panel['type'] == "Manualsale") {
         savedata("save", "Service_time", "0");
         savedata("save", "Volume_constraint", "0");
         sendmessage($from_id, $textbotlang['Admin']['Product']['getPrice'], $backadmin, 'HTML');

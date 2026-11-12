@@ -182,6 +182,11 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
         unset($datas['message_thread_id']);
     }
 
+    // the back button is always the last row of the keyboard
+    if (function_exists('nexora_move_back_buttons_last') && isset($datas['reply_markup']) && is_string($datas['reply_markup'])) {
+        $datas['reply_markup'] = nexora_move_back_buttons_last($datas['reply_markup']);
+    }
+
     $premiumEmojiPayload = null;
     if (function_exists('splitCustomEmojiLabel') && payloadHasCustomEmoji($datas)) {
         $premiumEmojiPayload = $datas;

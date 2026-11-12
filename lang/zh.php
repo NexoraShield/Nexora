@@ -227,22 +227,28 @@ return [
         ],
         'users' => [
                 'topUp' => [
-                        'intro' => '💳 <b>面板充值</b>
+                        'intro' => '💳 <b>面板充值</b> — {panel}
 
 请选择一种充值方式：',
+                        'selectPanel' => '💳 <b>面板充值</b>
+
+请选择需要充值的面板：',
+                        'noPanel' => '⚠️ 您还没有有效的面板。请先购买面板，然后再进行充值。',
                         'empty' => '⭕️ 目前没有充值选项。',
                         'details' => '💳 <b>{name}</b>
 
 {description}
 
+🖥 面板：<b>{panel}</b>
 💰 充值金额：<b>{price}</b> 汤曼
-🎁 增加余额：<b>{credit}</b> 汤曼',
+🎁 增加余额：<b>{credit}</b>',
                         'buyBtn' => '🛒 充值并支付',
                         'backBtn' => '🔙 返回',
                         'success' => '✅ 面板充值成功
 
+🖥 面板：<b>{panel}</b>
 💳 已支付：<b>{price}</b> 汤曼
-🎁 增加余额：<b>{credit}</b> 汤曼
+🎁 增加余额：<b>{credit}</b>
 💰 当前余额：<b>{balance}</b> 汤曼',
                 ],
                 'testService' => [
@@ -1565,6 +1571,10 @@ n2',
                         'nameTooLong' => '❌ 产品名称必须少于 150 个字符',
                         'askNote' => ' 🗒 请发送该产品的备注。此备注将显示在用户的预开账单中。',
                         'askNote2' => ' 🗒 请发送该产品的备注。此备注将显示在用户的预开账单中。',
+                        'askProtocolAccount' => '🔌 请发送该面板中已存在的一个账号的用户名，以便使用它来设置面板的协议和入站。
+
+如果不想更改协议，请点击「跳过」。',
+                        'skip' => '⏭ 跳过',
                         'askNewPrice' => '请发送新价格',
                         'priceUpdated' => '✅ 产品价格已更新',
                         'askNewNote' => '请发送新的备注',

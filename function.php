@@ -1203,12 +1203,14 @@ function DirectPayment($order_id, $image = 'images.jpg')
     $stmtReset->execute([$Balance_id['id']]);
     clearSelectCache('user');
     if ($orderType == "buy") {
-        // Panel top up: the invoice note carries "topup:<shop>:<id>" and the
-        // customer receives the credit of the panel instead of a service.
+        // Panel top up: the invoice note carries "topup:<shop>:<id>:<panel>".
+        // For the agent panel shop the credit is added to the wallet of the
+        // customer, for the agent shop the admin does the charge by hand.
         $topupMarker = [];
-        if (preg_match('/^topup:([a-z]+):(\d+)$/', (string) ($get_invoice['note'] ?? ''), $topupMarker)) {
+        if (preg_match('/^topup:([a-z]+):(\d+)(?::(\d+))?$/', (string) ($get_invoice['note'] ?? ''), $topupMarker)) {
             $topupItem = nexora_topup_product_by_id((int) $topupMarker[2]);
             if ($topupItem) {
+                $topupShop = nexora_topup_shop_key($topupMarker[1]);
                 $claimTopupInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
                 $claimTopupInvoice->execute([$get_invoice['id_invoice']]);
                 clearSelectCache('invoice');
@@ -1217,7 +1219,8 @@ function DirectPayment($order_id, $image = 'images.jpg')
                     return;
                 }
                 $topupCredit = floatval($topupItem['credit'] ?? 0);
-                if ($topupCredit > 0) {
+                $topupPanel = trim((string) ($get_invoice['Service_location'] ?? ''));
+                if ($topupShop === 'agentpanelshop' && $topupCredit > 0) {
                     addBalance($Balance_id['id'], $topupCredit);
                 }
                 $topupBalance = floatval(select("user", "Balance", "id", $Balance_id['id'], "select")['Balance'] ?? 0);
@@ -1225,13 +1228,32 @@ function DirectPayment($order_id, $image = 'images.jpg')
                     '{price}' => number_format($orderPrice),
                     '{credit}' => number_format($topupCredit),
                     '{balance}' => number_format($topupBalance),
+                    '{panel}' => $topupPanel,
                 ]);
                 sendmessage($Balance_id['id'], $topupText, null, 'HTML');
+                // the admin gets the details, so the charge can be done
+                $topupAdminText = "💳 <b>شارژ پنل تایید شد</b>\n"
+                    . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                    . "🖥 پنل: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n"
+                    . "🏷 گزینه: " . $topupItem['name'] . "\n"
+                    . "💳 مبلغ پرداختی: " . number_format($orderPrice) . " تومان\n"
+                    . "🎁 اعتبار: " . number_format($topupCredit) . "\n"
+                    . ($topupShop === 'agentshop' ? "⚠️ این شارژ باید دستی انجام شود." : "✅ اعتبار به کیف پول کاربر اضافه شد.");
                 if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                     telegram('sendmessage', [
                         'chat_id' => $setting['Channel_Report'],
                         'message_thread_id' => $buyreport,
-                        'text' => "✅ شارژ پنل تایید شد\n👤 کاربر: " . $Balance_id['id'] . "\n💳 مبلغ: " . number_format($orderPrice) . " تومان\n🎁 اعتبار: " . number_format($topupCredit) . " تومان",
+                        'text' => $topupAdminText,
+                        'parse_mode' => 'HTML'
+                    ]);
+                }
+                foreach ((array) $admin_ids as $topupAdminId) {
+                    if (trim((string) $topupAdminId) === '') {
+                        continue;
+                    }
+                    telegram('sendmessage', [
+                        'chat_id' => $topupAdminId,
+                        'text' => $topupAdminText,
                         'parse_mode' => 'HTML'
                     ]);
                 }
@@ -1978,6 +2000,41 @@ function nexora_topup_button($shop): array
     }
     return ['label' => $label, 'style' => $style, 'shop' => $shop];
 }
+// The panels a customer can charge. For the agent panel shop these are the
+// agent panels the customer already owns, for the agent shop the panels of
+// their running services.
+function nexora_user_panels($from_id, $shop = 'agentshop'): array
+{
+    global $pdo;
+    $shop = nexora_topup_shop_key($shop);
+    $panels = [];
+    try {
+        $active = "('active','end_of_time','end_of_volume','sendedwarn','send_on_hold')";
+        if ($shop === 'agentpanelshop') {
+            $stmt = $pdo->prepare("SELECT DISTINCT name_product FROM invoice WHERE id_user = ? AND name_product <> '' AND Status IN $active ORDER BY time_sell DESC LIMIT 50");
+            $stmt->execute([$from_id]);
+            foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row) {
+                $name = trim((string) $row[0]);
+                if ($name !== '' && !in_array($name, $panels, true)) {
+                    $panels[] = $name;
+                }
+            }
+        }
+        if (!$panels) {
+            $stmt = $pdo->prepare("SELECT DISTINCT Service_location FROM invoice WHERE id_user = ? AND Service_location <> '' AND Status IN $active ORDER BY Service_location LIMIT 50");
+            $stmt->execute([$from_id]);
+            foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row) {
+                $name = trim((string) $row[0]);
+                if ($name !== '' && !in_array($name, $panels, true)) {
+                    $panels[] = $name;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('nexora_user_panels: ' . $e->getMessage());
+    }
+    return $panels;
+}
 function nexora_topup_set_button($shop, $label, $style): void
 {
     global $pdo;
@@ -2543,6 +2600,81 @@ function customEmojiLabelText($value)
 {
     $label = splitCustomEmojiLabel($value);
     return $label['text'];
+}
+// ---------------------------------------------------------------------------
+// The back button always has to be the last row of a keyboard, so the user
+// never has to scroll up to find it.
+// ---------------------------------------------------------------------------
+function nexora_back_button_labels(): array
+{
+    global $textbotlang;
+    $labels = [];
+    $add = function ($value) use (&$labels) {
+        if (is_string($value) && trim($value) !== '') {
+            $labels[trim($value)] = true;
+        }
+    };
+    $add($textbotlang['users']['backbtn'] ?? '');
+    $add($textbotlang['users']['backmenu'] ?? '');
+    $add($textbotlang['users']['status']['backlist'] ?? '');
+    $add($textbotlang['users']['status']['backinfo'] ?? '');
+    foreach (['back', 'backToMain', 'backToMainMenu', 'backToMainMenu2', 'backToPrev', 'backToPreviousMenu', 'backToPrevMenu2', 'backToShopMenu', 'backToNode', 'backToNodeList', 'backToServiceInfo', 'backToCardSettings', 'backToAdminMenu'] as $key) {
+        $add($textbotlang['keyboard'][$key] ?? '');
+    }
+    foreach (['backAdminBtn', 'backMenuBtn', 'backToShopMenu'] as $key) {
+        $add($textbotlang['Admin'][$key] ?? '');
+    }
+    return $labels;
+}
+function nexora_is_back_button($button, array $labels): bool
+{
+    if (!is_array($button)) {
+        return false;
+    }
+    $callback = strtolower(trim((string) ($button['callback_data'] ?? '')));
+    if ($callback !== '' && (strpos($callback, 'back') === 0 || $callback === 'paygwback' || $callback === 'buyback')) {
+        return true;
+    }
+    $text = trim((string) ($button['text'] ?? ''));
+    if ($text !== '' && isset($labels[$text])) {
+        return true;
+    }
+    return false;
+}
+function nexora_move_back_buttons_last($replyMarkup)
+{
+    if (!is_string($replyMarkup) || $replyMarkup === '' || strpos($replyMarkup, '{') === false) {
+        return $replyMarkup;
+    }
+    $markup = json_decode($replyMarkup, true);
+    if (!is_array($markup)) {
+        return $replyMarkup;
+    }
+    $labels = nexora_back_button_labels();
+    $changed = false;
+    foreach (['keyboard', 'inline_keyboard'] as $key) {
+        if (!isset($markup[$key]) || !is_array($markup[$key])) {
+            continue;
+        }
+        $rest = [];
+        $back = [];
+        foreach ($markup[$key] as $row) {
+            if (is_array($row) && count($row) === 1 && nexora_is_back_button($row[0], $labels)) {
+                $back[] = $row;
+                continue;
+            }
+            $rest[] = $row;
+        }
+        if ($back) {
+            $markup[$key] = array_merge($rest, $back);
+            $changed = true;
+        }
+    }
+    if (!$changed) {
+        return $replyMarkup;
+    }
+    $encoded = json_encode($markup, JSON_UNESCAPED_UNICODE);
+    return $encoded === false ? $replyMarkup : $encoded;
 }
 function customEmojiLabels($labels = null)
 {

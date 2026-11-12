@@ -25,9 +25,9 @@ function nexora_testservice_clean_emoji($v): string
     }
     return '';
 }
-function nexora_testservice_style_select($selected): string
+function nexora_testservice_style_select($selected, string $name = 'btn_style'): string
 {
-    $h = '<select name="btn_style" class="select" style="min-width:90px">';
+    $h = '<select name="' . htmlspecialchars($name) . '" class="select" style="min-width:90px">';
     foreach (nexora_color_palette() as $slug => $info) {
         $label = $info['label'] ?? $slug;
         if ($slug === '') $label = 'پیش‌فرض';
@@ -155,100 +155,176 @@ $flashErr = get_flash('error'); ?>
         $inboundText = is_array($inbounds) && $inbounds ? implode('، ', array_map('strval', $inbounds)) : 'پیش‌فرض پنل';
       ?>
         <tr>
-          <form method="POST">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="edit_id" value="<?= (int) $it['id'] ?>">
-            <td><?= nexora_testservice_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $colors) ?></td>
-            <td><input class="input" name="name_product" value="<?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?>"></td>
-            <td><input class="input" type="number" name="volume_product" value="<?= (int) ($it['Volume_constraint'] ?? 0) ?>"></td>
-            <td><input class="input" type="number" name="time_product" value="<?= (int) ($it['Service_time'] ?? 0) ?>"></td>
-            <td>
-              <select name="namepanel" class="select" style="min-width:120px">
-                <?php foreach ($panels as $pn): ?>
-                  <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>" <?= ((string) ($it['Location'] ?? '') === (string) $pn['name_panel']) ? 'selected' : '' ?>><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            </td>
-            <td>
-              <select name="inbounds" class="select" style="min-width:140px">
-                <option value="">پیش‌فرض پنل</option>
-                <?php foreach ($panels as $pn):
-                  $raw = json_decode((string) ($pn['inbounds'] ?? ''), true);
-                  if (!is_array($raw)) continue;
-                  foreach ($raw as $inb):
-                    if (!is_scalar($inb) || (string) $inb === '') continue;
-                    $selected = (is_array($inbounds) && in_array((string) $inb, array_map('strval', $inbounds), true)) ? ' selected' : '';
-                ?>
-                  <option value="<?= htmlspecialchars((string) $inb) ?>"<?= $selected ?>><?= htmlspecialchars((string) $pn['name_panel']) ?> → <?= htmlspecialchars((string) $inb) ?></option>
-                <?php endforeach; endforeach; ?>
-              </select>
-            </td>
-            <td><textarea class="input" name="note_product" rows="2" style="min-width:200px"><?= htmlspecialchars((string) ($it['note'] ?? '')) ?></textarea></td>
-            <td><?= nexora_testservice_style_select((string) ($it['btn_style'] ?? '')) ?></td>
-            <td><input class="input" name="btn_emoji_id" value="<?= htmlspecialchars((string) ($it['btn_emoji_id'] ?? '')) ?>" placeholder="ایموجی"></td>
-            <td>
-              <select name="status_product" class="select">
-                <option value="active" <?= ($it['status_product'] ?? 'active') === 'active' ? 'selected' : '' ?>>فعال</option>
-                <option value="hidden" <?= ($it['status_product'] ?? '') === 'hidden' ? 'selected' : '' ?>>پنهان</option>
-              </select>
-            </td>
-            <td><input class="input" type="number" name="position" value="<?= (int) ($it['display_order'] ?? 0) ?>" style="width:70px" title="ترتیب نمایش"></td>
-            <td style="white-space:nowrap">
-              <button class="btn btn-primary btn-sm" type="submit"><?= icon('check', 13) ?> ذخیره</button>
-            </td>
-          </form>
-          <form method="POST" style="display:inline">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="edit_id" value="<?= (int) $it['id'] ?>">
-            <button class="btn btn-no btn-sm" type="submit" data-confirm="این سرویس تست حذف شود؟">حذف</button>
-          </form>
+          <td><?= nexora_testservice_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $colors) ?></td>
+          <td><?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
+          <td><?= (int) ($it['Volume_constraint'] ?? 0) ?></td>
+          <td><?= (int) ($it['Service_time'] ?? 0) ?></td>
+          <td><?= htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
+          <td style="min-width:160px"><?= htmlspecialchars($inboundText) ?></td>
+          <td style="min-width:200px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
+          <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
+          <td><?= ($it['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= ($it['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
+          <td><?= (int) ($it['display_order'] ?? 0) ?></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-primary btn-sm" type="button" onclick='openEditTest(<?= json_encode([
+                'id' => (int) $it['id'],
+                'name_product' => (string) ($it['name_product'] ?? ''),
+                'volume_product' => (int) ($it['Volume_constraint'] ?? 0),
+                'time_product' => (int) ($it['Service_time'] ?? 0),
+                'namepanel' => (string) ($it['Location'] ?? ''),
+                'note_product' => (string) ($it['note'] ?? ''),
+                'btn_style' => (string) ($it['btn_style'] ?? ''),
+                'btn_emoji_id' => (string) ($it['btn_emoji_id'] ?? ''),
+                'status_product' => (string) ($it['status_product'] ?? 'active'),
+                'position' => (int) ($it['display_order'] ?? 0),
+                'inbounds' => is_array($inbounds) ? $inbounds : [],
+            ], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>✏️ ویرایش</button>
+            <form method="POST" style="display:inline">
+              <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="edit_id" value="<?= (int) $it['id'] ?>">
+              <button class="btn btn-no btn-sm" type="submit" data-confirm="این سرویس تست حذف شود؟">حذف</button>
+            </form>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table></div>
 </div>
 
-<div class="modal" id="addModal">
-  <div class="modal-card">
-    <div class="modal-head"><div class="modal-title">افزودن سرویس تست</div><button class="btn btn-no" onclick="closeModal('addModal')">✕</button></div>
-    <form method="POST" class="modal-body">
-      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-      <input type="hidden" name="action" value="add">
-      <div class="form-grid">
-        <label class="field"><span>نام سرویس تست</span><input class="input" name="name_product" required></label>
-        <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="1" required></label>
-        <label class="field"><span>مدت (ساعت)</span><input class="input" type="number" name="time_product" value="1" required></label>
-        <label class="field"><span>پنل</span>
-          <select name="namepanel" class="select" required>
-            <?php foreach ($panels as $pn): ?>
-              <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label class="field"><span>اینباند اختصاصی</span>
-          <select name="inbounds" class="select">
-            <option value="">پیش‌فرض پنل</option>
-            <?php foreach ($panels as $pn):
-              $raw = json_decode((string) ($pn['inbounds'] ?? ''), true);
-              if (!is_array($raw)) continue;
-              foreach ($raw as $inb):
-                if (!is_scalar($inb) || (string) $inb === '') continue; ?>
-              <option value="<?= htmlspecialchars((string) $inb) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?> → <?= htmlspecialchars((string) $inb) ?></option>
-            <?php endforeach; endforeach; ?>
-          </select>
-        </label>
-        <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('') ?></label>
-        <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
-        <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="2"></textarea></label>
+<div class="modal-veil" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>افزودن سرویس تست</h3>
+      <button class="modal-x" onclick="closeModal('addModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="add">
+        <div class="form-grid">
+          <label class="field"><span>نام سرویس تست</span><input class="input" name="name_product" required></label>
+          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="1" required></label>
+          <label class="field"><span>مدت (ساعت)</span><input class="input" type="number" name="time_product" value="1" required></label>
+          <label class="field"><span>پنل</span>
+            <select name="namepanel" class="select" required>
+              <?php foreach ($panels as $pn): ?>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>اینباند اختصاصی</span>
+            <select name="inbounds" class="select">
+              <option value="">پیش‌فرض پنل</option>
+              <?php foreach ($panels as $pn):
+                $raw = json_decode((string) ($pn['inbounds'] ?? ''), true);
+                if (!is_array($raw)) continue;
+                foreach ($raw as $inb):
+                  if (!is_scalar($inb) || (string) $inb === '') continue; ?>
+                <option value="<?= htmlspecialchars((string) $inb) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?> → <?= htmlspecialchars((string) $inb) ?></option>
+              <?php endforeach; endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="2"></textarea></label>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">افزودن سرویس تست</button>
-        <button class="btn btn-no" type="button" onclick="closeModal('addModal')">انصراف</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('addModal')">انصراف</button>
       </div>
     </form>
   </div>
 </div>
+
+<div class="modal-veil" id="editModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ویرایش سرویس تست</h3>
+      <button class="modal-x" onclick="closeModal('editModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="edit_id" id="ts_edit_id">
+        <div class="form-grid">
+          <label class="field"><span>نام سرویس تست</span><input class="input" name="name_product" id="ts_edit_name" required></label>
+          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" id="ts_edit_volume" value="0" required></label>
+          <label class="field"><span>مدت (ساعت)</span><input class="input" type="number" name="time_product" id="ts_edit_time" value="0" required></label>
+          <label class="field"><span>پنل</span>
+            <select name="namepanel" id="ts_edit_panel" class="select" required>
+              <?php foreach ($panels as $pn): ?>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>اینباند اختصاصی</span>
+            <select name="inbounds" id="ts_edit_inbounds" class="select">
+              <option value="">پیش‌فرض پنل</option>
+              <?php foreach ($panels as $pn):
+                $raw = json_decode((string) ($pn['inbounds'] ?? ''), true);
+                if (!is_array($raw)) continue;
+                foreach ($raw as $inb):
+                  if (!is_scalar($inb) || (string) $inb === '') continue; ?>
+                <option value="<?= htmlspecialchars((string) $inb) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?> → <?= htmlspecialchars((string) $inb) ?></option>
+              <?php endforeach; endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('', 'ts_edit_style') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="ts_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>وضعیت</span>
+            <select name="status_product" id="ts_edit_status" class="select">
+              <option value="active">فعال</option>
+              <option value="hidden">پنهان</option>
+            </select>
+          </label>
+          <label class="field"><span>ترتیب نمایش</span><input class="input" type="number" name="position" id="ts_edit_position" value="0"></label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" id="ts_edit_note" rows="2"></textarea></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" type="submit"><?= icon('check', 13) ?> ذخیره</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('editModal')">انصراف</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.openEditTest = function (p) {
+    p = p || {};
+    document.getElementById('ts_edit_id').value = p.id || '';
+    document.getElementById('ts_edit_name').value = p.name_product || '';
+    document.getElementById('ts_edit_volume').value = p.volume_product || 0;
+    document.getElementById('ts_edit_time').value = p.time_product || 0;
+    document.getElementById('ts_edit_note').value = p.note_product || '';
+    document.getElementById('ts_edit_emoji').value = p.btn_emoji_id || '';
+    document.getElementById('ts_edit_position').value = p.position || 0;
+    document.getElementById('ts_edit_status').value = p.status_product || 'active';
+    var sel = document.getElementById('ts_edit_panel');
+    if (sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+            sel.options[i].selected = sel.options[i].value === (p.namepanel || '');
+        }
+    }
+    var inb = document.getElementById('ts_edit_inbounds');
+    if (inb) {
+        var wanted = (p.inbounds || []).map(function (v) { return String(v); });
+        for (var j = 0; j < inb.options.length; j++) {
+            inb.options[j].selected = wanted.indexOf(inb.options[j].value) !== -1;
+        }
+    }
+    var st = document.getElementById('ts_edit_style');
+    if (st) {
+        for (var k = 0; k < st.options.length; k++) {
+            st.options[k].selected = st.options[k].value === (p.btn_style || '');
+        }
+    }
+    openModal('editModal');
+};
+</script>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

@@ -142,7 +142,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           <a href="keyboard.php" class="nav-item <?= $activeNav === 'keyboard' ? 'active' : '' ?>"
             title="<?= $textbotlang['panel']['layoutPageTitleKeyboard'] ?>">
             <span class="nav-icon">
-              <?= icon('settings') ?>
+              <?= icon('keyboard') ?>
             </span><span class="nav-label"><?= $textbotlang['panel']['layoutThemeToggleLabel'] ?></span>
           </a>
           <a href="bottext.php" class="nav-item <?= $activeNav === 'bottext' ? 'active' : '' ?>"
@@ -152,62 +152,62 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
           </a>
           <a href="emoji_picker.php" class="nav-item <?= $activeNav === 'emoji_picker' ? 'active' : '' ?>"
             title="انتخاب‌گر ایموجی پرمیوم">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('smile') ?></span><span
               class="nav-label">انتخاب‌گر ایموجی</span>
           </a>
           <a href="maintenance.php" class="nav-item <?= $activeNav === 'maintenance' ? 'active' : '' ?>"
             title="حالت تعمیرات">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('tool') ?></span><span
               class="nav-label">تعمیرات</span>
           </a>
           <a href="audit.php" class="nav-item <?= $activeNav === 'audit' ? 'active' : '' ?>"
             title="گزارش فعالیت">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('list') ?></span><span
               class="nav-label">Audit Log</span>
           </a>
           <a href="magic.php" class="nav-item <?= $activeNav === 'magic' ? 'active' : '' ?>"
             title="معجزه">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('star') ?></span><span
               class="nav-label">معجزه</span>
           </a>
           <a href="botcolors.php" class="nav-item <?= $activeNav === 'botcolors' ? 'active' : '' ?>"
             title="رنگ تمام کلیدها">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('palette') ?></span><span
               class="nav-label">رنگ تمام کلیدها</span>
           </a>
           <a href="botbuttons.php" class="nav-item <?= $activeNav === 'botbuttons' ? 'active' : '' ?>"
             title="دکمه‌های ربات">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('grid') ?></span><span
               class="nav-label">دکمه‌های ربات</span>
           </a>
           <a href="tickets.php" class="nav-item <?= $activeNav === 'tickets' ? 'active' : '' ?>"
             title="پشتیبانی و تیکت‌ها">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('headset') ?></span><span
               class="nav-label">پشتیبانی و تیکت‌ها</span>
           </a>
           <a href="backup.php" class="nav-item <?= $activeNav === 'backup' ? 'active' : '' ?>"
             title="پشتیبان‌گیری">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('database') ?></span><span
               class="nav-label">پشتیبان‌گیری</span>
           </a>
           <a href="queue.php" class="nav-item <?= $activeNav === 'queue' ? 'active' : '' ?>"
             title="صف عملیات‌های ناقص">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('clock') ?></span><span
               class="nav-label">صف عملیات</span>
           </a>
           <a href="service_volumes.php" class="nav-item <?= $activeNav === 'service_volumes' ? 'active' : '' ?>"
             title="بررسی حجم/زمان سرویس‌ها">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('chart') ?></span><span
               class="nav-label">بررسی حجم/زمان</span>
           </a>
           <a href="custom_apps.php" class="nav-item <?= $activeNav === 'custom_apps' ? 'active' : '' ?>"
             title="برنامه اختصاصی و آموزش اتصال">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('download') ?></span><span
               class="nav-label">برنامه و آموزش</span>
           </a>
           <a href="collab.php" class="nav-item <?= $activeNav === 'collab' ? 'active' : '' ?>"
             title="همکاری">
-            <span class="nav-icon"><?= icon('settings') ?></span><span
+            <span class="nav-icon"><?= icon('link') ?></span><span
               class="nav-label">همکاری</span>
           </a>
           <a href="agents.php" class="nav-item <?= $activeNav === 'agents' ? 'active' : '' ?>"
@@ -219,11 +219,6 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             title="فروشگاه پنل نمایندگی">
             <span class="nav-icon"><?= icon('package') ?></span><span
               class="nav-label">فروشگاه نمایندگی</span>
-          </a>
-          <a href="agentpanel.php" class="nav-item <?= $activeNav === 'agentpanel' ? 'active' : '' ?>"
-            title="فروش پنل به نمایندگان">
-            <span class="nav-icon"><?= icon('server') ?></span><span
-              class="nav-label">فروش پنل به نمایندگان</span>
           </a>
           <a href="testservice.php" class="nav-item <?= $activeNav === 'testservice' ? 'active' : '' ?>"
             title="سرویس تست">

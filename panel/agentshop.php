@@ -5,114 +5,92 @@ $__nexoraStyleLib = __DIR__ . '/../nexora_style.php';
 if (is_file($__nexoraStyleLib)) {
     require_once $__nexoraStyleLib;
 }
+require_once __DIR__ . '/../panel_protocol.php';
+require_once __DIR__ . '/inc/shop_helpers.php';
 require_auth();
 
 const NEXORA_AGENT_SHOP_MARKER = 'agentshop';
 
-function nexora_agentshop_clean_style($v): string
-{
-    $v = trim((string) $v);
-    return in_array($v, nexora_color_slugs(), true) ? $v : '';
-}
-function nexora_agentshop_clean_emoji($v): string
-{
-    $v = trim((string) $v);
-    if ($v === '') return '';
-    if (preg_match('/^\d{1,32}$/', $v)) return $v;
-    if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $v, $m)) return $m[1];
-    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v) && function_exists('nexora_emoji_lookup')) {
-        $row = nexora_emoji_lookup(trim($v));
-        if ($row && !empty($row['custom_emoji_id'])) return (string) $row['custom_emoji_id'];
-    }
-    return '';
-}
-function nexora_agentshop_style_select($selected): string
-{
-    $h = '<select name="btn_style" class="select" style="min-width:90px">';
-    foreach (nexora_color_palette() as $slug => $info) {
-        $label = $info['label'] ?? $slug;
-        if ($slug === '') $label = 'پیش‌فرض';
-        $sel = ((string) $slug === (string) $selected) ? ' selected' : '';
-        $h .= '<option value="' . htmlspecialchars($slug) . '"' . $sel . '>' . htmlspecialchars($label) . '</option>';
-    }
-    return $h . '</select>';
-}
-function nexora_agentshop_preview($name, $style, $emoji, $colors): string
-{
-    $bg = $colors[$style] ?? 'var(--surface-3)';
-    $fg = ($style !== '' && isset($colors[$style])) ? '#fff' : 'inherit';
-    $icon = ($emoji !== '' && $emoji !== null) ? '◆ ' : '';
-    return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . htmlspecialchars((string) $name) . '</span>';
-}
+$shopTab = (isset($_GET['tab']) && $_GET['tab'] === 'topup') ? 'topup' : 'products';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
-    $name = trim($_POST['name_product'] ?? '');
-    if ($name === '') {
-        flash('error', 'نام محصول را وارد کنید.');
-        header('Location: agentshop.php');
-        exit;
-    }
-    try {
-        $code = bin2hex(random_bytes(2));
-        db_query(
-            $pdo,
-            "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status,status_product,btn_style,btn_emoji_id) VALUES (?,?,?,?,?,?,?,'no_reset',?,?,'{}','0','active',?,?)",
-            [
-                $name,
-                $code,
-                (int) ($_POST['price_product'] ?? 0),
-                (int) ($_POST['volume_product'] ?? 0),
-                (int) ($_POST['time_product'] ?? 0),
-                (string) ($_POST['namepanel'] ?? ''),
-                NEXORA_AGENT_SHOP_MARKER,
-                (string) ($_POST['note_product'] ?? ''),
-                (string) ($_POST['category_product'] ?? ''),
-                nexora_agentshop_clean_style($_POST['btn_style'] ?? '') ?: null,
-                nexora_agentshop_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
-            ]
-        );
-        db_query($pdo, "UPDATE product SET display_order = id WHERE id = ?", [$pdo->lastInsertId()]);
-        flash('success', 'محصول فروشگاه نمایندگی اضافه شد.');
-    } catch (Exception $e) {
-        flash('error', 'خطای دیتابیس: ' . $e->getMessage());
-    }
-    header('Location: agentshop.php');
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit') {
-    csrf_check_post();
-    $id = (int) ($_POST['edit_id'] ?? 0);
-    $name = trim($_POST['name_product'] ?? '');
-    if ($id && $name !== '') {
-        try {
-            db_query(
-                $pdo,
-                "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,Location=?,note=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND agent=?",
-                [
-                    $name,
-                    (int) ($_POST['price_product'] ?? 0),
-                    (int) ($_POST['volume_product'] ?? 0),
-                    (int) ($_POST['time_product'] ?? 0),
-                    (string) ($_POST['namepanel'] ?? ''),
-                    (string) ($_POST['note_product'] ?? ''),
-                    ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
-                    nexora_agentshop_clean_style($_POST['btn_style'] ?? '') ?: null,
-                    nexora_agentshop_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
-                    $id,
-                    NEXORA_AGENT_SHOP_MARKER,
-                ]
-            );
-            if (isset($_POST['position'])) {
-                move_display_order($pdo, 'product', $id, (int) $_POST['position']);
+    $action = (string) $_POST['action'];
+    $protocolMessage = '';
+    if ($action === 'add' || $action === 'edit') {
+        $name = trim($_POST['name_product'] ?? '');
+        $panel = trim($_POST['namepanel'] ?? '');
+        $reference = trim($_POST['protocol_account'] ?? '');
+        if ($name === '') {
+            flash('error', 'نام محصول را وارد کنید.');
+        } else {
+            try {
+                if ($action === 'add') {
+                    $code = bin2hex(random_bytes(2));
+                    db_query(
+                        $pdo,
+                        "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status,status_product,btn_style,btn_emoji_id) VALUES (?,?,?,?,?,?,?,'no_reset',?,?,'{}','0','active',?,?)",
+                        [
+                            $name,
+                            $code,
+                            (int) ($_POST['price_product'] ?? 0),
+                            (int) ($_POST['volume_product'] ?? 0),
+                            (int) ($_POST['time_product'] ?? 0),
+                            $panel,
+                            NEXORA_AGENT_SHOP_MARKER,
+                            (string) ($_POST['note_product'] ?? ''),
+                            (string) ($_POST['category_product'] ?? ''),
+                            nexora_agentshop_clean_style($_POST['btn_style'] ?? '') ?: null,
+                            nexora_agentshop_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
+                        ]
+                    );
+                    db_query($pdo, "UPDATE product SET display_order = id WHERE id = ?", [$pdo->lastInsertId()]);
+                    flash('success', 'محصول فروشگاه نمایندگی اضافه شد.');
+                } else {
+                    $id = (int) ($_POST['edit_id'] ?? 0);
+                    db_query(
+                        $pdo,
+                        "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,Location=?,note=?,category=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND agent=?",
+                        [
+                            $name,
+                            (int) ($_POST['price_product'] ?? 0),
+                            (int) ($_POST['volume_product'] ?? 0),
+                            (int) ($_POST['time_product'] ?? 0),
+                            $panel,
+                            (string) ($_POST['note_product'] ?? ''),
+                            (string) ($_POST['category_product'] ?? ''),
+                            ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
+                            nexora_agentshop_clean_style($_POST['btn_style'] ?? '') ?: null,
+                            nexora_agentshop_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
+                            $id,
+                            NEXORA_AGENT_SHOP_MARKER,
+                        ]
+                    );
+                    if (isset($_POST['position'])) {
+                        move_display_order($pdo, 'product', $id, (int) $_POST['position']);
+                    }
+                    flash('success', 'محصول بروزرسانی شد.');
+                }
+                // the protocol / inbound of the panel is taken from an account
+                // that already exists inside that panel
+                if ($reference !== '') {
+                    $protocol = nexora_apply_panel_protocol($pdo, $panel, $reference);
+                    $protocolMessage = $protocol['ok']
+                        ? '✅ ' . $protocol['message']
+                        : '⚠️ ' . $protocol['message'];
+                }
+            } catch (Exception $e) {
+                flash('error', 'خطای دیتابیس: ' . $e->getMessage());
             }
-            flash('success', 'محصول بروزرسانی شد.');
-        } catch (Exception $e) {
-            flash('error', 'خطای دیتابیس: ' . $e->getMessage());
         }
+    } elseif ($action === 'delete') {
+        db_query($pdo, "DELETE FROM product WHERE id = ? AND agent = ?", [(int) ($_POST['edit_id'] ?? 0), NEXORA_AGENT_SHOP_MARKER]);
+        flash('success', 'محصول حذف شد.');
     }
-    header('Location: agentshop.php');
+    if ($protocolMessage !== '') {
+        flash($protocolMessage === '' ? 'success' : 'success', $protocolMessage);
+    }
+    header('Location: agentshop.php?tab=' . ($shopTab === 'topup' ? 'topup' : 'products'));
     exit;
 }
 
@@ -141,7 +119,6 @@ foreach (nexora_color_palette() as $slug => $info) {
 $pageTitle = 'فروشگاه پنل نمایندگی';
 $pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند.';
 $activeNav = 'agentshop';
-$shopTab = (isset($_GET['tab']) && $_GET['tab'] === 'topup') ? 'topup' : 'products';
 include __DIR__ . '/inc/layout_head.php';
 ?>
 
@@ -169,87 +146,183 @@ else: ?>
 
 <div class="card fade-up d1" style="margin-bottom:18px">
   <div class="tbl-wrap"><table class="tbl">
-    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>قیمت</th><th>حجم</th><th>زمان</th><th>پنل</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th></th></tr></thead>
+    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>قیمت</th><th>حجم</th><th>زمان</th><th>پنل</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
       <?php if (!$items): ?>
-        <tr><td colspan="11" style="text-align:center;color:var(--mute);padding:22px">هنوز محصولی برای فروش پنل نمایندگی تعریف نشده است.</td></tr>
+        <tr><td colspan="12" style="text-align:center;color:var(--mute);padding:22px">هنوز محصولی برای فروش پنل نمایندگی تعریف نشده است.</td></tr>
       <?php endif; ?>
       <?php foreach ($items as $it): ?>
         <tr>
-          <form method="POST">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="edit_id" value="<?= (int) $it['id'] ?>">
-            <td><?= nexora_agentshop_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
-            <td><input class="input" name="name_product" value="<?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?>"></td>
-            <td><input class="input" type="number" name="price_product" value="<?= (int) ($it['price_product'] ?? 0) ?>"></td>
-            <td><input class="input" type="number" name="volume_product" value="<?= (int) ($it['Volume_constraint'] ?? 0) ?>"></td>
-            <td><input class="input" type="number" name="time_product" value="<?= (int) ($it['Service_time'] ?? 0) ?>"></td>
-            <td>
-              <select name="namepanel" class="select" style="min-width:120px">
-                <?php foreach ($panels as $pn): ?>
-                  <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>" <?= ((string) ($it['Location'] ?? '') === (string) $pn['name_panel']) ? 'selected' : '' ?>><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            </td>
-            <td><textarea class="input" name="note_product" rows="2" style="min-width:220px"><?= htmlspecialchars((string) ($it['note'] ?? '')) ?></textarea></td>
-            <td><?= nexora_agentshop_style_select((string) ($it['btn_style'] ?? '')) ?></td>
-            <td><input class="input" name="btn_emoji_id" value="<?= htmlspecialchars((string) ($it['btn_emoji_id'] ?? '')) ?>" placeholder="ایموجی"></td>
-            <td>
-              <select name="status_product" class="select">
-                <option value="active" <?= ($it['status_product'] ?? 'active') === 'active' ? 'selected' : '' ?>>فعال</option>
-                <option value="hidden" <?= ($it['status_product'] ?? '') === 'hidden' ? 'selected' : '' ?>>پنهان</option>
-              </select>
-            </td>
-            <td style="white-space:nowrap">
-              <input class="input" type="number" name="position" value="<?= (int) ($it['display_order'] ?? 0) ?>" style="width:70px" title="ترتیب نمایش">
-              <button class="btn btn-primary btn-sm" type="submit"><?= icon('check', 13) ?> ذخیره</button>
-              <a class="btn btn-no btn-sm" href="agentshop.php?delete=<?= (int) $it['id'] ?>&_csrf=<?= csrf_token() ?>" data-confirm="این محصول حذف شود؟">حذف</a>
-            </td>
-          </form>
+          <td><?= nexora_agentshop_preview($it['name_product'] ?? '', (string) ($it['btn_style'] ?? ''), (string) ($it['btn_emoji_id'] ?? ''), $STYLE_COLORS) ?></td>
+          <td><?= htmlspecialchars((string) ($it['name_product'] ?? '')) ?></td>
+          <td><?= number_format((float) ($it['price_product'] ?? 0)) ?></td>
+          <td><?= (int) ($it['Volume_constraint'] ?? 0) ?> GB</td>
+          <td><?= (int) ($it['Service_time'] ?? 0) ?> روز</td>
+          <td><?= htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
+          <td style="min-width:220px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
+          <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
+          <td><?= ($it['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= ($it['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
+          <td><?= (int) ($it['display_order'] ?? 0) ?></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-primary btn-sm" type="button" onclick='openEditModal(<?= json_encode([
+                'id' => (int) $it['id'],
+                'name_product' => (string) ($it['name_product'] ?? ''),
+                'price_product' => (int) ($it['price_product'] ?? 0),
+                'volume_product' => (int) ($it['Volume_constraint'] ?? 0),
+                'time_product' => (int) ($it['Service_time'] ?? 0),
+                'namepanel' => (string) ($it['Location'] ?? ''),
+                'note_product' => (string) ($it['note'] ?? ''),
+                'category_product' => (string) ($it['category'] ?? ''),
+                'btn_style' => (string) ($it['btn_style'] ?? ''),
+                'btn_emoji_id' => (string) ($it['btn_emoji_id'] ?? ''),
+                'status_product' => (string) ($it['status_product'] ?? 'active'),
+                'position' => (int) ($it['display_order'] ?? 0),
+            ], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>✏️ ویرایش</button>
+            <a class="btn btn-no btn-sm" href="agentshop.php?delete=<?= (int) $it['id'] ?>&_csrf=<?= csrf_token() ?>" data-confirm="این محصول حذف شود؟">حذف</a>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table></div>
 </div>
 
-<div class="modal" id="addModal">
-  <div class="modal-card">
-    <div class="modal-head"><div class="modal-title">افزودن محصول فروشگاه نمایندگی</div><button class="btn btn-no" onclick="closeModal('addModal')">✕</button></div>
-    <form method="POST" class="modal-body">
-      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-      <input type="hidden" name="action" value="add">
-      <div class="form-grid">
-        <label class="field"><span>نام محصول</span><input class="input" name="name_product" required></label>
-        <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price_product" value="0" required></label>
-        <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="0" required></label>
-        <label class="field"><span>مدت (روز)</span><input class="input" type="number" name="time_product" value="0" required></label>
-        <label class="field"><span>پنل</span>
-          <select name="namepanel" class="select" required>
-            <?php foreach ($panels as $pn): ?>
-              <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label class="field"><span>دسته‌بندی (اختیاری)</span>
-          <select name="category_product" class="select">
-            <option value="">—</option>
-            <?php foreach ($categories as $ct): ?>
-              <option value="<?= htmlspecialchars((string) $ct['remark']) ?>"><?= htmlspecialchars((string) $ct['remark']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
-        <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
-        <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="3" placeholder="توضیح محصول، مزیت‌ها، شرایط استفاده و ..."></textarea></label>
+<div class="modal-veil" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>افزودن محصول فروشگاه نمایندگی</h3>
+      <button class="modal-x" onclick="closeModal('addModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="add">
+        <div class="form-grid">
+          <label class="field"><span>نام محصول</span><input class="input" name="name_product" required></label>
+          <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price_product" value="0" required></label>
+          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="0" required></label>
+          <label class="field"><span>مدت (روز)</span><input class="input" type="number" name="time_product" value="0" required></label>
+          <label class="field"><span>پنل</span>
+            <select name="namepanel" class="select" required>
+              <?php foreach ($panels as $pn): ?>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>دسته‌بندی (اختیاری)</span>
+            <select name="category_product" class="select">
+              <option value="">—</option>
+              <?php foreach ($categories as $ct): ?>
+                <option value="<?= htmlspecialchars((string) $ct['remark']) ?>"><?= htmlspecialchars((string) $ct['remark']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field" style="grid-column:1/-1"><span>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</span>
+            <input class="input" name="protocol_account" placeholder="اختیاری — مثلاً نام کاربری یکی از اکانت‌های موجود در پنل">
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
+          </label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="3" placeholder="توضیح محصول، مزیت‌ها، شرایط استفاده و ..."></textarea></label>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">افزودن محصول</button>
-        <button class="btn btn-no" type="button" onclick="closeModal('addModal')">انصراف</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('addModal')">انصراف</button>
       </div>
     </form>
   </div>
 </div>
+
+<div class="modal-veil" id="editModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ویرایش محصول فروشگاه نمایندگی</h3>
+      <button class="modal-x" onclick="closeModal('editModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="edit_id" id="edit_id">
+        <div class="form-grid">
+          <label class="field"><span>نام محصول</span><input class="input" name="name_product" id="edit_name" required></label>
+          <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price_product" id="edit_price" value="0" required></label>
+          <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" id="edit_volume" value="0" required></label>
+          <label class="field"><span>مدت (روز)</span><input class="input" type="number" name="time_product" id="edit_time" value="0" required></label>
+          <label class="field"><span>پنل</span>
+            <select name="namepanel" id="edit_panel" class="select" required>
+              <?php foreach ($panels as $pn): ?>
+                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars((string) $pn['name_panel']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field"><span>دسته‌بندی</span>
+            <select name="category_product" id="edit_category" class="select">
+              <option value="">—</option>
+              <?php foreach ($categories as $ct): ?>
+                <option value="<?= htmlspecialchars((string) $ct['remark']) ?>"><?= htmlspecialchars((string) $ct['remark']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label class="field" style="grid-column:1/-1"><span>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</span>
+            <input class="input" name="protocol_account" id="edit_protocol" placeholder="اختیاری — نام کاربری یکی از اکانت‌های موجود در پنل">
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
+          </label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'edit_btn_style') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>وضعیت</span>
+            <select name="status_product" id="edit_status" class="select">
+              <option value="active">فعال</option>
+              <option value="hidden">پنهان</option>
+            </select>
+          </label>
+          <label class="field"><span>ترتیب نمایش</span><input class="input" type="number" name="position" id="edit_position" value="0"></label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" id="edit_note" rows="3"></textarea></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" type="submit"><?= icon('check', 13) ?> ذخیره</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('editModal')">انصراف</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.openEditModal = function (p) {
+    p = p || {};
+    document.getElementById('edit_id').value = p.id || '';
+    document.getElementById('edit_name').value = p.name_product || '';
+    document.getElementById('edit_price').value = p.price_product || 0;
+    document.getElementById('edit_volume').value = p.volume_product || 0;
+    document.getElementById('edit_time').value = p.time_product || 0;
+    document.getElementById('edit_note').value = p.note_product || '';
+    document.getElementById('edit_emoji').value = p.btn_emoji_id || '';
+    document.getElementById('edit_protocol').value = '';
+    document.getElementById('edit_position').value = p.position || 0;
+    document.getElementById('edit_status').value = p.status_product || 'active';
+    var sel = document.getElementById('edit_panel');
+    if (sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+            sel.options[i].selected = sel.options[i].value === (p.namepanel || '');
+        }
+    }
+    var cat = document.getElementById('edit_category');
+    if (cat) {
+        for (var j = 0; j < cat.options.length; j++) {
+            cat.options[j].selected = cat.options[j].value === (p.category_product || '');
+        }
+    }
+    var st = document.getElementById('edit_btn_style');
+    if (st) {
+        for (var k = 0; k < st.options.length; k++) {
+            st.options[k].selected = st.options[k].value === (p.btn_style || '');
+        }
+    }
+    openModal('editModal');
+};
+</script>
 <?php endif; ?>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

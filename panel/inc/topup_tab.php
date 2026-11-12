@@ -5,6 +5,7 @@
 if (!isset($topupShop) || !isset($topupReturn)) {
     return;
 }
+require_once __DIR__ . '/shop_helpers.php';
 $topupShop = nexora_topup_shop_key($topupShop);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
@@ -23,12 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
             $price = (int) ($_POST['topup_price'] ?? 0);
             $credit = (int) ($_POST['topup_credit'] ?? 0);
             $description = (string) ($_POST['topup_description'] ?? '');
+            $unit = trim((string) ($_POST['topup_unit'] ?? ''));
             try {
                 if ($action === 'topup_add') {
                     db_query(
                         $pdo,
-                        "INSERT INTO panel_topup_product (shop,name,price,credit,description,btn_style,btn_emoji_id,status_product) VALUES (?,?,?,?,?,?,?,'active')",
-                        [$topupShop, $name, $price, $credit, $description, $style !== '' ? $style : null, $emoji !== '' ? $emoji : null]
+                        "INSERT INTO panel_topup_product (shop,name,price,credit,description,unit,btn_style,btn_emoji_id,status_product) VALUES (?,?,?,?,?,?,?,?,'active')",
+                        [$topupShop, $name, $price, $credit, $description, $unit !== '' ? $unit : null, $style !== '' ? $style : null, $emoji !== '' ? $emoji : null]
                     );
                     $newId = (int) $pdo->lastInsertId();
                     db_query($pdo, "UPDATE panel_topup_product SET display_order = ? WHERE id = ?", [$newId, $newId]);
@@ -37,12 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                     $id = (int) ($_POST['edit_id'] ?? 0);
                     db_query(
                         $pdo,
-                        "UPDATE panel_topup_product SET name=?,price=?,credit=?,description=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND shop=?",
+                        "UPDATE panel_topup_product SET name=?,price=?,credit=?,description=?,unit=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND shop=?",
                         [
                             $name,
                             $price,
                             $credit,
                             $description,
+                            $unit !== '' ? $unit : null,
                             ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
                             $style !== '' ? $style : null,
                             $emoji !== '' ? $emoji : null,
@@ -101,64 +104,127 @@ foreach (nexora_color_palette() as $slug => $info) {
     <div><button class="btn btn-primary" onclick="openModal('addTopupModal')"><?= icon('plus', 14) ?> افزودن گزینه</button></div>
   </div>
   <div class="tbl-wrap"><table class="tbl">
-    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>مبلغ</th><th>اعتبار</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th></th></tr></thead>
+    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>مبلغ</th><th>اعتبار</th><th>واحد</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th></th></tr></thead>
     <tbody>
       <?php if (!$topupItems): ?>
-        <tr><td colspan="9" style="text-align:center;color:var(--mute);padding:22px">هنوز گزینه‌ای برای شارژ تعریف نشده است.</td></tr>
+        <tr><td colspan="10" style="text-align:center;color:var(--mute);padding:22px">هنوز گزینه‌ای برای شارژ تعریف نشده است.</td></tr>
       <?php endif; ?>
       <?php foreach ($topupItems as $item): ?>
         <tr>
-          <form method="POST">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="action" value="topup_edit">
-            <input type="hidden" name="edit_id" value="<?= (int) $item['id'] ?>">
-            <td><?= nexora_agentshop_preview($item['name'] ?? '', (string) ($item['btn_style'] ?? ''), (string) ($item['btn_emoji_id'] ?? ''), $topupColors) ?></td>
-            <td><input class="input" name="topup_name" value="<?= htmlspecialchars((string) ($item['name'] ?? '')) ?>"></td>
-            <td><input class="input" type="number" name="topup_price" value="<?= (int) ($item['price'] ?? 0) ?>"></td>
-            <td><input class="input" type="number" name="topup_credit" value="<?= (int) ($item['credit'] ?? 0) ?>"></td>
-            <td><textarea class="input" name="topup_description" rows="2" style="min-width:220px"><?= htmlspecialchars((string) ($item['description'] ?? '')) ?></textarea></td>
-            <td><?= nexora_agentshop_style_select((string) ($item['btn_style'] ?? '')) ?></td>
-            <td><input class="input" name="btn_emoji_id" value="<?= htmlspecialchars((string) ($item['btn_emoji_id'] ?? '')) ?>" placeholder="ایموجی"></td>
-            <td>
-              <select name="status_product" class="select">
-                <option value="active" <?= ($item['status_product'] ?? 'active') === 'active' ? 'selected' : '' ?>>فعال</option>
-                <option value="hidden" <?= ($item['status_product'] ?? '') === 'hidden' ? 'selected' : '' ?>>پنهان</option>
-              </select>
-            </td>
-            <td style="white-space:nowrap">
-              <button class="btn btn-primary btn-sm" type="submit"><?= icon('check', 13) ?> ذخیره</button>
-            </td>
-          </form>
-          <form method="POST" style="display:inline">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="action" value="topup_delete">
-            <input type="hidden" name="edit_id" value="<?= (int) $item['id'] ?>">
-            <button class="btn btn-no btn-sm" type="submit" data-confirm="این گزینه حذف شود؟">حذف</button>
-          </form>
+          <td><?= nexora_agentshop_preview($item['name'] ?? '', (string) ($item['btn_style'] ?? ''), (string) ($item['btn_emoji_id'] ?? ''), $topupColors) ?></td>
+          <td><?= htmlspecialchars((string) ($item['name'] ?? '')) ?></td>
+          <td><?= number_format((float) ($item['price'] ?? 0)) ?></td>
+          <td><?= number_format((float) ($item['credit'] ?? 0)) ?></td>
+          <td><?= htmlspecialchars((string) ($item['unit'] ?? '')) ?></td>
+          <td style="min-width:220px"><?= nl2br(htmlspecialchars((string) ($item['description'] ?? ''))) ?></td>
+          <td><span class="pill"><?= htmlspecialchars((string) ($item['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
+          <td><?= ($item['btn_emoji_id'] ?? '') !== '' ? '💎' : '—' ?></td>
+          <td><?= ($item['status_product'] ?? 'active') === 'active' ? '✅ فعال' : '⛔️ پنهان' ?></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-primary btn-sm" type="button" onclick='openEditTopup(<?= json_encode([
+                'id' => (int) $item['id'],
+                'topup_name' => (string) ($item['name'] ?? ''),
+                'topup_price' => (float) ($item['price'] ?? 0),
+                'topup_credit' => (float) ($item['credit'] ?? 0),
+                'topup_unit' => (string) ($item['unit'] ?? ''),
+                'topup_description' => (string) ($item['description'] ?? ''),
+                'btn_style' => (string) ($item['btn_style'] ?? ''),
+                'btn_emoji_id' => (string) ($item['btn_emoji_id'] ?? ''),
+                'status_product' => (string) ($item['status_product'] ?? 'active'),
+            ], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>✏️ ویرایش</button>
+            <form method="POST" style="display:inline">
+              <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+              <input type="hidden" name="action" value="topup_delete">
+              <input type="hidden" name="edit_id" value="<?= (int) $item['id'] ?>">
+              <button class="btn btn-no btn-sm" type="submit" data-confirm="این گزینه حذف شود؟">حذف</button>
+            </form>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>
   </table></div>
 </div>
 
-<div class="modal" id="addTopupModal">
-  <div class="modal-card">
-    <div class="modal-head"><div class="modal-title">افزودن گزینه شارژ</div><button class="btn btn-no" onclick="closeModal('addTopupModal')">✕</button></div>
-    <form method="POST" class="modal-body">
-      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-      <input type="hidden" name="action" value="topup_add">
-      <div class="form-grid">
-        <label class="field"><span>نام گزینه (مثلاً: شارژ یک میلیونی)</span><input class="input" name="topup_name" required></label>
-        <label class="field"><span>مبلغ پرداختی (تومان)</span><input class="input" type="number" name="topup_price" value="0" required></label>
-        <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="topup_credit" value="1000000" required></label>
-        <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
-        <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
-        <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="topup_description" rows="3" placeholder="مثلاً: یک میلیون تومان اعتبار داخل پنل نمایندگی"></textarea></label>
+<div class="modal-veil" id="addTopupModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>افزودن گزینه شارژ</h3>
+      <button class="modal-x" onclick="closeModal('addTopupModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="topup_add">
+        <div class="form-grid">
+          <label class="field"><span>نام گزینه (مثلاً: شارژ یک میلیونی)</span><input class="input" name="topup_name" required></label>
+          <label class="field"><span>مبلغ پرداختی (تومان)</span><input class="input" type="number" name="topup_price" value="0" required></label>
+          <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="topup_credit" value="1000000" required></label>
+          <label class="field"><span>واحد (مثال: GB یا Toman)</span><input class="input" name="topup_unit" placeholder="اختیاری"></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="topup_description" rows="3" placeholder="مثلاً: یک میلیون تومان اعتبار داخل پنل نمایندگی"></textarea></label>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-primary" type="submit">افزودن گزینه</button>
-        <button class="btn btn-no" type="button" onclick="closeModal('addTopupModal')">انصراف</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('addTopupModal')">انصراف</button>
       </div>
     </form>
   </div>
 </div>
+
+<div class="modal-veil" id="editTopupModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ویرایش گزینه شارژ</h3>
+      <button class="modal-x" onclick="closeModal('editTopupModal')"><?= icon('close', 14) ?></button>
+    </div>
+    <form method="POST">
+      <div class="modal-body">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="action" value="topup_edit">
+        <input type="hidden" name="edit_id" id="tu_edit_id">
+        <div class="form-grid">
+          <label class="field"><span>نام گزینه</span><input class="input" name="topup_name" id="tu_edit_name" required></label>
+          <label class="field"><span>مبلغ پرداختی (تومان)</span><input class="input" type="number" name="topup_price" id="tu_edit_price" value="0" required></label>
+          <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="topup_credit" id="tu_edit_credit" value="0" required></label>
+          <label class="field"><span>واحد</span><input class="input" name="topup_unit" id="tu_edit_unit" placeholder="اختیاری"></label>
+          <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'tu_edit_style') ?></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="tu_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>وضعیت</span>
+            <select name="status_product" id="tu_edit_status" class="select">
+              <option value="active">فعال</option>
+              <option value="hidden">پنهان</option>
+            </select>
+          </label>
+          <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="topup_description" id="tu_edit_description" rows="3"></textarea></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" type="submit"><?= icon('check', 13) ?> ذخیره</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('editTopupModal')">انصراف</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.openEditTopup = function (p) {
+    p = p || {};
+    document.getElementById('tu_edit_id').value = p.id || '';
+    document.getElementById('tu_edit_name').value = p.topup_name || '';
+    document.getElementById('tu_edit_price').value = p.topup_price || 0;
+    document.getElementById('tu_edit_credit').value = p.topup_credit || 0;
+    document.getElementById('tu_edit_unit').value = p.topup_unit || '';
+    document.getElementById('tu_edit_description').value = p.topup_description || '';
+    document.getElementById('tu_edit_emoji').value = p.btn_emoji_id || '';
+    document.getElementById('tu_edit_status').value = p.status_product || 'active';
+    var st = document.getElementById('tu_edit_style');
+    if (st) {
+        for (var i = 0; i < st.options.length; i++) {
+            st.options[i].selected = st.options[i].value === (p.btn_style || '');
+        }
+    }
+    openModal('editTopupModal');
+};
+</script>

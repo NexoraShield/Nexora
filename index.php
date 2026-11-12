@@ -304,7 +304,7 @@ if (floor($TimeLastMessage / 60) >= 1) {
 // menu: otherwise the menu is opened instead of the text being saved. The
 // original text is restored before the admin section runs.
 $__nexora_adminStepText = null;
-$__nexora_adminSteps = ['get_new_text', 'adv_test_name', 'adv_topup_name', 'adv_topup_button_name'];
+$__nexora_adminSteps = ['get_new_text', 'adv_test_name', 'adv_topup_name', 'adv_topup_button_name', 'get_product_protocol'];
 if ($text !== '' && $Chat_type === 'private' && in_array((string) ($user['step'] ?? ''), $__nexora_adminSteps, true)) {
     $__nexora_adminStepText = $text;
     $text = 'nexora__admin_step__';
@@ -6823,7 +6823,28 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value_one", '', "id", $from_id);
 } elseif ($datain == "topup_agentshop" || $datain == "topup_agentpanelshop") {
     // ---------------- [ panel top up ] ----------------
+    // The customer first chooses the panel that should be charged.
     $topupShop = $datain === "topup_agentpanelshop" ? 'agentpanelshop' : 'agentshop';
+    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    if (!$topupPanels) {
+        sendmessage($from_id, $textbotlang['users']['topUp']['noPanel'], $backuser, 'HTML');
+        return;
+    }
+    $topupRows = [];
+    foreach ($topupPanels as $topupPanelIdx => $topupPanelName) {
+        $topupRows[] = [nexora_style_btn($topupPanelName, "topup_panel_" . $topupShop . "_" . $topupPanelIdx, ['btn_style' => 'primary'])];
+    }
+    $topupRows[] = [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => $topupShop === 'agentshop' ? "agentshop" : "agentpanelshop"]];
+    sendmessage($from_id, $textbotlang['users']['topUp']['selectPanel'], json_encode(['inline_keyboard' => $topupRows]), 'HTML');
+    step('topup_select_panel', $from_id);
+} elseif (preg_match('/^topup_panel_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
+    $topupShop = nexora_topup_shop_key($topupMatch[1]);
+    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanelIdx = (int) $topupMatch[2];
+    if (!isset($topupPanels[$topupPanelIdx])) {
+        sendmessage($from_id, $textbotlang['users']['topUp']['noPanel'], $backuser, 'HTML');
+        return;
+    }
     $topupItems = nexora_topup_products($topupShop);
     if (!$topupItems) {
         sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
@@ -6831,16 +6852,17 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     $topupRows = [];
     foreach ($topupItems as $topupItem) {
-        $topupLabel = (string) $topupItem['name'];
-        $topupRows[] = [nexora_style_btn($topupLabel, "topup_buy_" . $topupShop . "_" . (int) $topupItem['id'], $topupItem)];
+        $topupRows[] = [nexora_style_btn((string) $topupItem['name'], "topup_buy_" . $topupShop . "_" . (int) $topupItem['id'] . "_" . $topupPanelIdx, $topupItem)];
     }
-    $topupRows[] = [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => $topupShop === 'agentshop' ? "agentshop" : "agentpanelshop"]];
-    sendmessage($from_id, $textbotlang['users']['topUp']['intro'], json_encode(['inline_keyboard' => $topupRows]), 'HTML');
+    $topupRows[] = [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => "topup_" . $topupShop]];
+    sendmessage($from_id, strtr($textbotlang['users']['topUp']['intro'], ['{panel}' => $topupPanels[$topupPanelIdx]]), json_encode(['inline_keyboard' => $topupRows]), 'HTML');
     step('topup_list', $from_id);
-} elseif (preg_match('/^topup_buy_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
+} elseif (preg_match('/^topup_buy_(agentshop|agentpanelshop)_(\d+)_(\d+)$/', $datain, $topupMatch)) {
     $topupShop = nexora_topup_shop_key($topupMatch[1]);
     $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
-    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active') {
+    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanelIdx = (int) $topupMatch[3];
+    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active' || !isset($topupPanels[$topupPanelIdx])) {
         sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
         return;
     }
@@ -6849,20 +6871,23 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         '{description}' => (string) ($topupItem['description'] ?? ''),
         '{price}' => number_format($topupItem['price']),
         '{credit}' => number_format($topupItem['credit']),
+        '{panel}' => $topupPanels[$topupPanelIdx],
     ]);
     $topupKeyboard = json_encode([
         'inline_keyboard' => [
-            [nexora_style_btn($textbotlang['users']['topUp']['buyBtn'], "topup_pay_" . $topupShop . "_" . (int) $topupItem['id'], $topupItem)],
+            [nexora_style_btn($textbotlang['users']['topUp']['buyBtn'], "topup_pay_" . $topupShop . "_" . (int) $topupItem['id'] . "_" . $topupPanelIdx, $topupItem)],
             [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => "topup_" . $topupShop]],
         ]
     ]);
     sendmessage($from_id, $topupDetails, $topupKeyboard, 'HTML');
-    update("user", "Processing_value_one", $topupShop . ':' . (int) $topupItem['id'], "id", $from_id);
+    update("user", "Processing_value_one", $topupShop . ':' . (int) $topupItem['id'] . ':' . $topupPanelIdx, "id", $from_id);
     step('topup_buy', $from_id);
-} elseif (preg_match('/^topup_pay_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
+} elseif (preg_match('/^topup_pay_(agentshop|agentpanelshop)_(\d+)_(\d+)$/', $datain, $topupMatch)) {
     $topupShop = nexora_topup_shop_key($topupMatch[1]);
     $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
-    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active') {
+    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanelIdx = (int) $topupMatch[3];
+    if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active' || !isset($topupPanels[$topupPanelIdx])) {
         sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
         return;
     }
@@ -6886,13 +6911,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $topupRandom,
         $username,
         date('Y/m/d H:i:s'),
-        '',
+        $topupPanels[$topupPanelIdx],
         $topupItem['name'],
         $topupPrice,
         0,
         0,
         'unpaid',
-        'topup:' . $topupShop . ':' . (int) $topupItem['id'],
+        'topup:' . $topupShop . ':' . (int) $topupItem['id'] . ':' . $topupPanelIdx,
         $topupNotif,
     ]);
     update("invoice", "payable_amount", $topupPrice, "id_invoice", $topupRandom);

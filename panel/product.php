@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/inc/config.php';
 require_once __DIR__ . '/inc/icons.php';
+require_once __DIR__ . '/../panel_protocol.php';
 require_auth();
 
 // A product can define its own inbound(s). When the product has no inbound
@@ -56,6 +57,18 @@ function nexora_product_inbound_field($panels, $selected = [], $prefix = ''): st
     return $h . '</div>';
 }
 
+// Sets the protocol / inbound of the panel with the data of an account that
+// already exists inside that panel. Returns the message for the admin.
+function nexora_product_apply_protocol(string $panelName, string $reference): string
+{
+    $reference = trim($reference);
+    if ($reference === '' || $panelName === '' || $panelName === '/all') {
+        return '';
+    }
+    $result = nexora_apply_panel_protocol($GLOBALS['pdo'], $panelName, $reference);
+    return ($result['ok'] ? '✅ ' : '⚠️ ') . $result['message'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
   csrf_check_post();
   $name = trim($_POST['name_product'] ?? '');
@@ -80,6 +93,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
     flash('success', $textbotlang['panel']['productAddedPrefix'] . $name . $textbotlang['panel']['productAddedSuffix']);
   } catch (Exception $e) {
     flash('error', $textbotlang['panel']['productDbError'] . $e->getMessage());
+  }
+  $protocol = nexora_product_apply_protocol($_POST['namepanel'] ?? '', $_POST['protocol_account'] ?? '');
+  if ($protocol !== '') {
+    flash('success', $protocol);
   }
   header('Location: product.php');
   exit;
@@ -108,6 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
       }
       flash('error', $textbotlang['panel']['productErrorPrefix'] . $e->getMessage());
     }
+  }
+  $protocol = nexora_product_apply_protocol($_POST['namepanel'] ?? '', $_POST['protocol_account'] ?? '');
+  if ($protocol !== '') {
+    flash('success', $protocol);
   }
   header('Location: product.php');
   exit;
@@ -283,6 +304,11 @@ include __DIR__ . '/inc/layout_head.php';
             <?= nexora_product_inbound_field($panels, [], 'add') ?>
             <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر اینباندی انتخاب نشود، اینباند پیش‌فرض پنل استفاده می‌شود. سرویس‌های این محصول با اینباند ساخته می‌شوند.</small>
           </div>
+          <div class="field full">
+            <label>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</label>
+            <input type="text" name="protocol_account" class="input" placeholder="اختیاری — مثلاً نام کاربری یکی از اکانت‌های موجود در پنل">
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -362,6 +388,11 @@ include __DIR__ . '/inc/layout_head.php';
             <label>اینباند اختصاصی محصول (اختیاری)</label>
             <div id="edit_inbounds"><?= nexora_product_inbound_field($panels, [], 'edit') ?></div>
             <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر اینباندی انتخاب نشود، اینباند پیش‌فرض پنل استفاده می‌شود.</small>
+          </div>
+          <div class="field full">
+            <label>نام کاربری یک اکانت داخل همان پنل (برای تنظیم پروتکل و اینباند)</label>
+            <input type="text" name="protocol_account" id="edit_protocol" class="input" placeholder="اختیاری — نام کاربری یکی از اکانت‌های موجود در پنل">
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر پر شود، پروتکل و اینباند پنل با اطلاعات همین اکانت تنظیم می‌شود.</small>
           </div>
         </div>
       </div>
