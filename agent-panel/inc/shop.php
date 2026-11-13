@@ -320,9 +320,32 @@ if (!function_exists('nx_agent_buy_product')) {
                 return ['ok' => false, 'msg' => 'این کاربر در پنل شما ثبت نشده است.', 'detail' => []];
             }
         }
-        $panel = select("marzban_panel", "*", "name_panel", (string) ($product['Location'] ?? ''), "select");
+        $location = trim((string) ($product['Location'] ?? ''));
+        $panel = null;
+        if ($location !== '' && $location !== '/all') {
+            $panel = select("marzban_panel", "*", "name_panel", $location, "select");
+        } else {
+            // A product of every panel: the first panel that sells services
+            // takes the account.
+            try {
+                $st = $pdo->prepare("SELECT * FROM marzban_panel WHERE status = 'active' AND type <> 'nexora_agent' AND type <> 'Manualsale' ORDER BY display_order, id LIMIT 1");
+                $st->execute();
+                $panel = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $e) {
+                $panel = null;
+            }
+        }
         if (!$panel || (string) ($panel['status'] ?? '') !== 'active') {
             return ['ok' => false, 'msg' => 'پنل این محصول در دسترس نیست.', 'detail' => []];
+        }
+        // The panel of the agent is not a panel that sells services.
+        if ((string) ($panel['type'] ?? '') === 'nexora_agent') {
+            return ['ok' => false, 'msg' => 'این محصول روی پنل نمایندگی ساخته نمی‌شود.', 'detail' => []];
+        }
+        $panelAgent = trim((string) ($panel['agent'] ?? ''));
+        $agentKind = trim((string) ($agent['agent'] ?? 'f'));
+        if ($panelAgent !== '' && $panelAgent !== 'all' && $agentKind !== '' && $panelAgent !== $agentKind) {
+            return ['ok' => false, 'msg' => 'این محصول برای نقش شما در دسترس نیست.', 'detail' => []];
         }
         $price = (float) $product['price_product'];
         if ($percent > 0) {
