@@ -367,15 +367,6 @@ if (!function_exists('nexora_gateway_is_usable')) {
                 return $has('variza_api_token') && $has('variza_webhook_secret');
             case 'frenzyex':
                 return $has('frenzyex_api_key') && $has('frenzyex_callback_secret') && $has('frenzyex_base_url');
-            case 'iranpay3':
-                // The third rial gateway needs its key as well.
-                return $has('apiiranpay');
-            case 'iranpay2':
-                return $has('apiternado');
-            case 'plisio':
-                return $has('apinowpayment');
-            case 'nowpayment':
-                return $has('marchent_tronseller');
         }
         return true;
     }
