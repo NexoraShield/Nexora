@@ -79,7 +79,7 @@ $palette = function_exists('nexora_color_palette') ? nexora_color_palette() : []
 <style>
   :root{--gold:#f0c465;--gold2:#cf9226;--text:#eef2ff;--mute:#a9b2cf;--line:rgba(255,255,255,.09)}
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;min-height:100vh;color:var(--text);
+  html,body{margin:0;padding:0;min-height:100vh;color:var(--text);overflow-x:hidden;
     font-family:Vazir,ui-sans-serif,system-ui,Tahoma,sans-serif;
     background-image:
       radial-gradient(900px 520px at 10% -10%, rgba(124,92,255,.30), transparent 60%),
@@ -99,14 +99,17 @@ $palette = function_exists('nexora_color_palette') ? nexora_color_palette() : []
   .sub{margin:0 0 18px;color:var(--mute);font-size:13px;line-height:1.9}
   .row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px dashed rgba(255,255,255,.07);font-size:13.5px}
   .row:last-child{border-bottom:0}
-  .row span{color:var(--mute)}
-  .row b{font-weight:700;text-align:left}
+  .row span{color:var(--mute);flex:0 0 auto}
+  .row b{font-weight:700;text-align:left;min-width:0;overflow-wrap:anywhere;word-break:break-word}
   .amount{font-size:26px;font-weight:800;background:linear-gradient(135deg,#f7d17a,#cf9226);
     -webkit-background-clip:text;background-clip:text;color:transparent;text-align:center;margin:6px 0 2px}
-  .gw{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  .gw{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;
     padding:14px 16px;margin-top:10px;border-radius:16px;cursor:pointer;text-decoration:none;
     background:rgba(255,255,255,.045);border:1px solid var(--line);color:var(--text);font-size:14px;font-weight:600;
     transition:transform .16s ease,box-shadow .22s ease,background-color .22s ease}
+  .gw>span:first-child{min-width:0}
+  .gw>span:first-child>span:last-child{overflow-wrap:anywhere;word-break:break-word}
+  .gw .go{color:var(--mute);font-size:12px;font-weight:400;flex:0 0 auto}
   .gw:hover{transform:translateY(-2px);background:rgba(255,255,255,.08);
     box-shadow:0 14px 30px -16px rgba(0,0,0,.9),0 0 0 1px rgba(240,196,101,.28)}
   .gw:active{transform:scale(.985)}

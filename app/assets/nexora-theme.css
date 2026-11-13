@@ -38,6 +38,8 @@ body {
     background: #0d1120;
     color: var(--foreground);
     margin: 0;
+    padding: 0;
+    overflow-x: hidden;
     font-family: Vazir, ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -74,6 +76,13 @@ body::before {
     position: relative;
     z-index: 1;
     min-height: 100vh;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* A long name (a product with a premium emoji) never breaks the layout. */
+h1, h2, h3, p, span, b, strong {
+    overflow-wrap: anywhere;
 }
 
 /* --- the glass surfaces ------------------------------------------------- */
