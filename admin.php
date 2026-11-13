@@ -427,83 +427,6 @@ if ($datain == "paygwback") {
     nexora_test_wizard_save($tsState);
     step('adv_test_wizard', $from_id);
     sendmessage($from_id, "✏️ ویرایش سرویس تست.\n\nنام فعلی: <b>" . htmlspecialchars(stripCustomEmojiTags((string) $tsRow['name_product'])) . "</b>\n\n📝 نام جدید را بفرستید (برای نگه‌داشتن مقدار فعلی <code>-</code> بفرستید).", null, 'HTML');
-} elseif ($user['step'] == "adv_test_wizard" && $adminrulecheck['rule'] == "administrator") {
-    $tsState = nexora_test_wizard_state($user);
-    if (!$tsState) {
-        step('home', $from_id);
-        return;
-    }
-    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
-    $tsStep = (string) ($tsState['step'] ?? 'name');
-    $tsSkip = trim((string) $text) === '-';
-    $tsValue = trim((string) $text);
-
-    if ($tsStep === 'name') {
-        if ($tsSkip) {
-            // the name stays as it is
-        } else {
-            $tsLabel = splitCustomEmojiLabel((string) $text);
-            $tsPlain = trim((string) ($tsLabel['text'] ?? ''));
-            if ($tsPlain === '') {
-                sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد. دوباره بفرستید یا <code>-</code> بزنید.", null, 'HTML');
-                return;
-            }
-            $tsData['name_product'] = $tsPlain;
-            if (trim((string) ($tsLabel['icon'] ?? '')) !== '') {
-                $tsData['btn_emoji_id'] = trim((string) $tsLabel['icon']);
-            }
-        }
-        $tsState['data'] = $tsData;
-        $tsState['step'] = 'volume';
-        nexora_test_wizard_save($tsState);
-        $tsNext = nexora_test_wizard_next($tsState);
-        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
-        return;
-    }
-    if ($tsStep === 'volume') {
-        if (!$tsSkip) {
-            $tsVolume = nexora_parse_volume($text);
-            if ($tsVolume === null) {
-                sendmessage($from_id, "⭕️ حجم را درست بنویسید. مثال: <code>512 مگابایت</code> یا <code>1 گیگابایت</code>", null, 'HTML');
-                return;
-            }
-            $tsData['Volume_constraint'] = $tsVolume;
-        }
-        $tsState['data'] = $tsData;
-        $tsState['step'] = 'time';
-        nexora_test_wizard_save($tsState);
-        $tsNext = nexora_test_wizard_next($tsState);
-        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
-        return;
-    }
-    if ($tsStep === 'time') {
-        if (!$tsSkip) {
-            if (!ctype_digit((string) $tsValue)) {
-                sendmessage($from_id, "⭕️ مدت را به ساعت و به شکل عدد بنویسید.", null, 'HTML');
-                return;
-            }
-            $tsData['Service_time'] = (int) $tsValue;
-        }
-        $tsState['data'] = $tsData;
-        $tsState['step'] = 'panel';
-        nexora_test_wizard_save($tsState);
-        $tsNext = nexora_test_wizard_next($tsState);
-        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
-        return;
-    }
-    if ($tsStep === 'note') {
-        if (!$tsSkip) {
-            $tsData['note'] = $tsValue;
-        }
-        $tsState['data'] = $tsData;
-        $tsState['step'] = 'color';
-        nexora_test_wizard_save($tsState);
-        $tsNext = nexora_test_wizard_next($tsState);
-        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
-        return;
-    }
-    // the remaining steps are chosen with the buttons of the keyboard
-    sendmessage($from_id, "⭕️ یکی از گزینه‌های بالا را انتخاب کنید.", null, 'HTML');
 } elseif (preg_match('/^adv_test_panel_(.+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
     $tsState = nexora_test_wizard_state($user);
     if (!$tsState) {
@@ -605,6 +528,83 @@ if ($datain == "paygwback") {
     $tsId = (int) $tsMatch[1];
     db_query($pdo, "DELETE FROM product WHERE id = ? AND is_test = 1", [$tsId]);
     sendmessage($from_id, "🗑 سرویس تست حذف شد.", null, 'HTML');
+} elseif ($user['step'] == "adv_test_wizard" && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        step('home', $from_id);
+        return;
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsStep = (string) ($tsState['step'] ?? 'name');
+    $tsSkip = trim((string) $text) === '-';
+    $tsValue = trim((string) $text);
+
+    if ($tsStep === 'name') {
+        if ($tsSkip) {
+            // the name stays as it is
+        } else {
+            $tsLabel = splitCustomEmojiLabel((string) $text);
+            $tsPlain = trim((string) ($tsLabel['text'] ?? ''));
+            if ($tsPlain === '') {
+                sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد. دوباره بفرستید یا <code>-</code> بزنید.", null, 'HTML');
+                return;
+            }
+            $tsData['name_product'] = $tsPlain;
+            if (trim((string) ($tsLabel['icon'] ?? '')) !== '') {
+                $tsData['btn_emoji_id'] = trim((string) $tsLabel['icon']);
+            }
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'volume';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    if ($tsStep === 'volume') {
+        if (!$tsSkip) {
+            $tsVolume = nexora_parse_volume($text);
+            if ($tsVolume === null) {
+                sendmessage($from_id, "⭕️ حجم را درست بنویسید. مثال: <code>512 مگابایت</code> یا <code>1 گیگابایت</code>", null, 'HTML');
+                return;
+            }
+            $tsData['Volume_constraint'] = $tsVolume;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'time';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    if ($tsStep === 'time') {
+        if (!$tsSkip) {
+            if (!ctype_digit((string) $tsValue)) {
+                sendmessage($from_id, "⭕️ مدت را به ساعت و به شکل عدد بنویسید.", null, 'HTML');
+                return;
+            }
+            $tsData['Service_time'] = (int) $tsValue;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'panel';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    if ($tsStep === 'note') {
+        if (!$tsSkip) {
+            $tsData['note'] = $tsValue;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'color';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    // the remaining steps are chosen with the buttons of the keyboard
+    sendmessage($from_id, "⭕️ یکی از گزینه‌های بالا را انتخاب کنید.", null, 'HTML');
 } elseif (preg_match('/^adv_edit_topup_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
     $topupRow = nexora_topup_product_by_id((int) $advancedEdit[1]);
     if (!$topupRow) {
