@@ -1,4 +1,34 @@
 # Nexora Bot — Release Notes
+## v1.22.77 (2026-11-13) — One test menu, the difference of the two panel shops
+
+**The test service (سرویس تست)**
+- There are two kinds of test service: the products that are defined in the web panel (with a name, a
+  volume, a duration and an inbound) and the panels whose test capability is switched on in the panel
+  management. The customer only saw one of them: as soon as a test product existed, the panels of the
+  panel management were gone. Both kinds are now in one list and both use the same share of the user.
+- The panel of a test service is written on the button now, so the customer sees the volume and the
+  duration of every test before he picks it.
+- The panels of the panel management are filtered the same way everywhere now (the share of the agent,
+  the status and the hidden users). A hidden panel could be opened with a hand made callback before.
+- The admin menu of the test service had a button that opened the very same screen again. It shows the
+  test products and the panels with the test capability in one screen now.
+
+**The two panel shops**
+- The description of the reseller panel and of the agent panel tells the customer the difference
+  between the two: the reseller panel is a Pasarguard panel for professionals and is paid by
+  consumption (every 1 TB costs 2 TB, and when the credit is used up all the accounts stop working),
+  while the agent panel has a simple Persian interface, the accounts are ready as templates and every
+  account that is opened is taken from the credit.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.77
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.77
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.77
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.77
+- `206.1.97.193` (ostovarvpn.snnap.site / BotOstovar) — v1.22.77
+
+---
+
 ## v1.22.76 (2026-11-13) — The panel of the agent is not a panel of the shop
 
 **The bug**

@@ -274,6 +274,9 @@ Choose one of the test services:',
                         'intro' => '🖥 <b>Agent panel shop</b>
 
 Choose one of the panels below:',
+                        'note' => 'ℹ️ <b>The agent panel has a simple Persian interface and is great for manual selling.</b>
+
+The accounts are ready as templates and every account you open takes its price from your credit; as soon as the credit is gone, that account stops working. Unlike the reseller panel, it is not paid by consumption.',
                         'empty' => '⭕️ There is no panel available for the agents yet.',
                         'details' => '🖥 <b>{name}</b>
 
@@ -301,6 +304,9 @@ Choose one of the panels below:',
                         'intro' => '🛒 <b>Agent panel shop</b>
 
 Choose one of the products below:',
+                        'note' => 'ℹ️ <b>The reseller panel is a Pasarguard panel and is meant for professionals.</b>
+
+It is paid by consumption: every 1 TB you use costs you 2 TB. For example you buy 1 TB of credit and own 1000 accounts; as soon as your usage reaches that amount and you do not renew, all the accounts stop working.',
                         'empty' => '⭕️ There is no product in the agent panel shop yet.',
                         'details' => '🛍 <b>{name}</b>
 

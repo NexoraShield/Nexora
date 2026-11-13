@@ -3109,11 +3109,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textbotlang['users']['usertest']['unavailable'], null, 'HTML');
         return;
     }
-    // Test services can be defined as products (with their own name, volume,
-    // duration and inbound). When they exist they are offered first, otherwise
-    // the classic panel based test service is used.
+    // Test services can be defined in two ways: as a product in the web panel
+    // (with its own name, volume, duration and inbound) or as a panel whose
+    // test capability is switched on in the panel management. Both kinds are
+    // shown in one list and they use the same share of the user, so a customer
+    // never gets two different test menus.
     $testProducts = nexora_test_products(true);
-    if ($testProducts && $user['step'] != "createusertest" && !isset($dataget[1])) {
+    $testPanels = function_exists('nexora_test_panels') ? nexora_test_panels((string) $user['agent'], (string) $from_id) : [];
+    if (($testProducts || $testPanels) && $user['step'] != "createusertest" && !isset($dataget[1])) {
         // The share of the test services: every user may open this many test
         // accounts. When it is used up, the bot does not give more.
         $testUserRow = select("user", "limit_usertest", "id", $from_id, "select");
@@ -3130,6 +3133,18 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
                 $testLabel .= ' - ' . $testVolume;
             }
             $testRows[] = [nexora_style_btn($testLabel, "testproduct_" . $testProduct['code_product'], $testProduct)];
+        }
+        foreach ($testPanels as $testPanel) {
+            $testLabel = (string) $testPanel['name_panel'];
+            $testPanelVolume = (int) ($testPanel['val_usertest'] ?? 0);
+            $testPanelTime = (int) ($testPanel['time_usertest'] ?? 0);
+            if ($testPanelVolume > 0 || $testPanelTime > 0) {
+                $testLabel .= ' - ' . ($testPanelVolume > 0 ? nexora_format_volume($testPanelVolume / 1024) : '');
+                $testLabel .= ($testPanelVolume > 0 && $testPanelTime > 0) ? ' / ' : '';
+                $testLabel .= ($testPanelTime > 0 ? $testPanelTime . ' ساعت' : '');
+                $testLabel = trim($testLabel, ' /');
+            }
+            $testRows[] = [nexora_style_btn($testLabel, "locationtest_" . $testPanel['code_panel'], $testPanel)];
         }
         $testRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
         $testIntro = $textbotlang['users']['testService']['intro'];
@@ -3150,13 +3165,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     }
     if ($user['number'] == "none" && $setting['get_number'] == "onAuthenticationphone")
         return;
-    $locationproduct = select("marzban_panel", "*", "TestAccount", "ONTestAccount", "count");
-    if ($locationproduct == 0) {
+    // The panels whose test capability is switched on.
+    $testPanelRows = function_exists('nexora_test_panels') ? nexora_test_panels((string) $user['agent'], (string) $from_id) : [];
+    if (!$testPanelRows) {
         sendmessage($from_id, $textbotlang['users']['sell']['nullPanel'], null, 'HTML');
         return;
     }
-    if ($locationproduct == 1) {
-        $panel = select("marzban_panel", "*", "TestAccount", "ONTestAccount", "select");
+    if (count($testPanelRows) == 1) {
+        $panel = $testPanelRows[0];
         if ($panel['hide_user'] != null) {
             $list_user = json_decode($panel['hide_user'], true);
             if (in_array($from_id, $list_user)) {
@@ -3167,6 +3183,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $location = $panel['code_panel'];
     } else {
         if (isset($dataget[1])) {
+            // The panel has to be one of the panels the customer may use, so a
+            // hand made callback can not open a hidden panel.
+            $testPanelCodes = array_map('strval', array_column($testPanelRows, 'code_panel'));
+            if (!in_array((string) $dataget[1], $testPanelCodes, true)) {
+                sendmessage($from_id, $textbotlang['users']['sell']['nullPanel'], null, 'HTML');
+                return;
+            }
             $location = $dataget[1];
         } elseif ($user['step'] == "createusertest") {
             $location = $user['Processing_value_one'];
@@ -6559,6 +6582,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentRows[] = [nexora_style_btn($agentTopup['label'], "topup_agentshop", ['btn_style' => $agentTopup['style']])];
     $agentKeyboard = json_encode(['inline_keyboard' => $agentRows]);
     $agentIntro = $textbotlang['users']['agentShop']['intro'] . "\n\n" . $textbotlang['users']['agentShop']['steps'];
+    // The note tells the customer the difference between the two panel shops.
+    if (!empty($textbotlang['users']['agentShop']['note'])) {
+        $agentIntro .= "\n\n" . $textbotlang['users']['agentShop']['note'];
+    }
     if (!$agentItems) {
         $agentIntro = $textbotlang['users']['agentShop']['empty'] . "\n\n" . $agentIntro;
     }
@@ -6583,6 +6610,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         '{time}' => (string) $agentProduct['Service_time'],
         '{location}' => (string) $agentProduct['Location'],
     ]);
+    // The note is repeated here, right before the buy button.
+    if (!empty($textbotlang['users']['agentShop']['note'])) {
+        $agentDetails .= "\n\n" . $textbotlang['users']['agentShop']['note'];
+    }
     $agentKeyboard = json_encode([
         'inline_keyboard' => [
             [nexora_style_btn($textbotlang['users']['agentShop']['buyBtn'], "agentshop_buy", $agentProduct)],
@@ -6694,6 +6725,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentPanelRows[] = [nexora_style_btn($agentPanelTopup['label'], "topup_agentpanelshop", ['btn_style' => $agentPanelTopup['style']])];
     $agentPanelKeyboard = json_encode(['inline_keyboard' => $agentPanelRows]);
     $agentPanelIntro = $textbotlang['users']['agentPanelShop']['intro'] . "\n\n" . $textbotlang['users']['agentPanelShop']['steps'];
+    // The note tells the customer the difference between the two panel shops.
+    if (!empty($textbotlang['users']['agentPanelShop']['note'])) {
+        $agentPanelIntro .= "\n\n" . $textbotlang['users']['agentPanelShop']['note'];
+    }
     if (!$agentPanelItems) {
         $agentPanelIntro = $textbotlang['users']['agentPanelShop']['empty'] . "\n\n" . $agentPanelIntro;
     }
@@ -6721,6 +6756,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         '{price}' => number_format($agentPanelProduct['price']),
         '{credit}' => number_format($agentPanelProduct['credit']),
     ]);
+    // The note is repeated here, right before the buy button.
+    if (!empty($textbotlang['users']['agentPanelShop']['note'])) {
+        $agentPanelDetails .= "\n\n" . $textbotlang['users']['agentPanelShop']['note'];
+    }
     $agentPanelKeyboard = json_encode([
         'inline_keyboard' => [
             [nexora_style_btn($textbotlang['users']['agentPanelShop']['buyBtn'], "agentpanelshop_buy", $agentPanelProduct)],

@@ -2727,6 +2727,38 @@ function nexora_test_products($activeOnly = true): array
     }
 }
 
+/**
+ * The panels whose test capability is switched on (panel management -> test
+ * settings). Together with the test services of the web panel they are the two
+ * kinds of test service of the bot; both of them use the same share of the
+ * user, so they are shown in one list.
+ *
+ * The panel of the agent (اجنت پنل) is not a panel that sells services, so it
+ * is never in this list.
+ */
+function nexora_test_panels(string $agent = 'f', string $userId = ''): array
+{
+    global $pdo;
+    try {
+        // The agent "*" means every panel of the administrator.
+        $agentFilter = ($agent === '*' || $agent === '') ? "" : " AND (agent = ? OR agent = 'all')";
+        $sql = "SELECT * FROM marzban_panel WHERE TestAccount = 'ONTestAccount' AND status = 'active' AND type <> 'nexora_agent'" . $agentFilter . " ORDER BY display_order, id";
+        $st = $pdo->prepare($sql);
+        $st->execute($agentFilter !== '' ? [$agent] : []);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('nexora_test_panels: ' . $e->getMessage());
+        return [];
+    }
+    if ($userId !== '') {
+        $rows = array_values(array_filter($rows, function ($row) use ($userId) {
+            $hidden = json_decode((string) ($row['hide_user'] ?? ''), true);
+            return !(is_array($hidden) && in_array($userId, $hidden));
+        }));
+    }
+    return $rows;
+}
+
 function addBackgroundImage($urlimage, $qrCodeResult, $backgroundPath)
 {
     if (!file_exists($backgroundPath)) {

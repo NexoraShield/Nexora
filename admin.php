@@ -346,15 +346,30 @@ if ($datain == "paygwback") {
             case 'testservices':
                 $advancedTitle = '🧪 سرویس تست';
                 $advancedLines = [];
+                // The first kind of test service: the products of the web panel.
                 foreach (nexora_test_products(false) as $row) {
                     $advancedLines[] = '• ' . str_replace(["\n"], ' — ', nexora_test_service_summary((array) $row));
                 }
                 if (!$advancedLines) {
-                    $advancedLines[] = 'هنوز سرویس تستی تعریف نشده است.';
+                    $advancedLines[] = 'هنوز سرویس تستی از پنل تحت وب تعریف نشده است.';
+                }
+                // The second kind of test service: the panels whose test
+                // capability is switched on in the panel management. Both kinds
+                // are in the same menu for the customer and they use the same
+                // share of the user.
+                $advancedLines[] = '';
+                $advancedLines[] = '🔸 پنل‌هایی که قابلیت تستشان روشن است:';
+                $testPanelCount = 0;
+                foreach (nexora_test_panels('*', '') as $testPanelRow) {
+                    $testPanelCount++;
+                    $advancedLines[] = '   • ' . $testPanelRow['name_panel'] . ' — ' . nexora_format_volume(((float) ($testPanelRow['val_usertest'] ?? 0)) / 1024) . ' / ' . (int) ($testPanelRow['time_usertest'] ?? 0) . ' ساعت';
+                }
+                if ($testPanelCount === 0) {
+                    $advancedLines[] = '   (هیچ پنلی قابلیت تست ندارد)';
                 }
                 $advancedActions = [
-                    [['text' => '🧪 مدیریت سرویس تست', 'callback_data' => "adv_testservices"]],
                     [['text' => '➕ سرویس تست جدید', 'callback_data' => "adv_test_new"]],
+                    [['text' => '🖥 مدیریت پنل‌ها', 'callback_data' => "adv_panels"]],
                 ];
                 break;
             case 'topup':

@@ -1094,12 +1094,10 @@ $list_marzban_panel_userschange = json_encode($list_marzban_panel_users_change);
 
 
 //------------------  [ listpanelusers test ]----------------//
+// The panels whose test capability is switched on. The same helper is used by
+// the customer menu of the test service, so both lists are always the same.
 $list_marzban_panel_usertest = ['inline_keyboard' => []];
-foreach ($allPanelRows as $result) {
-    if ($result['TestAccount'] != "ONTestAccount" || !in_array($result['agent'], [$users['agent'], "all"]))
-        continue;
-    if ($result['hide_user'] != null and in_array($from_id, json_decode($result['hide_user'], true)))
-        continue;
+foreach (function_exists('nexora_test_panels') ? nexora_test_panels((string) ($users['agent'] ?? 'f'), (string) $from_id) : [] as $result) {
     $list_marzban_panel_usertest['inline_keyboard'][] = [
         nexora_style_btn($result['name_panel'], "locationtest_{$result['code_panel']}", $result)
     ];
