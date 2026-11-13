@@ -174,7 +174,10 @@ class MarzbanPanelDriver extends BasePanelDriver
         $username = $vars['username'];
         $Output = $vars['Output'];
         $UsernameData = removeuser($Get_Data_Panel['name_panel'], $username);
-        if (!empty($UsernameData['status']) && $UsernameData['status'] != 200) {
+        // A removed user answers with 204 and an empty body, so both codes
+        // mean that it worked.
+        $removeStatus = (int) ($UsernameData['status'] ?? 0);
+        if (!empty($UsernameData['status']) && !in_array($removeStatus, [200, 204], true)) {
             return array(
                 'status' => 'Unsuccessful',
                 'msg' => $UsernameData['status']
@@ -186,10 +189,14 @@ class MarzbanPanelDriver extends BasePanelDriver
             );
         }
         $UsernameData = json_decode($UsernameData['body'], true);
-        if ($UsernameData['detail'] != "User successfully deleted") {
+        if (!is_array($UsernameData)) {
+            $UsernameData = [];
+        }
+        $removeDetail = (string) ($UsernameData['detail'] ?? '');
+        if ($removeStatus !== 204 && $removeDetail !== "User successfully deleted") {
             $Output = array(
                 'status' => 'Unsuccessful',
-                'msg' => $UsernameData['detail']
+                'msg' => $removeDetail !== '' ? $removeDetail : $removeStatus
             );
         } else {
             $Output = array(
