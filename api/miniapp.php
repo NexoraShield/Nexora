@@ -382,7 +382,9 @@ function mini_countries(array $data, string $method): void
     }
     $user_info = select("user", "*", "token", $tokencheck, "select");
     if ($user_info) {
-        $stmt = $pdo->prepare("SELECT * FROM marzban_panel WHERE status = 'active' AND (agent = :agent OR agent = 'all') AND type != 'Manualsale' ORDER BY display_order, id");
+        // The panel of the agent (اجنت پنل) is the panel of the reseller and
+        // does not sell services, so it is not in the list of the customer.
+        $stmt = $pdo->prepare("SELECT * FROM marzban_panel WHERE status = 'active' AND (agent = :agent OR agent = 'all') AND type != 'Manualsale' AND type <> 'nexora_agent' ORDER BY display_order, id");
         $stmt->bindParam(':agent', $user_info['agent']);
         $stmt->execute();
         $panel_list = [];

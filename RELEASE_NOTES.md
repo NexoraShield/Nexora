@@ -1,4 +1,26 @@
 # Nexora Bot — Release Notes
+## v1.22.76 (2026-11-13) — The panel of the agent is not a panel of the shop
+
+**The bug**
+- The panel of the agent (اجنت پنل, the type `nexora_agent`) showed up in the list of the panels a
+  customer sees when he presses "خرید سرویس". The agent panel is the panel of the reseller, it does
+  not sell services, so it must not be in that list.
+- The list of the panels of the bulk buy had the same problem.
+- The list of the panels of the mini app had the same problem.
+- A customer could still reach the agent panel with an old button of an old message. The bot refuses
+  the panel now.
+- The health check called the agent panel every time and told the administrator that the panel was
+  unreachable, because the agent panel is not a Marzban panel. It is not checked any more.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.76
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.76
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.76
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.76
+- `206.1.97.193` (ostovarvpn.snnap.site / BotOstovar) — v1.22.76 (was v1.22.41)
+
+---
+
 ## v1.22.75 (2026-11-13) — The two panel shops work from end to end
 
 **The test services**
@@ -37,6 +59,13 @@
 - The credit of a panel can be increased and decreased by hand (the balance of the panel never goes below zero).
 - A new password can be created for a panel. The password is shown once, because only its hash is stored.
 - A panel can be deleted: the access of the customer is taken away right away, the payments stay untouched.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.75
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.75
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.75
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.75
+- `206.1.97.193` (ostovarvpn.snnap.site / BotOstovar) — v1.22.75
 
 ---
 

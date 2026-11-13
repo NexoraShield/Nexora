@@ -11,7 +11,17 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 Phase 8 — The two panel shops (پنل نمایندگی / اجنت پنل), the test quota and the top up.
 
 ## Last successful checkpoint
-**v1.22.75 (in progress)** — working tree has uncommitted edits:
+**v1.22.76** — working tree has uncommitted edits:
+- index.php: the panel of the agent (`type = 'nexora_agent'`) is not a panel that sells services, so it
+  is not in the list of the panels of the customer any more (buy, count of the panels, bulk buy) and
+  the bot refuses it even with an old button of an old message.
+- api/miniapp.php: the same filter for the list of the panels of the mini app.
+- cronbot/health_monitor.php: the agent panel is not checked any more — it is not a Marzban panel,
+  so the administrator got a false "panel unreachable" message every time.
+- The Arvan bot was checked on the server: the agent panel "پنل اجنت تستی" has no products and no
+  invoices, so nothing is lost by hiding it from the customer.
+- Full-repo php -l (PHP 8.2.35 CLI): 245 files clean / 0 errors.
+- v1.22.75 (committed): the two panel shops work from end to end (see below).
 - panel/inc/agentpanel_tab.php: `ap_add` was compared with `add` (the insert became an update of row 0, so "افزودن پنل" added nothing); the panel list was only built inside the POST branch (empty dropdown on a normal page load); price falls back to the credit.
 - admin.php: the shop wizard changed the step to `adv_shop_desc`, a step nothing handled, so the product was never saved. The wizard is stage driven now (name -> credit/price -> volume -> time -> panel -> description) and stays on `adv_shop_edit`.
 - agentshop_admin.php: `nexora_agent_shop_bought_products` returned a name-keyed map (the top up buttons showed "Array" and the callback index did not match); it returns a list now and the agent panel branch only lists the panels the customer really bought.

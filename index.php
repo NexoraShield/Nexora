@@ -3647,7 +3647,10 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textbotlang['users']['buttonDisabled'], null, 'HTML');
         return;
     }
-    $locationproduct = $pdo->prepare("SELECT * FROM marzban_panel  WHERE status = 'active' AND (agent = ? OR agent = 'all') ORDER BY display_order, id");
+    // The panel of the agent (اجنت پنل) is not a panel that sells services:
+    // it is the panel of the reseller. It must never show up in the list of
+    // the panels a customer can buy a service from.
+    $locationproduct = $pdo->prepare("SELECT * FROM marzban_panel  WHERE status = 'active' AND type <> 'nexora_agent' AND (agent = ? OR agent = 'all') ORDER BY display_order, id");
     $locationproduct->bindValue(1, $user['agent'], PDO::PARAM_STR);
     $locationproduct->execute();
     if (($locationproduct)->rowCount() == 0) {
@@ -3778,6 +3781,13 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $location = $userdate['name_panel'];
     }
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $location, "select");
+    if (empty($marzban_list_get) || (string) ($marzban_list_get['type'] ?? '') === 'nexora_agent') {
+        // The panel of the agent (اجنت پنل) does not sell services, so it can
+        // not be picked - not even with an old button of an old message.
+        sendmessage($from_id, $textbotlang['users']['sell']['panelUnavailable'], null, 'HTML');
+        step('home', $from_id);
+        return;
+    }
     $stmt = $pdo->prepare("SELECT * FROM invoice WHERE (status = 'active' OR status = 'end_of_time' OR status = 'end_of_volume' OR status = 'sendedwarn' OR Status = 'send_on_hold') AND  Service_location = :mp2");
     $stmt->execute([':mp2' => $marzban_list_get['name_panel']]);
     $countinovoice = $stmt->rowCount();
@@ -3884,7 +3894,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     if ($setting['statuscategorygenral'] == "oncategorys") {
         savedata("save", "monthproduct", $monthenumber);
         $marzban_list_get = select("marzban_panel", "*", "name_panel", $userdate['name_panel'], "select");
-        $stmt = $pdo->prepare("SELECT * FROM marzban_panel  WHERE status = 'active' AND (agent = :mp3 OR agent = 'all') ORDER BY display_order, id");
+        $stmt = $pdo->prepare("SELECT * FROM marzban_panel  WHERE status = 'active' AND type <> 'nexora_agent' AND (agent = :mp3 OR agent = 'all') ORDER BY display_order, id");
         $stmt->execute([':mp3' => $user['agent']]);
         $count_panel = $stmt->rowCount();
         if ($count_panel == 1) {
@@ -4538,7 +4548,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, strtr($textbotlang['users']['Major']['minBalance'], ['{PaySetting}' => $PaySetting]), null, 'HTML');
         return;
     }
-    $locationproduct = $pdo->prepare("SELECT * FROM marzban_panel ORDER BY display_order, id");
+    // The panel of the agent (اجنت پنل) does not sell services, so it is not
+    // in the list of the panels of the bulk buy.
+    $locationproduct = $pdo->prepare("SELECT * FROM marzban_panel WHERE type <> 'nexora_agent' ORDER BY display_order, id");
     $locationproduct->execute();
     if (($locationproduct)->rowCount() == 0) {
         sendmessage($from_id, $textbotlang['users']['sell']['nullPanel'], null, 'HTML');
