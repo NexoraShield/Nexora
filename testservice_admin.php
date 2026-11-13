@@ -34,19 +34,19 @@ if (!function_exists('nexora_test_wizard_next')) {
         $id = (int) ($state['id'] ?? 0);
 
         switch ((string) ($state['step'] ?? 'name')) {
-            case 'name':
+            case 'volume':
                 return [
                     'step' => 'volume',
                     'text' => "💾 حجم سرویس تست را بفرستید.\n\nمثال: <code>512 مگابایت</code> یا <code>1 گیگابایت</code>\nبرای نگه‌داشتن مقدار فعلی <code>-</code> بفرستید.\n\nمقدار فعلی: " . nexora_volume_text($data['Volume_constraint'] ?? 0),
                     'keyboard' => null,
                 ];
-            case 'volume':
+            case 'time':
                 return [
                     'step' => 'time',
                     'text' => "⏳ مدت سرویس تست را به ساعت بفرستید.\nبرای نگه‌داشتن مقدار فعلی <code>-</code> بفرستید.\n\nمقدار فعلی: " . (int) ($data['Service_time'] ?? 0) . " ساعت",
                     'keyboard' => null,
                 ];
-            case 'time':
+            case 'panel':
                 $rows = [];
                 foreach (select("marzban_panel", "*", null, null, "fetchAll") as $panel) {
                     $code = (string) ($panel['code_panel'] ?? '');
@@ -60,7 +60,7 @@ if (!function_exists('nexora_test_wizard_next')) {
                     'text' => "🖥 پنل سرویس تست را انتخاب کنید.\n\nپنل فعلی: " . (string) ($data['Location'] ?? '-'),
                     'keyboard' => $rows ? json_encode(['inline_keyboard' => $rows]) : null,
                 ];
-            case 'panel':
+            case 'inbound':
                 $inbounds = nexora_panel_inbounds($pdo, (string) ($data['Location'] ?? ''));
                 $rows = [[['text' => 'پیش‌فرض پنل', 'callback_data' => 'adv_test_inb_default']]];
                 foreach ($inbounds as $inbound) {
@@ -71,13 +71,13 @@ if (!function_exists('nexora_test_wizard_next')) {
                     'text' => "🧬 اینباند سرویس تست را انتخاب کنید.\n\nاگر پیش‌فرض پنل مناسب است، دکمهٔ اول را بزنید.",
                     'keyboard' => json_encode(['inline_keyboard' => $rows]),
                 ];
-            case 'inbound':
+            case 'note':
                 return [
                     'step' => 'note',
                     'text' => "📝 توضیحات سرویس تست (اختیاری).\nبرای نگه‌داشتن مقدار فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($data['note'] ?? '-'),
                     'keyboard' => null,
                 ];
-            case 'note':
+            case 'color':
                 $rows = [];
                 foreach (nexora_color_palette() as $slug => $info) {
                     $rows[] = [['text' => ($slug === '' ? 'پیش‌فرض' : ($info['label'] ?? $slug)), 'callback_data' => 'adv_test_color_' . $slug]];
@@ -87,7 +87,7 @@ if (!function_exists('nexora_test_wizard_next')) {
                     'text' => "🎨 رنگ دکمهٔ سرویس تست را انتخاب کنید.",
                     'keyboard' => json_encode(['inline_keyboard' => array_chunk($rows, 3)]),
                 ];
-            case 'color':
+            case 'status':
                 return [
                     'step' => 'status',
                     'text' => "👁 وضعیت سرویس تست را انتخاب کنید.",
@@ -96,11 +96,9 @@ if (!function_exists('nexora_test_wizard_next')) {
                         [['text' => '⛔️ پنهان', 'callback_data' => 'adv_test_status_hidden']],
                     ]]),
                 ];
-            case 'status':
             default:
                 return ['step' => 'done', 'text' => '', 'keyboard' => null];
-        }
-    }
+        }    }
 }
 
 if (!function_exists('nexora_test_wizard_save_product')) {
