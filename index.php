@@ -6615,11 +6615,15 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentTopup = nexora_topup_button('agentshop');
     $agentRows[] = [nexora_style_btn($agentTopup['label'], "topup_agentshop", ['btn_style' => $agentTopup['style']])];
     $agentKeyboard = json_encode(['inline_keyboard' => $agentRows]);
-    $agentIntro = $textbotlang['users']['agentShop']['intro'] . "\n\n" . $textbotlang['users']['agentShop']['steps'];
+    $agentIntro = (string) ($textbotlang['users']['agentShop']['intro'] ?? '');
     // The note tells the customer the difference between the two panel shops.
     if (!empty($textbotlang['users']['agentShop']['note'])) {
         $agentIntro .= "\n\n" . $textbotlang['users']['agentShop']['note'];
     }
+    if (!empty($textbotlang['users']['agentShop']['choose'])) {
+        $agentIntro .= "\n\n" . $textbotlang['users']['agentShop']['choose'];
+    }
+    $agentIntro .= "\n\n" . (string) ($textbotlang['users']['agentShop']['steps'] ?? '');
     if (!$agentItems) {
         $agentIntro = $textbotlang['users']['agentShop']['empty'] . "\n\n" . $agentIntro;
     }
@@ -6758,11 +6762,15 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $agentPanelTopup = nexora_topup_button('agentpanelshop');
     $agentPanelRows[] = [nexora_style_btn($agentPanelTopup['label'], "topup_agentpanelshop", ['btn_style' => $agentPanelTopup['style']])];
     $agentPanelKeyboard = json_encode(['inline_keyboard' => $agentPanelRows]);
-    $agentPanelIntro = $textbotlang['users']['agentPanelShop']['intro'] . "\n\n" . $textbotlang['users']['agentPanelShop']['steps'];
+    $agentPanelIntro = (string) ($textbotlang['users']['agentPanelShop']['intro'] ?? '');
     // The note tells the customer the difference between the two panel shops.
     if (!empty($textbotlang['users']['agentPanelShop']['note'])) {
         $agentPanelIntro .= "\n\n" . $textbotlang['users']['agentPanelShop']['note'];
     }
+    if (!empty($textbotlang['users']['agentPanelShop']['choose'])) {
+        $agentPanelIntro .= "\n\n" . $textbotlang['users']['agentPanelShop']['choose'];
+    }
+    $agentPanelIntro .= "\n\n" . (string) ($textbotlang['users']['agentPanelShop']['steps'] ?? '');
     if (!$agentPanelItems) {
         $agentPanelIntro = $textbotlang['users']['agentPanelShop']['empty'] . "\n\n" . $agentPanelIntro;
     }

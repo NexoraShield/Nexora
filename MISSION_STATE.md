@@ -8,57 +8,32 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 2026-10-29 (session) — Phase 7
 
 ## Current phase
-Phase 8 — The two panel shops (پنل نمایندگی / اجنت پنل), the test quota and the top up.
+Phase 9 — The reseller panel (the ready products, the direct buy), the repair of the bundle of the
+web application and the top up of the agent panel (1:1).
 
 ## Last successful checkpoint
-**v1.22.78** — working tree has uncommitted edits:
-- api/miniapp.php: the premium emoji of the panels, the products and the categories is replaced
-  with the emoji it carries (`mini_plain_text()`), so the raw code is never shown in the web
-  application. The new actions `gateways` (the gateways that are switched on) and the pending
-  order (`mini_pending_order()`) were added: an order the wallet can not cover becomes a pending
-  order and the customer is sent to the payment page.
-- app/pay.php (new): the payment page of the web application — the amount, the order and the
-  gateways of the bot; the customer pays in the bot.
-- index.php: `/start pay_<invoice>` shows the gateways of the bot for that order,
-  `/start paygw_<gateway>_<invoice>` shows the chosen gateway right away. An unknown order falls
-  through to the normal start handling (an invitation code for example).
-- gateways.php: `nexora_available_gateways()` / `nexora_gateway_is_usable()` — the gateways a
-  customer can pay with, with the same rules as the payment keyboard of the bot.
-- app/assets/nexora-theme.css + app/index.php: the luxury theme of the web application (a deep
-  gradient with a slow aurora, glass surfaces, gold buttons with a shine, a polished scrollbar).
-- The cron of the servers is clean now (the old individual jobs are gone, the dispatcher of the
-  current installation is the only line).
-- Full-repo php -l (PHP 8.2.35 CLI): 246 files clean / 0 errors.
-- v1.22.77 (committed): one test menu and the difference of the two panel shops.
-- index.php / function.php / keyboard.php: the two kinds of test service are merged. The customer sees
-  the test products of the web panel AND the panels whose test capability is on (panel management) in
-  one list, and both use the same share (`user.limit_usertest`). `nexora_test_panels()` is the single
-  source for the panels with the test capability: the agent share, the status and the hidden users are
-  filtered the same way everywhere, so a hidden panel can not be opened with a hand made callback.
-- admin.php: the menu of the test service had a button that opened the same screen again; it shows the
-  test products and the panels with the test capability in one screen now.
-- lang/*: the description of the reseller panel and of the agent panel tells the customer the
-  difference between the two (Pasarguard, paid by consumption, for professionals / simple Persian
-  interface, ready templates, every account is taken from the credit).
-- v1.22.76 (committed): the panel of the agent is not a panel that sells services.
-- Full-repo php -l (PHP 8.2.35 CLI): 245 files clean / 0 errors.
-- panel/inc/agentpanel_tab.php: `ap_add` was compared with `add` (the insert became an update of row 0, so "افزودن پنل" added nothing); the panel list was only built inside the POST branch (empty dropdown on a normal page load); price falls back to the credit.
-- admin.php: the shop wizard changed the step to `adv_shop_desc`, a step nothing handled, so the product was never saved. The wizard is stage driven now (name -> credit/price -> volume -> time -> panel -> description) and stays on `adv_shop_edit`.
-- agentshop_admin.php: `nexora_agent_shop_bought_products` returned a name-keyed map (the top up buttons showed "Array" and the callback index did not match); it returns a list now and the agent panel branch only lists the panels the customer really bought.
-- index.php: the answers of the agent shop were cleared before `nexora_agent_shop_finish()` read them.
-- function.php: `agentshop_admin.php` is required by the core, so the payment handlers ask the questions too.
-- function.php: the helpers of the delivered agent panels — `nexora_agent_panel_accounts()` (the list of the
-  panels that were delivered), `nexora_agent_panel_last_product()` (the package the customer bought),
-  `nexora_agent_panel_set_credit()` (the credit of a panel by hand, never below zero),
-  `nexora_agent_panel_reset_password()` (a new password, shown once) and `nexora_agent_panel_revoke()`
-  (the panel of a customer is taken away, the invoices stay).
-- function.php: the report of the top up of the agent panel shows the credentials of the panel (user name,
-  link) and the balance before the charge next to the new balance; the report of the top up of the agent
-  shop names the product the customer bought and the option of the top up.
-- panel/inc/agentpanel_accounts_tab.php (new): the tab "پنل‌های تحویل‌شده" — the panels that were delivered
-  to the customers with their credit, and the buttons to change the credit, to build a new password and to
-  delete the panel.
-- Full-repo php -l (PHP 8.2.35 CLI): 244 files clean / 0 errors.
+**v1.22.79** — working tree has uncommitted edits:
+- app/assets/buy-Cma1zvMm.js: the branch of the payment of the buy page had an unclosed parenthesis
+  (`:(I.need_payment?(...)` + `)):0`), so the whole bundle of the buy page was broken and the web
+  application answered with "Unexpected token '}'" (the error boundary of the router). The branch is
+  `I.need_payment?(...):0` now. Every file of `app/assets` passes `node --check`.
+- agent-panel/login.php: the animated logo of Nexora is in the middle of the card (a turning conic
+  ring + a glow), the note "پنل نمایندگی PasarGuard" is gone, the button is a gold luxury button
+  with a shine and the note under the button has 24 pixels of space.
+- agent-panel/inc/shop.php (new): the products of the bot the agent may sell (`agent = 'f'`, without
+  the test services), the premium emoji of a name as a picture (`nx_agent_emoji_html`), the palette
+  of the categories and `nx_agent_buy_product()` — the wallet of the agent pays, the account is made
+  on the panel of the product, the invoice is written and the customer gets the service in the bot.
+  A customer that does not exist yet is created (`nx_agent_create_customer`).
+- agent-panel/index.php: the section "محصولات آماده" has the categories of the products, the glass
+  cards with the colour of the category, the movement of the cards and the buy dialog.
+- agent-panel/reseller-panel.css: the rules of the shop of the agent. The `rgba(var(--lcrgb,…,.45),inset…)`
+  of the category button broke the parser of the browser: everything after that rule was dropped
+  (the animation, the emoji picture and the grid were dead). The alpha is outside the var() now.
+- db/migrations/018 + the new migration 023: the price of a top up option of the agent panel is the
+  credit it puts into the wallet (1:1) — it was the half of it.
+- Full-repo php -l (PHP 8.2.35 CLI): 248 files clean / 0 errors.
+- v1.22.78 (committed): the payment section of the web application and the luxury theme.
 
 ## Phase 8 results (2026-11-13)
 - **Test quota.** `setting.limit_usertest_all` is the share of every user (every user has a numeric

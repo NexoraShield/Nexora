@@ -1,4 +1,33 @@
 # Nexora Bot — Release Notes
+## v1.22.79 (2026-11-13) — The reseller panel: the ready products, the direct buy and the top up of 1:1
+
+**The web application of the bot (the mini app)**
+- The web application died with "Unexpected token '}'": the bundle of the buy page
+  (`app/assets/buy-Cma1zvMm.js`) had an unclosed parenthesis in the payment branch, so the whole page
+  was broken. The bundle is repaired and every file of `app/assets` parses without an error now.
+
+**The reseller panel (agent-panel)**
+- The login page: the animated logo of Nexora stands in the middle of the card (a turning ring and a
+  glow), the note "پنل نمایندگی PasarGuard" is gone, the button "ورود به پنل" is a gold luxury
+  button (with a shine when the pointer is on it) and the note under the button does not fall on the
+  button any more (24 pixels of space).
+- The section "محصولات آماده" (the ready products):
+  - The premium emoji of a product is not shown as the raw code (`<tg-emoji emoji-id="...">`) any
+    more: the very same emoji is shown as a picture.
+  - The test services are not in this list any more.
+  - A product can be chosen and bought now: the customer is picked (or the numeric id of a new
+    customer is written down), the wallet of the agent pays for it, the account is created on the
+    panel of the product, the invoice is written and the customer gets his service in the bot.
+  - The section looks like the site of Nexora now: the categories of the products, the glass cards
+    with the colour of the category, the movement of the cards and the gold button with a shine.
+
+**The panel top up (agent panel)**
+- The price of a top up option was the half of the credit: a charge of one million cost five
+  hundred thousand. The price of an option is now the credit it puts into the wallet (one million
+  of top up costs one million). The migration `023` repairs the options that still carry that price.
+
+---
+
 ## v1.22.78 (2026-11-13) — The web application of the bot gets its payment section and a luxury look
 
 **The web application (the mini app of the bot)**

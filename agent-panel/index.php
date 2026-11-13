@@ -1,7 +1,19 @@
 <?php
 require_once __DIR__ . '/inc/auth.php';
+// The panel needs the helpers of the bot: the account of a product is made
+// exactly like a purchase of the bot.
+require_once dirname(__DIR__) . '/function.php';
+require_once dirname(__DIR__) . '/panels.php';
+require_once dirname(__DIR__) . '/botapi.php';
+require_once __DIR__ . '/inc/shop.php';
+$ManagePanel = new ManagePanel();
+$setting = select("setting", "*", null, null, "select");
 $me = nexora_agent_require_login();
 $myId = (string) $me['id'];
+// The helpers of the bot work with the id of the user: the panel speaks the
+// language of the agent.
+$from_id = $myId;
+$textbotlang = languagechange();
 
 $views = ['dash', 'reports', 'users', 'shop', 'ops', 'api', 'settings'];
 $view = isset($_GET['view']) ? (string) $_GET['view'] : 'dash';
@@ -71,16 +83,58 @@ foreach ($services as $svc) {
     }
 }
 
-// the products the agent can sell
-$products = [];
-try {
-    $products = $pdo->query("SELECT id, name_product, price_product, Volume_constraint, Service_time, Location, category FROM product WHERE status_product = 'active' AND agent = 'f' ORDER BY display_order, id LIMIT 60")->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Throwable $e) {
-    $products = [];
-}
+// the products the agent can sell (only the products of the bot itself)
+$products = nx_agent_products($pdo);
 $agentPrice = function ($price) use ($percent) {
     return max(0, (int) round(((float) $price) * (100 - $percent) / 100));
 };
+
+// The categories of the products: the shop of the agent is grouped the same
+// way the site of Nexora groups its services.
+$categories = [];
+foreach ($products as $pr) {
+    $cat = trim((string) ($pr['category'] ?? ''));
+    if ($cat === '') {
+        continue;
+    }
+    if (!in_array($cat, $categories, true)) {
+        $categories[] = $cat;
+    }
+}
+natcasesort($categories);
+$categories = array_values($categories);
+$activeCategory = trim((string) ($_GET['cat'] ?? ''));
+if ($activeCategory !== '' && !in_array($activeCategory, $categories, true)) {
+    $activeCategory = '';
+}
+$visibleProducts = $products;
+if ($activeCategory !== '') {
+    $visibleProducts = array_values(array_filter($products, function ($pr) use ($activeCategory) {
+        return trim((string) ($pr['category'] ?? '')) === $activeCategory;
+    }));
+}
+
+// A purchase of the agent: the wallet of the agent pays for the service of one
+// of his customers.
+$shopFlash = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'buy') {
+    if (!nx_agent_csrf_check()) {
+        $shopFlash = ['type' => 'error', 'msg' => 'درخواست نامعتبر بود. دوباره تلاش کنید.', 'detail' => []];
+    } else {
+        $buyResult = nx_agent_buy_product(
+            $me,
+            (int) ($_POST['product_id'] ?? 0),
+            (string) ($_POST['customer_id'] ?? ''),
+            trim((string) ($_POST['username'] ?? '')),
+            $percent,
+            trim((string) ($_POST['new_user_id'] ?? ''))
+        );
+        $shopFlash = ['type' => $buyResult['ok'] ? 'success' : 'error', 'msg' => $buyResult['msg'], 'detail' => $buyResult['detail'] ?? []];
+        if ($buyResult['ok']) {
+            $credit = max(0, (float) $credit - (float) ($buyResult['detail']['price'] ?? 0));
+        }
+    }
+}
 
 // the activity of the last 14 days
 $chart = [];
@@ -127,7 +181,7 @@ function nx_num($v)
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="reseller-panel.css?v=8">
+<link rel="stylesheet" href="reseller-panel.css?v=9">
 <link rel="stylesheet" href="beauty.css?v=12">
 <link rel="stylesheet" href="mobile.css?v=13">
 </head>
@@ -264,20 +318,109 @@ function nx_num($v)
     <?php elseif ($view === 'shop'): ?>
     <section id="v-shop">
       <div class="rs-head"><div><h1>📦 محصولات آماده</h1><p>بسته‌های آماده با تخفیف نماینده — قیمت‌ها برای شما <?= nx_num($percent) ?>٪ تخفیف دارند</p></div><div class="grow"></div></div>
-      <div id="shop-list">
-        <?php if (!$products): ?>
-          <div class="card"><p class="sub">محصولی برای فروش تعریف نشده است.</p></div>
-        <?php endif; ?>
-        <?php foreach ($products as $pr): ?>
-          <div class="card" style="margin-bottom:12px">
-            <div class="rs-head"><div><h2><?= htmlspecialchars((string) $pr['name_product']) ?></h2>
-              <p class="sub"><?= htmlspecialchars((string) ($pr['Location'] ?? '')) ?> • <?= htmlspecialchars((string) $pr['Volume_constraint']) ?> GB • <?= htmlspecialchars((string) $pr['Service_time']) ?> روز</p></div>
-              <div class="grow"></div>
-              <div class="price"><small>قیمت شما</small><br><b><?= nx_num($agentPrice($pr['price_product'])) ?></b> <span class="cf">تومان</span></div></div>
-            <div class="kv"><span>قیمت اصلی</span><b class="mono"><?= nx_num($pr['price_product']) ?></b></div>
-          </div>
-        <?php endforeach; ?>
+
+      <?php if ($shopFlash): ?>
+        <div class="nx-flash nx-flash-<?= htmlspecialchars((string) $shopFlash['type']) ?>">
+          <b><?= $shopFlash['type'] === 'success' ? '✅' : '⚠️' ?> <?= htmlspecialchars((string) $shopFlash['msg']) ?></b>
+          <?php if (!empty($shopFlash['detail']['username'])): ?>
+            <div class="nx-flash-detail">
+              <div class="kv"><span>نام کاربری</span><b class="mono"><?= htmlspecialchars((string) $shopFlash['detail']['username']) ?></b></div>
+              <?php if (!empty($shopFlash['detail']['link'])): ?>
+                <div class="kv"><span>لینک اتصال</span><b class="mono" style="word-break:break-all"><?= htmlspecialchars((string) $shopFlash['detail']['link']) ?></b></div>
+              <?php endif; ?>
+              <div class="kv"><span>مبلغ پرداختی</span><b class="mono"><?= nx_num((float) ($shopFlash['detail']['price'] ?? 0)) ?> تومان</b></div>
+            </div>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!$products): ?>
+        <div class="card"><p class="sub">محصولی برای فروش تعریف نشده است.</p></div>
+      <?php else: ?>
+        <div class="shop-cats">
+          <a class="shop-cat <?= $activeCategory === '' ? 'active' : '' ?>" href="index.php?view=shop">✨ همه</a>
+          <?php $palette = nx_agent_palette(); foreach ($categories as $catIndex => $cat): ?>
+            <?php $acc = $palette[$catIndex % count($palette)]; ?>
+            <a class="shop-cat <?= $activeCategory === $cat ? 'active' : '' ?>" style="--lc:<?= $acc['c'] ?>;--lcrgb:<?= $acc['rgb'] ?>;--lc2:<?= $acc['c2'] ?>" href="index.php?view=shop&amp;cat=<?= urlencode($cat) ?>"><span class="c"><?= $acc['e'] ?></span><?= htmlspecialchars($cat) ?></a>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="shop-grid nx-shop-grid" id="shop-list">
+          <?php $palette = nx_agent_palette(); foreach ($visibleProducts as $index => $pr): ?>
+            <?php
+            $cat = trim((string) ($pr['category'] ?? ''));
+            $catIndex = $cat !== '' ? array_search($cat, $categories, true) : 0;
+            $acc = $palette[(int) $catIndex % count($palette)];
+            $nameHtml = nx_agent_emoji_html((string) $pr['name_product']);
+            $emoji = nx_agent_first_emoji((string) $pr['name_product']);
+            $emojiImg = $emoji['id'] !== '' ? nx_agent_emoji_image($pdo, $emoji['id']) : nx_agent_emoji_image($pdo, (string) ($pr['btn_emoji_id'] ?? ''));
+            $price = $agentPrice($pr['price_product']);
+            $days = (int) ($pr['Service_time'] ?? 0);
+            ?>
+            <div class="shop-card nx-in" style="--lc:<?= $acc['c'] ?>;--lcrgb:<?= $acc['rgb'] ?>;--lc2:<?= $acc['c2'] ?>;animation-delay:<?= round($index * 0.06, 2) ?>s">
+              <div class="shop-top">
+                <span class="shop-emoji">
+                  <?php if ($emojiImg !== ''): ?>
+                    <img src="<?= htmlspecialchars($emojiImg) ?>" alt="<?= htmlspecialchars($emoji['char']) ?>" loading="lazy">
+                  <?php else: ?>
+                    <?= $acc['e'] ?>
+                  <?php endif; ?>
+                </span>
+                <?php if ($percent > 0): ?><span class="off">٪<?= nx_num($percent) ?> تخفیف</span><?php endif; ?>
+              </div>
+              <b><?= $nameHtml ?></b>
+              <div class="vol">
+                📍 <?= htmlspecialchars((string) ($pr['Location'] ?? '')) ?> •
+                💾 <?= htmlspecialchars(nx_agent_volume_text($pr['Volume_constraint'] ?? 0)) ?> •
+                ⏳ <?= $days > 0 ? htmlspecialchars($days . ' روز') : 'نامحدود' ?>
+              </div>
+              <div class="pr">
+                <?php if ($percent > 0): ?><s><?= nx_num((float) $pr['price_product']) ?> تومان</s><?php endif; ?>
+                <b><?= nx_num($price) ?> تومان</b>
+              </div>
+              <button class="rs-btn lux" type="button"
+                onclick="nxOpenBuy(<?= htmlspecialchars(json_encode([
+                  'id' => (int) $pr['id'],
+                  'name' => nx_agent_plain_name((string) $pr['name_product']),
+                  'price' => $price,
+                  'panel' => (string) ($pr['Location'] ?? ''),
+                ], JSON_UNESCAPED_UNICODE)) ?>)">🛒 خرید</button>
+            </div>
+          <?php endforeach; ?>
+          <?php if (!$visibleProducts): ?>
+            <div class="card"><p class="sub">محصولی در این دسته‌بندی نیست.</p></div>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($products): ?>
+      <div class="modal-bk" id="nx-buy-modal" hidden>
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>🛒 خرید محصول</h2>
+          <p class="sub" id="nx-buy-title"></p>
+          <form method="POST" action="index.php?view=shop">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(nx_agent_csrf_token()) ?>">
+            <input type="hidden" name="action" value="buy">
+            <input type="hidden" name="product_id" id="nx-buy-id" value="">
+            <label><span>سرویس برای کدام کاربر؟</span>
+              <select name="customer_id" id="nx-buy-customer">
+                <option value="">➕ کاربر جدید (شناسه را پایین بنویسید)</option>
+                <?php foreach ($subs as $sub): ?>
+                  <option value="<?= htmlspecialchars((string) $sub['id']) ?>">@<?= htmlspecialchars((string) ($sub['username'] ?? '')) ?> — <?= htmlspecialchars((string) $sub['id']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label><span>شناسه عددی کاربر جدید (اختیاری)</span><input type="text" name="new_user_id" id="nx-buy-new" dir="ltr" inputmode="numeric" placeholder="مثلاً 123456789"></label>
+            <label><span>نام کاربری دلخواه سرویس (اختیاری)</span><input type="text" name="username" id="nx-buy-username" dir="ltr" placeholder="اگر پنل اجازه بدهد"></label>
+            <div class="kv"><span>قیمت شما</span><b id="nx-buy-price">—</b></div>
+            <div class="modal-foot">
+              <button class="rs-btn lux" type="submit">تأیید و خرید</button>
+              <button class="rs-btn ghost" type="button" onclick="nxCloseBuy()">انصراف</button>
+            </div>
+          </form>
+        </div>
       </div>
+      <?php endif; ?>
     </section>
 
     <?php elseif ($view === 'ops'): ?>
@@ -351,6 +494,31 @@ Token: <?= htmlspecialchars($apiToken) ?>
 
   </main>
 </div>
+<script>
+  // The order of the agent: a product is chosen, the customer is chosen and
+  // the wallet of the agent pays for the service.
+  function nxOpenBuy(p) {
+    var modal = document.getElementById('nx-buy-modal');
+    if (!modal) return;
+    document.getElementById('nx-buy-id').value = p.id;
+    document.getElementById('nx-buy-title').textContent = p.name + ' — ' + (p.panel || '');
+    document.getElementById('nx-buy-price').textContent = new Intl.NumberFormat('fa-IR').format(p.price) + ' تومان';
+    var user = document.getElementById('nx-buy-username');
+    if (user) user.value = '';
+    var fresh = document.getElementById('nx-buy-new');
+    if (fresh) fresh.value = '';
+    modal.hidden = false;
+  }
+  function nxCloseBuy() {
+    var modal = document.getElementById('nx-buy-modal');
+    if (modal) modal.hidden = true;
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('nx-buy-modal');
+    if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) nxCloseBuy(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') nxCloseBuy(); });
+  });
+</script>
 <script src="beauty.js?v=7" defer></script>
 <script src="mobile.js?v=11" defer></script>
 </body>

@@ -4,6 +4,9 @@
 // million) and ten steps for the agent shop (one to ten terabyte). Every
 // option can be renamed, re-priced, re-coloured and given a premium emoji in
 // the web panel.
+//
+// The price of a step of the agent panel shop is the same as the credit it
+// puts into the wallet: a charge of one million costs one million.
 return static function (PDO $pdo, Schema $schema): void {
     if (!$schema->tableExists('panel_topup_product')) {
         return;
@@ -18,16 +21,16 @@ return static function (PDO $pdo, Schema $schema): void {
         'agentpanelshop' => [
             'unit' => 'Toman',
             'items' => [
-                ['name' => 'شارژ ۱ میلیون', 'price' => 500000, 'credit' => 1000000, 'description' => 'یک میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۲ میلیون', 'price' => 1000000, 'credit' => 2000000, 'description' => 'دو میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۳ میلیون', 'price' => 1500000, 'credit' => 3000000, 'description' => 'سه میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۴ میلیون', 'price' => 2000000, 'credit' => 4000000, 'description' => 'چهار میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۵ میلیون', 'price' => 2500000, 'credit' => 5000000, 'description' => 'پنج میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۶ میلیون', 'price' => 3000000, 'credit' => 6000000, 'description' => 'شش میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۷ میلیون', 'price' => 3500000, 'credit' => 7000000, 'description' => 'هفت میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۸ میلیون', 'price' => 4000000, 'credit' => 8000000, 'description' => 'هشت میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۹ میلیون', 'price' => 4500000, 'credit' => 9000000, 'description' => 'نه میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
-                ['name' => 'شارژ ۱۰ میلیون', 'price' => 5000000, 'credit' => 10000000, 'description' => 'ده میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۱ میلیون', 'price' => 1000000, 'credit' => 1000000, 'description' => 'یک میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۲ میلیون', 'price' => 2000000, 'credit' => 2000000, 'description' => 'دو میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۳ میلیون', 'price' => 3000000, 'credit' => 3000000, 'description' => 'سه میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۴ میلیون', 'price' => 4000000, 'credit' => 4000000, 'description' => 'چهار میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۵ میلیون', 'price' => 5000000, 'credit' => 5000000, 'description' => 'پنج میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۶ میلیون', 'price' => 6000000, 'credit' => 6000000, 'description' => 'شش میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۷ میلیون', 'price' => 7000000, 'credit' => 7000000, 'description' => 'هفت میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۸ میلیون', 'price' => 8000000, 'credit' => 8000000, 'description' => 'هشت میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۹ میلیون', 'price' => 9000000, 'credit' => 9000000, 'description' => 'نه میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
+                ['name' => 'شارژ ۱۰ میلیون', 'price' => 10000000, 'credit' => 10000000, 'description' => 'ده میلیون تومان اعتبار به پنل شما اضافه می‌شود.'],
             ],
         ],
         'agentshop' => [

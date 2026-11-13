@@ -51,26 +51,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="reseller-panel.css?v=8">
+<link rel="stylesheet" href="reseller-panel.css?v=9">
 <link rel="stylesheet" href="beauty.css?v=12">
 <link rel="stylesheet" href="mobile.css?v=13">
 <style>
-  .rs-login .agent-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#0e9488,#7c3aed);color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:.3px;box-shadow:0 6px 14px rgba(14,148,136,.35);margin-bottom:12px}
-  .rs-login .hint{color:#9fc3d8;font-size:12px;margin:-6px 0 14px}
+  .rs-login .hint{color:#9fc3d8;font-size:12px}
 </style>
 </head>
 <body data-theme="teal">
 <div class="rs-login-wrap" id="rs-login">
   <div class="rs-login">
-    <img class="logo" src="assets/nexora-logo-icon.png" alt="Nexora Shield">
-    <div class="agent-badge">پنل نمایندگی <i>PasarGuard</i></div>
+    <div class="rs-logo-stage">
+      <img class="logo" src="assets/nexora-logo-icon.png" alt="Nexora">
+    </div>
     <h1>پنل نمایندگی نکسورا</h1>
     <p>نام کاربری و رمز پنلت را وارد کن</p>
     <form method="POST" autocomplete="off">
       <label>نام کاربری<input id="rl-user" name="id" type="text" dir="ltr" autocomplete="username" required value="<?= htmlspecialchars((string) ($_POST['id'] ?? '')) ?>"></label>
       <label>رمز عبور<input id="rl-pass" name="pass" type="password" autocomplete="current-password" required></label>
       <p class="rs-err" id="rl-err"><?= htmlspecialchars((string) $error) ?></p>
-      <button class="rs-btn block" id="rl-go" type="submit">ورود به پنل</button>
+      <button class="rs-btn lux block" id="rl-go" type="submit">ورود به پنل</button>
     </form>
     <p class="hint">اگر رمز پنل را فراموش کرده‌اید از مدیر ربات بخواهید آن را دوباره برای شما بسازد.</p>
   </div>

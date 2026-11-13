@@ -35,6 +35,27 @@ if (!function_exists('nexora_agent_require_login')) {
         return $user;
     }
 }
+if (!function_exists('nx_agent_csrf_token')) {
+    // The token of the forms of the panel: without it anybody could buy a
+    // product in the name of the agent.
+    function nx_agent_csrf_token(): string
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (empty($_SESSION['nx_agent_csrf'])) {
+            $_SESSION['nx_agent_csrf'] = bin2hex(random_bytes(32));
+        }
+        return (string) $_SESSION['nx_agent_csrf'];
+    }
+}
+if (!function_exists('nx_agent_csrf_check')) {
+    function nx_agent_csrf_check(): bool
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $token = (string) ($_POST['_csrf'] ?? $_GET['_csrf'] ?? '');
+        if ($token === '') return false;
+        return hash_equals((string) ($_SESSION['nx_agent_csrf'] ?? ''), $token);
+    }
+}
 nexora_agent_ensure_table();
 if (!function_exists('nexora_agent_ensure_login_table')) {
     function nexora_agent_ensure_login_table(): void

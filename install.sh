@@ -206,6 +206,7 @@ echo "==> Checking PHP syntax"
 "$PHP_BIN" -l "$PACKAGE_DIR/agent-panel/login.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/agent-panel/index.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/agent-panel/inc/auth.php" >/dev/null
+"$PHP_BIN" -l "$PACKAGE_DIR/agent-panel/inc/shop.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/cronbot/nudge_unpaid.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/cronbot/frenzyex.php" >/dev/null
 "$PHP_BIN" -l "$PACKAGE_DIR/tools/nexora-indexes.php" >/dev/null
