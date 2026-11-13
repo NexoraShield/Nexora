@@ -14,7 +14,8 @@ class NexoraPanelDriver extends BasePanelDriver
         $invoice = $vars['invoice'];
         $domainhosts = $vars['domainhosts'];
         $order_get = select("invoice", "*", "username", $usernameC, "select");
-        $ConnectToPanel = adduser_nexora($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $order_get['limit_user'] ?? null);
+        $forceActive = !empty($vars['forceActive']);
+        $ConnectToPanel = adduser_nexora($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $order_get['limit_user'] ?? null, $forceActive);
         if (!empty($ConnectToPanel['error'])) {
             return array(
                 'status' => 'Unsuccessful',

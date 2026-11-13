@@ -862,6 +862,131 @@ function nexora_panel_canonical_name($name): string
     return trim((string) $name);
 }
 
+/**
+ * The volume of a test service, no matter if it was written in megabytes or in
+ * gigabytes. Returns the volume in gigabytes or null when the text is not a
+ * volume.
+ */
+function nexora_parse_volume($text): ?float
+{
+    $text = trim((string) $text);
+    if ($text === '' || $text === '-') {
+        return null;
+    }
+    $lower = mb_strtolower($text, 'UTF-8');
+    $isMb = (strpos($lower, 'مگ') !== false)
+        || (strpos($lower, 'mb') !== false)
+        || (strpos($lower, 'megabyte') !== false);
+    $isGb = (strpos($lower, 'گیگ') !== false)
+        || (strpos($lower, 'gb') !== false)
+        || (strpos($lower, 'gigabyte') !== false);
+    $number = preg_replace('/[^0-9.,\-]/u', '', $text);
+    $number = str_replace(',', '.', (string) $number);
+    if ($number === '' || !is_numeric($number)) {
+        return null;
+    }
+    $value = (float) $number;
+    if ($value < 0) {
+        return null;
+    }
+    if ($isMb && !$isGb) {
+        return round($value / 1024, 6);
+    }
+    return round($value, 4);
+}
+
+/**
+ * The volume of a service as it is shown to the customer.
+ */
+function nexora_volume_text($gb): string
+{
+    $gb = (float) $gb;
+    if ($gb <= 0) {
+        return '-';
+    }
+    if ($gb < 1) {
+        $mb = $gb * 1024;
+        return rtrim(rtrim(number_format($mb, 2), '0'), '.') . ' مگابایت';
+    }
+    return rtrim(rtrim(number_format($gb, 2), '0'), '.') . ' گیگابایت';
+}
+
+/**
+ * The inbounds of a panel as a list of values.
+ */
+function nexora_panel_inbound_values($raw): array
+{
+    $raw = trim((string) $raw);
+    if ($raw === '' || $raw === 'null') {
+        return [];
+    }
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $out = [];
+        foreach ($decoded as $v) {
+            if (is_scalar($v) && (string) $v !== '') {
+                $out[] = (string) $v;
+            }
+        }
+        return array_values(array_unique($out));
+    }
+    if (is_scalar($decoded) && (string) $decoded !== '') {
+        return [(string) $decoded];
+    }
+    $out = [];
+    foreach (explode(',', $raw) as $v) {
+        $v = trim($v);
+        if ($v !== '') {
+            $out[] = $v;
+        }
+    }
+    return array_values(array_unique($out));
+}
+
+/**
+ * The inbounds of a panel.
+ */
+function nexora_panel_inbounds(PDO $pdo, string $panelName): array
+{
+    try {
+        $st = $pdo->prepare("SELECT inbounds FROM marzban_panel WHERE name_panel = ? LIMIT 1");
+        $st->execute([$panelName]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+    if (!$row) {
+        return [];
+    }
+    return nexora_panel_inbound_values($row['inbounds'] ?? '');
+}
+
+/**
+ * The summary of a test service, the same one the web panel shows.
+ */
+function nexora_test_service_summary(array $row): string
+{
+    $name = (string) ($row['name_product'] ?? '');
+    $plain = function_exists('stripCustomEmojiTags') ? stripCustomEmojiTags($name) : $name;
+    $lines = [];
+    $lines[] = '🧪 <b>' . htmlspecialchars($plain) . '</b>';
+    $lines[] = '💾 حجم: ' . nexora_volume_text($row['Volume_constraint'] ?? 0);
+    $lines[] = '⏳ مدت: ' . (int) ($row['Service_time'] ?? 0) . ' ساعت';
+    $lines[] = '🖥 پنل: ' . (string) ($row['Location'] ?? '-');
+    $inbounds = nexora_panel_inbound_values($row['inbounds'] ?? '');
+    $lines[] = '🧬 اینباند: ' . ($inbounds ? implode('، ', $inbounds) : 'پیش‌فرض پنل');
+    $style = trim((string) ($row['btn_style'] ?? ''));
+    $lines[] = '🎨 رنگ: ' . ($style !== '' ? $style : 'پیش‌فرض');
+    $emoji = trim((string) ($row['btn_emoji_id'] ?? ''));
+    $lines[] = '💎 ایموجی: ' . ($emoji !== '' ? $emoji : '-');
+    $lines[] = '👁 وضعیت: ' . ((string) ($row['status_product'] ?? 'active') === 'active' ? 'فعال' : 'پنهان');
+    $note = trim((string) ($row['note'] ?? ''));
+    if ($note !== '') {
+        $lines[] = '📝 ' . htmlspecialchars($note);
+    }
+    return implode("\n", $lines);
+}
+
 function nexora_pay_switch_is_on($value, $onValue): bool
 {
     // Every gateway stores its own spelling of "on" ("oncard", "onzarinpal",
@@ -2059,7 +2184,7 @@ function finishAddPanel()
         'subvip' => "offsubvip",
         'changeloc' => "offchangeloc",
         'customvolume' => json_encode(['f' => "0", 'n' => "0", 'n2' => "0"]),
-        'on_hold_test' => "1",
+        'on_hold_test' => "0",
         'version_panel' => $userdata['type'] == "pasarguard" ? "1" : "0",
     ];
     $stmt = $pdo->prepare("INSERT INTO marzban_panel (" . implode(',', array_keys($panelData)) . ") VALUES (:" . implode(', :', array_keys($panelData)) . ")");

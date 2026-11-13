@@ -16,10 +16,10 @@ function get_clinets($username, $panel)
     $response = $req->get();
     return $response;
 }
-function addClient($panel, $usernameac, $Expire, $subId, $Total, $inboundid, $name_product, $note = "")
+function addClient($panel, $usernameac, $Expire, $subId, $Total, $inboundid, $name_product, $note = "", $force_active = false)
 {
-    if ($name_product == "usertest") {
-        if ($panel['on_hold_test'] == "1") {
+    if ($name_product == "usertest" || $force_active) {
+        if (!$force_active && $panel['on_hold_test'] == "1") {
             if ($Expire == 0) {
                 $timeservice = 0;
             } else {

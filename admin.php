@@ -1,6 +1,7 @@
 <?php
 #----------------[  admin section  ]------------------#
 require_once __DIR__ . '/panel_protocol.php';
+require_once __DIR__ . '/testservice_admin.php';
 $version = file_get_contents('version');
 $textadmin = ["panel", "/panel", $textbotlang['Admin']['panelAdmin']];
 $text_panel_admin_login_template = sprintf($textbotlang['Admin']['report']['aboutBot'], $version);
@@ -340,17 +341,14 @@ if ($datain == "paygwback") {
                 break;
             case 'testservices':
                 $advancedTitle = '🧪 سرویس تست';
-                $advancedActions = [];
+                $advancedLines = [];
                 foreach (nexora_test_products(false) as $row) {
-                    $inbounds = json_decode((string) ($row['inbounds'] ?? ''), true);
-                    $advancedLines[] = '• <b>' . $row['name_product'] . '</b> | ' . $row['Volume_constraint'] . ' GB | ' . $row['Service_time'] . ' ساعت | ' . $row['Location']
-                        . ' | inbound: ' . (is_array($inbounds) && $inbounds ? implode(',', $inbounds) : 'پیش‌فرض پنل')
-                        . ' | ' . $row['status_product'];
-                    $advancedActions[] = [['text' => '✏️ ویرایش نام: ' . $row['name_product'], 'callback_data' => "adv_edit_test_" . (int) $row['id']]];
+                    $advancedLines[] = '• ' . str_replace(["\n"], ' — ', nexora_test_service_summary((array) $row));
                 }
                 if (!$advancedLines) {
                     $advancedLines[] = 'هنوز سرویس تستی تعریف نشده است.';
                 }
+                $advancedActions = [[['text' => '➕ سرویس تست جدید', 'callback_data' => "adv_test_new"]]];
                 break;
             case 'topup':
                 $advancedTitle = '💳 شارژ پنل';
@@ -383,35 +381,230 @@ if ($datain == "paygwback") {
     $advancedBack = json_encode(['inline_keyboard' => $advancedBackRows]);
     $advancedText = '<b>' . $advancedTitle . '</b>' . "\n\n" . (count($advancedLines) ? implode("\n", $advancedLines) : 'موردی برای نمایش وجود ندارد.');
     sendmessage($from_id, $advancedText, $advancedBack, 'HTML');
-} elseif (preg_match('/^adv_edit_test_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
-    $testRow = select("product", "*", "id", (int) $advancedEdit[1], "select");
-    if (!$testRow || (int) $testRow['is_test'] !== 1) {
+} elseif ($datain == "adv_testservices" && $adminrulecheck['rule'] == "administrator") {
+    $tsRows = [];
+    foreach (nexora_test_products(false) as $tsRow) {
+        $tsId = (int) $tsRow['id'];
+        $tsRows[] = ['text' => '🧪 ' . nexora_test_service_summary($tsRow), 'callback_data' => 'adv_test_edit_' . $tsId];
+    }
+    $tsKeyboard = ['inline_keyboard' => $tsRows];
+    $tsKeyboard['inline_keyboard'][] = [['text' => '➕ سرویس تست جدید', 'callback_data' => 'adv_test_new']];
+    $tsKeyboard['inline_keyboard'][] = [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => 'admin']];
+    $tsText = "<b>🧪 سرویس تست</b>\n\n"
+        . "اینجا همان کاری را می‌توانید بکنید که در پنل تحت وب می‌شود: سرویس تست بسازید، حجم و مدت و پنل و اینباند آن را تنظیم کنید.\n\n"
+        . (count($tsRows) ? count($tsRows) . " سرویس تست تعریف شده است. برای ویرایش روی آن بزنید." : "هنوز سرویس تستی تعریف نشده است.");
+    sendmessage($from_id, $tsText, json_encode($tsKeyboard), 'HTML');
+} elseif ($datain == "adv_test_new" && $adminrulecheck['rule'] == "administrator") {
+    $tsState = ['id' => 0, 'step' => 'name', 'data' => [
+        'Volume_constraint' => 1,
+        'Service_time' => 1,
+        'Location' => '',
+        'note' => '',
+        'btn_style' => '',
+        'btn_emoji_id' => '',
+        'status_product' => 'active',
+    ]];
+    nexora_test_wizard_save($tsState);
+    step('adv_test_wizard', $from_id);
+    sendmessage($from_id, "📝 نام سرویس تست را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.", null, 'HTML');
+} elseif (preg_match('/^adv_test_edit_(\d+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsRow = select("product", "*", "id", (int) $tsMatch[1], "select");
+    if (!$tsRow || (int) ($tsRow['is_test'] ?? 0) !== 1) {
         sendmessage($from_id, "⭕️ این سرویس تست پیدا نشد.", null, 'HTML');
         return;
     }
-    update("user", "Processing_value_one", (int) $advancedEdit[1], "id", $from_id);
-    sendmessage($from_id, "✏️ نام جدید سرویس تست را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید؛ همان‌طور که فرستاده شود نمایش داده می‌شود.\n\nنام فعلی: <b>" . $testRow['name_product'] . "</b>", null, 'HTML');
-    step('adv_test_name', $from_id);
-} elseif ($user['step'] == "adv_test_name" && $adminrulecheck['rule'] == "administrator") {
-    $label = splitCustomEmojiLabel((string) $text);
-    $plainName = trim((string) ($label['text'] ?? ''));
-    $emojiId = trim((string) ($label['icon'] ?? ''));
-    $testRow = select("product", "*", "id", (int) $user['Processing_value_one'], "select");
-    if (!$testRow || (int) $testRow['is_test'] !== 1) {
-        sendmessage($from_id, "⭕️ این سرویس تست پیدا نشد.", null, 'HTML');
+    $tsState = ['id' => (int) $tsRow['id'], 'step' => 'name', 'data' => [
+        'name_product' => (string) $tsRow['name_product'],
+        'Volume_constraint' => (float) $tsRow['Volume_constraint'],
+        'Service_time' => (int) $tsRow['Service_time'],
+        'Location' => (string) $tsRow['Location'],
+        'note' => (string) $tsRow['note'],
+        'inbounds' => nexora_panel_inbound_values($tsRow['inbounds'] ?? ''),
+        'btn_style' => (string) ($tsRow['btn_style'] ?? ''),
+        'btn_emoji_id' => (string) ($tsRow['btn_emoji_id'] ?? ''),
+        'status_product' => (string) ($tsRow['status_product'] ?? 'active'),
+    ]];
+    nexora_test_wizard_save($tsState);
+    step('adv_test_wizard', $from_id);
+    sendmessage($from_id, "✏️ ویرایش سرویس تست.\n\nنام فعلی: <b>" . htmlspecialchars(stripCustomEmojiTags((string) $tsRow['name_product'])) . "</b>\n\n📝 نام جدید را بفرستید (برای نگه‌داشتن مقدار فعلی <code>-</code> بفرستید).", null, 'HTML');
+} elseif ($user['step'] == "adv_test_wizard" && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
         step('home', $from_id);
         return;
     }
-    if ($plainName === '') {
-        sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد.", null, 'HTML');
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsStep = (string) ($tsState['step'] ?? 'name');
+    $tsSkip = trim((string) $text) === '-';
+    $tsValue = trim((string) $text);
+
+    if ($tsStep === 'name') {
+        if ($tsSkip) {
+            // the name stays as it is
+        } else {
+            $tsLabel = splitCustomEmojiLabel((string) $text);
+            $tsPlain = trim((string) ($tsLabel['text'] ?? ''));
+            if ($tsPlain === '') {
+                sendmessage($from_id, "⭕️ نام نمی‌تواند خالی باشد. دوباره بفرستید یا <code>-</code> بزنید.", null, 'HTML');
+                return;
+            }
+            $tsData['name_product'] = $tsPlain;
+            if (trim((string) ($tsLabel['icon'] ?? '')) !== '') {
+                $tsData['btn_emoji_id'] = trim((string) $tsLabel['icon']);
+            }
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'volume';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
         return;
     }
-    update("product", "name_product", $plainName, "id", (int) $testRow['id']);
-    if ($emojiId !== '') {
-        update("product", "btn_emoji_id", $emojiId, "id", (int) $testRow['id']);
+    if ($tsStep === 'volume') {
+        if (!$tsSkip) {
+            $tsVolume = nexora_parse_volume($text);
+            if ($tsVolume === null) {
+                sendmessage($from_id, "⭕️ حجم را درست بنویسید. مثال: <code>512 مگابایت</code> یا <code>1 گیگابایت</code>", null, 'HTML');
+                return;
+            }
+            $tsData['Volume_constraint'] = $tsVolume;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'time';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
     }
+    if ($tsStep === 'time') {
+        if (!$tsSkip) {
+            if (!ctype_digit((string) $tsValue)) {
+                sendmessage($from_id, "⭕️ مدت را به ساعت و به شکل عدد بنویسید.", null, 'HTML');
+                return;
+            }
+            $tsData['Service_time'] = (int) $tsValue;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'panel';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    if ($tsStep === 'note') {
+        if (!$tsSkip) {
+            $tsData['note'] = $tsValue;
+        }
+        $tsState['data'] = $tsData;
+        $tsState['step'] = 'color';
+        nexora_test_wizard_save($tsState);
+        $tsNext = nexora_test_wizard_next($tsState);
+        sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+        return;
+    }
+    // the remaining steps are chosen with the buttons of the keyboard
+    sendmessage($from_id, "⭕️ یکی از گزینه‌های بالا را انتخاب کنید.", null, 'HTML');
+} elseif (preg_match('/^adv_test_panel_(.+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        sendmessage($from_id, "⭕️ ابتدا یک سرویس تست را انتخاب کنید.", null, 'HTML');
+        return;
+    }
+    $tsCode = substr((string) $tsMatch[1], 0, 190);
+    $tsPanel = select("marzban_panel", "*", "code_panel", $tsCode, "select");
+    if (!$tsPanel) {
+        sendmessage($from_id, "⭕️ این پنل پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsData['Location'] = (string) $tsPanel['name_panel'];
+    $tsData['inbounds'] = [];
+    $tsState['data'] = $tsData;
+    $tsState['step'] = 'inbound';
+    nexora_test_wizard_save($tsState);
+    $tsNext = nexora_test_wizard_next($tsState);
+    sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+} elseif ($datain == "adv_test_inb_default" && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        sendmessage($from_id, "⭕️ ابتدا یک سرویس تست را انتخاب کنید.", null, 'HTML');
+        return;
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsData['inbounds'] = [];
+    $tsState['data'] = $tsData;
+    $tsState['step'] = 'note';
+    nexora_test_wizard_save($tsState);
+    $tsNext = nexora_test_wizard_next($tsState);
+    sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+} elseif (preg_match('/^adv_test_inb_(.+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        sendmessage($from_id, "⭕️ ابتدا یک سرویس تست را انتخاب کنید.", null, 'HTML');
+        return;
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsData['inbounds'] = [(string) substr((string) $tsMatch[1], 0, 120)];
+    $tsState['data'] = $tsData;
+    $tsState['step'] = 'note';
+    nexora_test_wizard_save($tsState);
+    $tsNext = nexora_test_wizard_next($tsState);
+    sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+} elseif (preg_match('/^adv_test_color_(.*)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        sendmessage($from_id, "⭕️ ابتدا یک سرویس تست را انتخاب کنید.", null, 'HTML');
+        return;
+    }
+    $tsColor = (string) $tsMatch[1];
+    if (!in_array($tsColor, nexora_color_slugs(), true)) {
+        $tsColor = '';
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsData['btn_style'] = $tsColor;
+    $tsState['data'] = $tsData;
+    $tsState['step'] = 'status';
+    nexora_test_wizard_save($tsState);
+    $tsNext = nexora_test_wizard_next($tsState);
+    sendmessage($from_id, $tsNext['text'], $tsNext['keyboard'], 'HTML');
+} elseif (preg_match('/^adv_test_status_(active|hidden)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsState = nexora_test_wizard_state($user);
+    if (!$tsState) {
+        sendmessage($from_id, "⭕️ ابتدا یک سرویس تست را انتخاب کنید.", null, 'HTML');
+        return;
+    }
+    $tsData = is_array($tsState['data'] ?? null) ? $tsState['data'] : [];
+    $tsData['status_product'] = (string) $tsMatch[1];
+    $tsState['data'] = $tsData;
+    $tsId = nexora_test_wizard_save_product($pdo, $tsState);
     step('home', $from_id);
-    sendmessage($from_id, "✅ نام سرویس تست به «" . $plainName . "» تغییر کرد.", null, 'HTML');
+    update("user", "Processing_value", '', "id", $from_id);
+    if ($tsId > 0) {
+        $tsSaved = select("product", "*", "id", $tsId, "select");
+        $tsButtons = [
+            [['text' => '✏️ ویرایش', 'callback_data' => 'adv_test_edit_' . $tsId]],
+            [['text' => '🗑 حذف', 'callback_data' => 'adv_test_del_' . $tsId]],
+            [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => 'admin']],
+        ];
+        sendmessage($from_id, "✅ سرویس تست ذخیره شد.\n\n" . nexora_test_service_summary((array) $tsSaved), json_encode(['inline_keyboard' => $tsButtons]), 'HTML');
+    } else {
+        sendmessage($from_id, "⭕️ سرویس تست ذخیره نشد. نام آن را بررسی کنید.", null, 'HTML');
+    }
+} elseif (preg_match('/^adv_test_del_(\d+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsRow = select("product", "*", "id", (int) $tsMatch[1], "select");
+    if (!$tsRow || (int) ($tsRow['is_test'] ?? 0) !== 1) {
+        sendmessage($from_id, "⭕️ این سرویس تست پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $tsKeyboard = json_encode(['inline_keyboard' => [
+        [['text' => '🗑 بله، حذف شود', 'callback_data' => 'adv_test_delok_' . (int) $tsRow['id']]],
+        [['text' => '❌ انصراف', 'callback_data' => 'adv_testservices']],
+    ]]);
+    sendmessage($from_id, "🗑 سرویس تست <b>" . htmlspecialchars(stripCustomEmojiTags((string) $tsRow['name_product'])) . "</b> حذف شود؟", $tsKeyboard, 'HTML');
+} elseif (preg_match('/^adv_test_delok_(\d+)$/', $datain, $tsMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsId = (int) $tsMatch[1];
+    db_query($pdo, "DELETE FROM product WHERE id = ? AND is_test = 1", [$tsId]);
+    sendmessage($from_id, "🗑 سرویس تست حذف شد.", null, 'HTML');
 } elseif (preg_match('/^adv_edit_topup_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
     $topupRow = nexora_topup_product_by_id((int) $advancedEdit[1]);
     if (!$topupRow) {

@@ -14,7 +14,8 @@ class MarzneshinPanelDriver extends BasePanelDriver
         $invoice = $vars['invoice'];
         $domainhosts = $vars['domainhosts'];
         //create user
-        $ConnectToPanel = adduserm($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $Get_Data_Product['data_limit_reset']);
+        $forceActive = !empty($vars['forceActive']);
+        $ConnectToPanel = adduserm($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $Get_Data_Product['data_limit_reset'], $forceActive);
         if (!empty($ConnectToPanel['status']) && $ConnectToPanel['status'] >= 400) {
             $errBody = json_decode($ConnectToPanel['body'] ?? '', true);
             return array(

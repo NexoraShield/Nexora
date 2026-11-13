@@ -89,7 +89,7 @@ return [
         ['inbounds', null, 'TEXT'],
         ['subvip', 'offsubvip', 'VARCHAR(60)'],
         ['changeloc', 'offchangeloc', 'VARCHAR(60)'],
-        ['on_hold_test', '1', 'VARCHAR(60)'],
+        ['on_hold_test', '0', 'VARCHAR(60)'],
         ['version_panel', '0', 'VARCHAR(60)'],
         ['customvolume', $zeroVolume, 'TEXT'],
         ['hide_user', null, 'TEXT'],

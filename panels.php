@@ -65,6 +65,9 @@ class ManagePanel
         $expire = $Data_Config['expire'];
         $data_limit = $Data_Config['data_limit'];
         $note = "{$Data_Config['from_id']} | {$Data_Config['username']} | {$Data_Config['type']}";
+        // A test service is a normal service: it must be usable right away and
+        // must not wait for the first connection of the customer.
+        $forceActive = isset($Get_Data_Product['is_test']) && (int) $Get_Data_Product['is_test'] === 1;
         $driver = PanelRegistry::driver($Get_Data_Panel['type'], $this);
         if ($driver !== null && ($result = $driver->create(get_defined_vars())) !== BasePanelDriver::UNSUPPORTED) {
             return $this->splitWireguardLinks($Get_Data_Panel, $result);

@@ -51,7 +51,7 @@ function links_wgmate($location, $user_id)
     unset($links['subscription']);
     return array_values($links);
 }
-function adduser_wgmate($location, $data_limit, $username_ac, $timestamp, $name_product, $note = '', $limitip = null)
+function adduser_wgmate($location, $data_limit, $username_ac, $timestamp, $name_product, $note = '', $limitip = null, $force_active = false)
 {
     $stmt = $GLOBALS['pdo']->prepare("SELECT * FROM product WHERE name_product = ? AND (Location = ? OR Location = '/all') ORDER BY Location = '/all' LIMIT 1");
     $stmt->execute([$name_product, $location]);

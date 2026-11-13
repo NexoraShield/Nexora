@@ -59,7 +59,7 @@ function status_nexora(array $user)
     }
     return "active";
 }
-function adduser_nexora($location, $data_limit, $username_ac, $timestamp, $name_product, $note = '', $limitip = null)
+function adduser_nexora($location, $data_limit, $username_ac, $timestamp, $name_product, $note = '', $limitip = null, $force_active = false)
 {
     $stmt = $GLOBALS['pdo']->prepare("SELECT * FROM product WHERE name_product = ? AND (Location = ? OR Location = '/all') ORDER BY Location = '/all' LIMIT 1");
     $stmt->execute([$name_product, $location]);
@@ -82,7 +82,13 @@ function adduser_nexora($location, $data_limit, $username_ac, $timestamp, $name_
     if ($limitip != null && $panel['limit_in_panel'] == "1") {
         $data['ipLimit'] = intval($limitip);
     }
-    $on_hold = $name_product == "usertest" ? $panel['on_hold_test'] != "0" : $panel['conecton'] != "offconecton";
+    if ($name_product == "usertest" || $force_active) {
+        // a test service is usable right away, it does not wait for the first
+        // connection of the customer
+        $on_hold = !$force_active && $panel['on_hold_test'] != "0";
+    } else {
+        $on_hold = $panel['conecton'] != "offconecton";
+    }
     if ($on_hold && $timestamp != 0) {
         $data['duration'] = $timestamp - time();
         $data['expiry'] = 0;

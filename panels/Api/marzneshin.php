@@ -93,7 +93,7 @@ function revoke_subm($username_account,$location)
     return $response;
 }
 #-----------------------------#
-function adduserm($location,$data_limit,$username_ac,$timestamp,$name_product,$note ='',$data_limit_reset = 'no_reset')
+function adduserm($location,$data_limit,$username_ac,$timestamp,$name_product,$note ='',$data_limit_reset = 'no_reset',$force_active = false)
 {
     $stmt = $GLOBALS['pdo']->prepare("SELECT * FROM product WHERE name_product = ? AND (Location = ? OR Location = '/all') ORDER BY Location = '/all' LIMIT 1");
     $stmt->execute([$name_product, $location]);
@@ -113,8 +113,8 @@ function adduserm($location,$data_limit,$username_ac,$timestamp,$name_product,$n
             "note" => $note,
             "data_limit_reset_strategy" => $data_limit_reset,
         );
-    if ($name_product == "usertest"){
-        if($marzban_list_get['on_hold_test'] == "0"){
+    if ($name_product == "usertest" || $force_active){
+        if($force_active || $marzban_list_get['on_hold_test'] == "0"){
         if ($timestamp == 0) {
             $data["expire"] = null;
             $data["expire_strategy"] = "never";

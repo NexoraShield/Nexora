@@ -14,7 +14,8 @@ class MarzbanPanelDriver extends BasePanelDriver
         $invoice = $vars['invoice'];
         $domainhosts = $vars['domainhosts'];
         //create user
-        $ConnectToPanel = adduser($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $note, $Get_Data_Product['data_limit_reset'], $Get_Data_Product['name_product']);
+        $forceActive = !empty($vars['forceActive']);
+        $ConnectToPanel = adduser($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $note, $Get_Data_Product['data_limit_reset'], $Get_Data_Product['name_product'], $forceActive);
         if (!empty($ConnectToPanel['status']) && $ConnectToPanel['status'] >= 400) {
             $errBody = json_decode($ConnectToPanel['body'] ?? '', true);
             return array(

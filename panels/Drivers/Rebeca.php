@@ -15,7 +15,8 @@ class RebecaPanelDriver extends BasePanelDriver
         $domainhosts = $vars['domainhosts'];
         //create user
         $order_get = select("invoice", "*", "username", $usernameC, "select");
-        $ConnectToPanel = adduser_rebecca($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $Get_Data_Product['data_limit_reset'], $order_get['limit_user']);
+        $forceActive = !empty($vars['forceActive']);
+        $ConnectToPanel = adduser_rebecca($Get_Data_Panel['name_panel'], $data_limit, $usernameC, $expire, $Get_Data_Product['name_product'], $note, $Get_Data_Product['data_limit_reset'], $order_get['limit_user'], $forceActive);
         if (!empty($ConnectToPanel['status']) && $ConnectToPanel['status'] == 500) {
             return array(
                 'status' => 'Unsuccessful',

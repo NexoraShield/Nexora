@@ -180,7 +180,7 @@ function panel_panel_add(array $data, string $method): void
             'subvip' => "offsubvip",
             'changeloc' => "offchangeloc",
             'version_panel' => empty($data['version_panel']) ? "0" : $data['version_panel'],
-            'on_hold_test' => "1",
+            'on_hold_test' => "0",
             'priceextravolume' => $defaultPrice,
             'pricecustomvolume' => $defaultPrice,
             'pricecustomtime' => $defaultPrice,
