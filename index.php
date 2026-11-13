@@ -322,6 +322,41 @@ if ($text !== '' && $Chat_type === 'private' && in_array((string) ($user['step']
 
 if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] != "gettextSystemMessage") {
     $affiliatesid = (strpos($text, " ") !== false) ? explode(" ", $text)[1] : '';
+    // The customer comes from the web application to pay for an order:
+    // "pay_<invoice>" shows the gateways, "paygw_<gateway>_<invoice>" shows the
+    // chosen gateway right away.
+    $payGateway = '';
+    $payInvoice = '';
+    if (preg_match('/^paygw_([a-z0-9_]+)_([A-Za-z0-9_-]{3,64})$/i', (string) $affiliatesid, $payMatch)) {
+        $payGateway = strtolower((string) $payMatch[1]);
+        $payInvoice = (string) $payMatch[2];
+    } elseif (preg_match('/^pay_([A-Za-z0-9_-]{3,64})$/i', (string) $affiliatesid, $payMatch)) {
+        $payInvoice = (string) $payMatch[1];
+    }
+    if ($payInvoice !== '') {
+        $payOrder = select("invoice", "*", "id_invoice", $payInvoice, "select");
+        if (!$payOrder || (string) $payOrder['id_user'] !== (string) $from_id || (string) $payOrder['Status'] !== 'unpaid') {
+            sendmessage($from_id, $textbotlang['users']['sell']['restartFromStart'], $keyboard, 'HTML');
+            step('home', $from_id);
+            return;
+        }
+        update("user", "Processing_value", (string) $payOrder['payable_amount'], "id", $from_id);
+        update("user", "Processing_value_one", $payInvoice, "id", $from_id);
+        step('get_step_payment_buy', $from_id);
+        $payGateways = function_exists('nexora_available_gateways') ? nexora_available_gateways(['cardpayment' => $user['cardpayment'] ?? 1]) : [];
+        if ($payGateway !== '' && isset($payGateways[$payGateway])) {
+            // The customer chose the gateway in the web application, so only
+            // the confirmation is left.
+            $payKeyboard = json_encode(['inline_keyboard' => [
+                [nexora_style_btn((string) ($payGateways[$payGateway]['icon'] ?? '') . ' ' . (string) $payGateways[$payGateway]['label'], $payGateway, ['btn_style' => (string) ($payGateways[$payGateway]['style'] ?? '')])],
+                [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "colselist"]],
+            ]]);
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $payKeyboard, 'HTML');
+        } else {
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+        }
+        return;
+    }
     if ($affiliatesid !== '' && !in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
         isValidInvitationCode($setting, $from_id, $user['verify']);
         if (!check_active_btn($setting['keyboardmain'], "text_affiliates")) {

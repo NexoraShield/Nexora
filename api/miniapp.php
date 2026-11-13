@@ -7,6 +7,28 @@ require_once __DIR__ . '/../botapi.php';
 require_once __DIR__ . '/../panels.php';
 require_once __DIR__ . '/../jdf.php';
 require_once __DIR__ . '/../keyboard.php';
+require_once __DIR__ . '/../gateways.php';
+
+/**
+ * The premium emoji of a name is a tag that only Telegram understands:
+ * <tg-emoji emoji-id="123">😀</tg-emoji>. The web application shows plain
+ * text, so the tag is replaced with the emoji it carries - the code of the
+ * premium emoji is never shown to the customer.
+ */
+if (!function_exists('mini_plain_text')) {
+    function mini_plain_text(string $text): string
+    {
+        if ($text === '' || stripos($text, '<tg-emoji') === false) {
+            return $text;
+        }
+        $result = preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', $text);
+        if (!is_string($result)) {
+            return $text;
+        }
+        // A tag without a fallback would leave a gap in the name.
+        return trim(preg_replace('/\s{2,}/u', ' ', $result) ?? $result);
+    }
+}
 
 header('Content-Type: application/json; charset=utf-8');
 date_default_timezone_set('Asia/Tehran');
@@ -283,7 +305,7 @@ function mini_service(array $data, string $method): void
             'obj' => array(
                 'status' => $DataUserOut['status'],
                 'username' => $usernameOutput,
-                'product_name' => $invoice['name_product'],
+                'product_name' => mini_plain_text((string) ($invoice['name_product'] ?? '')),
                 'total_traffic_gb' => round($data_limit, 2),
                 'used_traffic_gb' => round($used_Traffic, 2),
                 'remaining_traffic_gb' => round($remaining_traffic, 2),
@@ -412,7 +434,7 @@ function mini_countries(array $data, string $method): void
                 continue;
             $panel_list[] = [
                 'id' => $result['code_panel'],
-                'name' => $result['name_panel'],
+                'name' => mini_plain_text((string) $result['name_panel']),
                 'is_custom' => $is_custom,
                 'is_username' => $is_username,
                 'is_note' => $is_note
@@ -475,7 +497,7 @@ function mini_categories(array $data, string $method): void
                 continue;
             $category_list[] = [
                 'id' => $result['id'],
-                'name' => $result['remark'],
+                'name' => mini_plain_text((string) $result['remark']),
             ];
         }
         echo json_encode([
@@ -710,8 +732,8 @@ function mini_services(array $data, string $method): void
             }
             $product_list[] = [
                 'id' => $result['code_product'],
-                'name' => $result['name_product'],
-                'description' => $result['note'],
+                'name' => mini_plain_text((string) $result['name_product']),
+                'description' => mini_plain_text((string) ($result['note'] ?? '')),
                 'price' => $result['price_product'],
                 'traffic_gb' => $result['Volume_constraint'],
                 'time_days' => intval($result['Service_time']),
@@ -787,6 +809,99 @@ function mini_custom_price(array $data, string $method): void
             'msg' => "User Not  Found",
         ]);
     }
+}
+
+/**
+ * The gateways a customer can pay with, for the web application.
+ */
+function mini_gateways(array $data, string $method): void
+{
+    global $usercheck;
+
+    if ($method !== "GET") {
+        echo json_encode([
+            'status' => false,
+            'msg' => "Method invalid; must be GET",
+        ]);
+        return;
+    }
+    $user_info = $usercheck;
+    $gateways = [];
+    foreach (nexora_available_gateways(['cardpayment' => $user_info['cardpayment'] ?? 1]) as $gateway) {
+        $gateways[] = [
+            'key' => $gateway['key'],
+            'label' => $gateway['label'],
+            'icon' => $gateway['icon'],
+            'style' => $gateway['style'],
+        ];
+    }
+    echo json_encode([
+        'status' => true,
+        'msg' => "Successful",
+        'obj' => $gateways
+    ]);
+}
+
+/**
+ * An order that is not paid yet. The customer pays it in the bot, where the
+ * gateways are shown - the web application only sends him there.
+ */
+function mini_pending_order(array $user_info, array $panel, array $product, float $price): array
+{
+    global $pdo, $usernamebot, $domainhosts;
+
+    $missing = max(0.0, $price - floatval($user_info['Balance'] ?? 0));
+    $randomString = bin2hex(random_bytes(4));
+    $username = generateUsername(
+        (string) $user_info['id'],
+        (string) ($panel['MethodUsername'] ?? 'numericIdRandom'),
+        (string) ($user_info['username'] ?? ''),
+        $randomString,
+        '',
+        (string) ($panel['namecustom'] ?? 'none'),
+        (string) ($user_info['namecustom'] ?? 'none')
+    );
+    $username = strtolower((string) $username);
+    $notifctions = json_encode([
+        'volume' => false,
+        'time' => false,
+    ]);
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, notifctions) VALUES (?,?,?,?,?,?,?,?,?,'unpaid',?,?)");
+    $stmt->execute([
+        (string) $user_info['id'],
+        $randomString,
+        $username,
+        time(),
+        (string) $panel['name_panel'],
+        (string) ($product['name_product'] ?? ''),
+        $price,
+        (float) ($product['Volume_constraint'] ?? 0),
+        (int) ($product['Service_time'] ?? 0),
+        'miniapp',
+        $notifctions,
+    ]);
+    // The part of the price that is not covered by the wallet of the customer
+    // is the amount the gateway has to collect.
+    $pdo->prepare("UPDATE invoice SET payable_amount = ? WHERE id_invoice = ?")->execute([$missing, $randomString]);
+
+    $gateways = [];
+    foreach (nexora_available_gateways(['cardpayment' => $user_info['cardpayment'] ?? 1]) as $gateway) {
+        $gateways[] = [
+            'key' => $gateway['key'],
+            'label' => $gateway['label'],
+            'icon' => $gateway['icon'],
+            'style' => $gateway['style'],
+            'url' => 'https://t.me/' . (string) $usernamebot . '?start=paygw_' . $gateway['key'] . '_' . $randomString,
+        ];
+    }
+    return [
+        'invoice_id' => $randomString,
+        'amount' => $missing,
+        'gateways' => $gateways,
+        'deep_link' => 'https://t.me/' . (string) $usernamebot . '?start=pay_' . $randomString,
+        // The page of the application with the gateways of the bot.
+        'pay_url' => 'https://' . (string) $domainhosts . '/app/pay.php?invoice=' . $randomString . '&token=' . rawurlencode((string) ($user_info['token'] ?? '')),
+    ];
 }
 
 function mini_purchase(array $data, string $method): void
@@ -951,6 +1066,22 @@ function mini_purchase(array $data, string $method): void
         } else {
             $min_balance = 0;
             $error_msg = $textbotlang['users']['Balance']['lessThanPrice'];
+        }
+        // The wallet of the customer is not enough: the order is not paid from
+        // the wallet but with a gateway. The customer picks the gateway in the
+        // web application and pays in the bot.
+        if ($min_balance === 0 && floatval($user_info['Balance']) < $price_product) {
+            $pending = mini_pending_order($user_info, $panel, $product, (float) $price_product);
+            echo json_encode([
+                'success' => false,
+                'need_payment' => true,
+                'msg' => $error_msg,
+                'invoice_id' => $pending['invoice_id'],
+                'amount' => $pending['amount'],
+                'gateways' => $pending['gateways'],
+                'deep_link' => $pending['deep_link'],
+            ]);
+            return;
         }
         $stmt = $pdo->prepare("UPDATE user SET Balance = Balance - :price WHERE id = :id AND Balance - :price_check >= :min_balance");
         $stmt->execute([':price' => $price_product, ':id' => $user_info['id'], ':price_check' => $price_product, ':min_balance' => $min_balance]);
@@ -1196,6 +1327,7 @@ match ($action) {
     'time_ranges' => mini_time_ranges($data, $method),
     'services' => mini_services($data, $method),
     'custom_price' => mini_custom_price($data, $method),
+    'gateways' => mini_gateways($data, $method),
     'purchase' => mini_purchase($data, $method),
     default => sendJsonResponse(false, "Action Invalid", []),
 };

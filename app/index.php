@@ -8,6 +8,7 @@
     <script type="module" crossorigin src="./assets/index-C-2a0Dur.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-CIGJ9g2q.js">
     <link rel="stylesheet" crossorigin href="./assets/index-BoHBsj0Z.css">
+    <link rel="stylesheet" href="./assets/nexora-theme.css">
   </head>
   <body>
     <div id="root"></div>

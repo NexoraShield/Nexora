@@ -326,3 +326,84 @@ if (!function_exists('nexora_gateway_native_style')) {
         return nexora_btn_style($style);
     }
 }
+
+if (!function_exists('nexora_gateway_is_usable')) {
+    /**
+     * True when a customer can pay with this gateway right now.
+     *
+     * The rules are the same as the ones of the payment keyboard of the bot:
+     * the administrator has switched the gateway on *and* the keys the gateway
+     * needs are there. A gateway that is shown without them would take the
+     * buyer to a page that cannot be created.
+     *
+     * $context may carry "cardpayment" (the customer may only pay with the
+     * card when the administrator allowed it for his account).
+     */
+    function nexora_gateway_is_usable(string $key, array $gateway, array $context = []): bool
+    {
+        if (!function_exists('nexora_pay_switch_is_on') || !function_exists('getPaySettingValue')) {
+            return false;
+        }
+        $setting = (string) ($gateway['setting'] ?? '');
+        if ($setting === '') {
+            return false;
+        }
+        $current = (string) getPaySettingValue($setting, (string) ($gateway['off'] ?? ''));
+        if (!nexora_pay_switch_is_on($current, (string) ($gateway['on'] ?? ''))) {
+            return false;
+        }
+        // The card to card gateway is only for the accounts that may use it.
+        if ($key === 'card' && isset($context['cardpayment']) && (int) $context['cardpayment'] !== 1) {
+            return false;
+        }
+        $has = function (string $name): bool {
+            $value = trim((string) getPaySettingValue($name, ''));
+            return $value !== '' && $value !== '0';
+        };
+        switch ($key) {
+            case 'iranpay4':
+                return $has('apiiranpay4') && function_exists('abangatewayEndpoint') && abangatewayEndpoint() !== null;
+            case 'variza':
+                return $has('variza_api_token') && $has('variza_webhook_secret');
+            case 'frenzyex':
+                return $has('frenzyex_api_key') && $has('frenzyex_callback_secret') && $has('frenzyex_base_url');
+            case 'iranpay3':
+                // The third rial gateway needs its key as well.
+                return $has('apiiranpay');
+            case 'iranpay2':
+                return $has('apiternado');
+            case 'plisio':
+                return $has('apinowpayment');
+            case 'nowpayment':
+                return $has('marchent_tronseller');
+        }
+        return true;
+    }
+}
+
+if (!function_exists('nexora_available_gateways')) {
+    /**
+     * The gateways a customer can pay with right now: the name, the icon, the
+     * colour and the callback of the bot. The bot, the web panel and the web
+     * application of the customer all use this list, so they always offer the
+     * same gateways.
+     */
+    function nexora_available_gateways(array $context = []): array
+    {
+        $out = [];
+        foreach (nexora_payment_gateways() as $key => $gateway) {
+            if (!nexora_gateway_is_usable((string) $key, $gateway, $context)) {
+                continue;
+            }
+            $out[$key] = [
+                'key' => (string) $key,
+                'label' => nexora_gateway_label((string) $key),
+                'icon' => (string) ($gateway['icon'] ?? ''),
+                'style' => (string) ($gateway['style'] ?? ''),
+                'callback' => (string) $key,
+            ];
+        }
+        return $out;
+    }
+}
+
