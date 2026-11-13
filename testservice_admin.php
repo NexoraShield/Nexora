@@ -97,7 +97,11 @@ if (!function_exists('nexora_test_wizard_next')) {
                     ]]),
                 ];
             default:
-                return ['step' => 'done', 'text' => '', 'keyboard' => null];
+                return [
+                    'step' => 'done',
+                    'text' => "⭕️ یکی از گزینه‌های بالا را انتخاب کنید.",
+                    'keyboard' => null,
+                ];
         }    }
 }
 
