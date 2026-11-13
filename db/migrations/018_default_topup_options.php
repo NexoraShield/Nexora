@@ -51,24 +51,40 @@ return static function (PDO $pdo, Schema $schema): void {
         "INSERT INTO panel_topup_product (shop,name,price,credit,description,unit,btn_style,status_product,display_order) VALUES (?,?,?,?,?,?,?,'active',?)"
     );
     foreach ($defaults as $shop => $config) {
-        $count = (int) $pdo->query("SELECT COUNT(*) FROM panel_topup_product WHERE shop = '" . addslashes($shop) . "'")->fetchColumn();
-        if ($count > 0) {
+        // The marker makes sure that the defaults are only created once: when
+        // the administrator deletes every option on purpose, it stays deleted.
+        try {
+            $chk = $pdo->prepare("SELECT ValuePay FROM PaySetting WHERE NamePay = ? LIMIT 1");
+            $chk->execute(['nx_seeded_topup_' . $shop]);
+            if ((string) $chk->fetchColumn() !== '') {
+                continue;
+            }
+        } catch (Throwable $e) {
             continue;
         }
-        $order = 0;
-        foreach ($config['items'] as $item) {
-            $order++;
-            $insert->execute([
-                $shop,
-                $item['name'],
-                $item['price'],
-                $item['credit'],
-                $item['description'],
-                $config['unit'],
-                'primary',
-                $order,
-            ]);
+        $count = (int) $pdo->query("SELECT COUNT(*) FROM panel_topup_product WHERE shop = '" . addslashes($shop) . "'")->fetchColumn();
+        if ($count === 0) {
+            $order = 0;
+            foreach ($config['items'] as $item) {
+                $order++;
+                $insert->execute([
+                    $shop,
+                    $item['name'],
+                    $item['price'],
+                    $item['credit'],
+                    $item['description'],
+                    $config['unit'],
+                    'primary',
+                    $order,
+                ]);
+            }
+            echo "The default top up options were created for {$shop}.\n";
         }
-        echo "The default top up options were created for {$shop}.\n";
+        try {
+            $pdo->prepare("INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?,?) ON DUPLICATE KEY UPDATE ValuePay = VALUES(ValuePay)")
+                ->execute(['nx_seeded_topup_' . $shop, '1']);
+        } catch (Throwable $e) {
+            error_log('migration 018: ' . $e->getMessage());
+        }
     }
 };

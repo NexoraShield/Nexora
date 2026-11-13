@@ -8,15 +8,59 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 2026-10-29 (session) — Phase 7
 
 ## Current phase
-Phase 7 — Security hardening + regression fixes + runtime color/emoji wiring audit + payment integrity (P0–P2).
+Phase 8 — The two panel shops (پنل نمایندگی / اجنت پنل), the test quota and the top up.
 
 ## Last successful checkpoint
-**v1.9.7 (in progress)** — working tree has uncommitted hardening edits:
-function.php claimPaymentPaid NOT IN ('paid','reject') (defense-in-depth);
-admin.php:3785 invoice.Status casing normalized; panel/emoji_picker.php
-parse-error fix + include + table + query misuse fixed; nexora_style.php
-nexora_emoji_map table added. Full-repo php -l: 105 clean / 0 errors.
-Prior: v1.9.6 (bf39526) committed + pushed + tag; v1.9.5 (00edfa4) tagged.
+**v1.22.75 (in progress)** — working tree has uncommitted edits:
+- panel/inc/agentpanel_tab.php: `ap_add` was compared with `add` (the insert became an update of row 0, so "افزودن پنل" added nothing); the panel list was only built inside the POST branch (empty dropdown on a normal page load); price falls back to the credit.
+- admin.php: the shop wizard changed the step to `adv_shop_desc`, a step nothing handled, so the product was never saved. The wizard is stage driven now (name -> credit/price -> volume -> time -> panel -> description) and stays on `adv_shop_edit`.
+- agentshop_admin.php: `nexora_agent_shop_bought_products` returned a name-keyed map (the top up buttons showed "Array" and the callback index did not match); it returns a list now and the agent panel branch only lists the panels the customer really bought.
+- index.php: the answers of the agent shop were cleared before `nexora_agent_shop_finish()` read them.
+- function.php: `agentshop_admin.php` is required by the core, so the payment handlers ask the questions too.
+- function.php: the helpers of the delivered agent panels — `nexora_agent_panel_accounts()` (the list of the
+  panels that were delivered), `nexora_agent_panel_last_product()` (the package the customer bought),
+  `nexora_agent_panel_set_credit()` (the credit of a panel by hand, never below zero),
+  `nexora_agent_panel_reset_password()` (a new password, shown once) and `nexora_agent_panel_revoke()`
+  (the panel of a customer is taken away, the invoices stay).
+- function.php: the report of the top up of the agent panel shows the credentials of the panel (user name,
+  link) and the balance before the charge next to the new balance; the report of the top up of the agent
+  shop names the product the customer bought and the option of the top up.
+- panel/inc/agentpanel_accounts_tab.php (new): the tab "پنل‌های تحویل‌شده" — the panels that were delivered
+  to the customers with their credit, and the buttons to change the credit, to build a new password and to
+  delete the panel.
+- Full-repo php -l (PHP 8.2.35 CLI): 244 files clean / 0 errors.
+
+## Phase 8 results (2026-11-13)
+- **Test quota.** `setting.limit_usertest_all` is the share of every user (every user has a numeric
+  telegram id). The bot tab "سرویس تست" shows the share, the number of users and a button to
+  change it (with "apply to the existing users"). The customer list shows the remaining share;
+  when it is 0 the bot answers with "⛔️ شما حد نصاب سرویس تست را گرفتید." (lang fa/en/ru/zh:
+  `users.usertest.limitwarning`, `users.testService.remaining`).
+- **Test service = a real account.** `testproduct_get_*` creates the account with
+  `ManagePanel::createUser()` exactly like a product; only the volume and the duration of the
+  test product are smaller. `is_test` forces the account to be active right away.
+- **Agent panel (اجنت پنل).** Ten default packages ("پنل اجنت نمایندگی با ۱..۱۰ میلیون اعتبار",
+  price = credit) are seeded by migration 022 and by `nexora_self_heal()`; a marker in PaySetting
+  (`nx_seeded_agent_panel_products`) keeps them from coming back after the administrator deleted
+  them on purpose. The same marker was added to migration 018 for the top up options.
+- **Delivery.** After the payment the customer gets the user name, the password and the link of
+  the panel, the report goes to the report channel and to every administrator. If the product was
+  deleted after the payment, or the access could not be written, the customer and the admins are
+  warned instead of the order falling through to the VPN delivery path.
+- **Top up.** `nexora_topup_targets()` returns a list of names of the products the customer really
+  bought (per shop). The "no panel yet" message and the buy button are shop specific.
+  The agent panel top up adds the credit automatically and reports the new balance.
+- **Agent shop (پنل نمایندگی).** The questions of the shop are asked after the payment, the
+  answers reach the administrator together with the payment details, and the customer gets the
+  24 hour message.
+- **Reseller panel.** The prices of the bot are 10% below the bot price (was 15%). The access is
+  bound to the `agent_auth` row, the session id is regenerated after the login.
+- **The panels that were delivered.** The web panel (مدیریت نمایندگان → پنل‌های تحویل‌شده) lists every
+  panel that was delivered: the user name of the panel, the customer, the package the customer bought, the
+  credit of the panel, the login link and the date. The credit can be increased and decreased by hand (the
+  balance never goes below zero), a new password can be built (it is shown once, only the hash is stored)
+  and the panel can be deleted (the access of the customer is taken away, the payments stay untouched).
+- Documentation: `AGENT_PANEL.fa.md`.
 
 ## Completed changes
 - v1.2.0  Unified bot editor (text+color+emoji) for all keys

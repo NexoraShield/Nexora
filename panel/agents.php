@@ -71,7 +71,7 @@ try {
 $pageTitle = 'مدیریت نمایندگان (Agent Panel)';
 $pageLede = 'مدیریت نمایندگان، قیمت‌گذاری، دسترسی پنل، فروش پنل به نمایندگان و شارژ پنل.';
 $activeNav = 'agents';
-$agentTab = (isset($_GET['tab']) && in_array($_GET['tab'], ['panels', 'topup'], true)) ? (string) $_GET['tab'] : 'agents';
+$agentTab = (isset($_GET['tab']) && in_array($_GET['tab'], ['panels', 'topup', 'accounts'], true)) ? (string) $_GET['tab'] : 'agents';
 include __DIR__ . '/inc/layout_head.php';
 ?><div class="page-header">
     <h1>👥 مدیریت نمایندگان</h1>
@@ -81,6 +81,7 @@ include __DIR__ . '/inc/layout_head.php';
 <div class="card fade-up" style="margin-bottom:20px"><div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap">
   <a class="btn <?= $agentTab === 'agents' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=agents">👥 نمایندگان</a>
   <a class="btn <?= $agentTab === 'panels' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=panels">🖥 فروش پنل به نمایندگان</a>
+  <a class="btn <?= $agentTab === 'accounts' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=accounts">📦 پنل‌های تحویل‌شده</a>
   <a class="btn <?= $agentTab === 'topup' ? 'btn-primary' : 'btn-ghost' ?>" href="agents.php?tab=topup">💳 شارژ پنل نمایندگی</a>
 </div></div>
 
@@ -88,6 +89,9 @@ include __DIR__ . '/inc/layout_head.php';
     $topupShop = 'agentpanelshop';
     $topupReturn = 'agents.php';
     include __DIR__ . '/inc/topup_tab.php';
+elseif ($agentTab === 'accounts'):
+    $accountsReturn = 'agents.php';
+    include __DIR__ . '/inc/agentpanel_accounts_tab.php';
 elseif ($agentTab === 'panels'):
     $panelReturn = 'agents.php';
     include __DIR__ . '/inc/agentpanel_tab.php';
@@ -175,4 +179,5 @@ else: ?>
 </div>
 <?php endif; ?>
 
+<script src="js/emoji-insert.js"></script>
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

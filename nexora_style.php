@@ -707,6 +707,64 @@ if (!function_exists('nexora_ensure_indexes')) {
         }
     }
 }
+if (!function_exists('nexora_ensure_shop_tables')) {
+    /**
+     * The tables of the two panel shops and of the questions of the agent
+     * shop. They are created here as well, so the shops work on an
+     * installation that was updated without running the migration.
+     */
+    function nexora_ensure_shop_tables(PDO $pdo): void
+    {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS agent_panel_product (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, name varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, price varchar(2000) NULL, credit varchar(2000) NULL, description TEXT NULL, btn_style VARCHAR(20) NULL, btn_emoji_id VARCHAR(32) NULL, status_product varchar(20) NOT NULL DEFAULT 'active', display_order INT NOT NULL DEFAULT 0, panel_name varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS panel_topup_product (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, shop varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'agentshop', name varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, price varchar(2000) NULL, credit varchar(2000) NULL, description TEXT NULL, unit VARCHAR(32) NULL, btn_style VARCHAR(20) NULL, btn_emoji_id VARCHAR(32) NULL, status_product varchar(20) NOT NULL DEFAULT 'active', display_order INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS agent_shop_question (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, shop varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'agentshop', question varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, display_order INT NOT NULL DEFAULT 0, status_product varchar(20) NOT NULL DEFAULT 'active', created_at INT UNSIGNED NOT NULL DEFAULT 0, INDEX idx_shop_question (`shop`(50))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
+}
+if (!function_exists('nexora_seed_default_agent_panel_products')) {
+    /**
+     * The ten default packages of the agent panel shop (اجنت پنل): one to ten
+     * million of credit, the price is the same as the credit.
+     */
+    function nexora_seed_default_agent_panel_products(PDO $pdo): void
+    {
+        // The marker makes sure that the defaults are only created once. When
+        // the administrator deletes every product on purpose, they stay
+        // deleted and are not created again.
+        try {
+            $chk = $pdo->prepare("SELECT ValuePay FROM PaySetting WHERE NamePay = ? LIMIT 1");
+            $chk->execute(['nx_seeded_agent_panel_products']);
+            if ((string) $chk->fetchColumn() !== '') {
+                return;
+            }
+        } catch (Throwable $e) {
+            return;
+        }
+        $count = (int) $pdo->query("SELECT COUNT(*) FROM agent_panel_product")->fetchColumn();
+        if ($count === 0) {
+            $digits = ['۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '۱۰'];
+            $insert = $pdo->prepare("INSERT INTO agent_panel_product (name, price, credit, description, btn_style, status_product, display_order) VALUES (?,?,?,?,?,'active',?)");
+            $order = 0;
+            foreach ($digits as $digit) {
+                $order++;
+                $credit = $order * 1000000;
+                $insert->execute([
+                    'پنل اجنت نمایندگی با ' . $digit . ' میلیون اعتبار',
+                    $credit,
+                    $credit,
+                    'پنل نمایندگی با ' . $digit . ' میلیون تومان اعتبار داخل کیف پول شما.',
+                    'primary',
+                    $order,
+                ]);
+            }
+        }
+        try {
+            $pdo->prepare("INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?,?) ON DUPLICATE KEY UPDATE ValuePay = VALUES(ValuePay)")
+                ->execute(['nx_seeded_agent_panel_products', '1']);
+        } catch (Throwable $e) {
+            error_log('nexora_seed_default_agent_panel_products: ' . $e->getMessage());
+        }
+    }
+}
 if (!function_exists('nexora_self_heal')) {
     function nexora_self_heal(): void {
         static $done = false;
@@ -773,6 +831,14 @@ if (!function_exists('nexora_self_heal')) {
             });
             $safe(function () use ($pdo) {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS collab_notes (id INT AUTO_INCREMENT PRIMARY KEY, admin_user VARCHAR(64) NULL, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, pinned TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            });
+            // The tables of the two panel shops and of the questions of the
+            // agent shop, with the ten default packages of the agent panel.
+            $safe(function () use ($pdo) {
+                nexora_ensure_shop_tables($pdo);
+            });
+            $safe(function () use ($pdo) {
+                nexora_seed_default_agent_panel_products($pdo);
             });
             // The FrenzyEx base URL stays empty on purpose: a fresh install must
             // not point at the gateway of another installation.

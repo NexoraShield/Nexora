@@ -3114,6 +3114,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     // the classic panel based test service is used.
     $testProducts = nexora_test_products(true);
     if ($testProducts && $user['step'] != "createusertest" && !isset($dataget[1])) {
+        // The share of the test services: every user may open this many test
+        // accounts. When it is used up, the bot does not give more.
+        $testUserRow = select("user", "limit_usertest", "id", $from_id, "select");
+        $testUserQuota = (int) ($testUserRow['limit_usertest'] ?? 0);
+        if ($testUserQuota <= 0 && !in_array($from_id, $admin_ids)) {
+            sendmessage($from_id, $textbotlang['users']['usertest']['limitwarning'], $keyboard_buy, 'html');
+            return;
+        }
         $testRows = [];
         foreach ($testProducts as $testProduct) {
             $testLabel = (string) $testProduct['name_product'];
@@ -3124,7 +3132,11 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $testRows[] = [nexora_style_btn($testLabel, "testproduct_" . $testProduct['code_product'], $testProduct)];
         }
         $testRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
-        sendmessage($from_id, $textbotlang['users']['testService']['intro'], json_encode(['inline_keyboard' => $testRows]), 'HTML');
+        $testIntro = $textbotlang['users']['testService']['intro'];
+        if (!in_array($from_id, $admin_ids)) {
+            $testIntro .= "\n\n" . strtr((string) ($textbotlang['users']['testService']['remaining'] ?? '👥 سهمیه باقی‌مانده شما: {limit} سرویس تست'), ['{limit}' => (string) $testUserQuota]);
+        }
+        sendmessage($from_id, $testIntro, json_encode(['inline_keyboard' => $testRows]), 'HTML');
         return;
     }
     $userlimit = select("user", "*", "id", $from_id, "select");
@@ -6587,12 +6599,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     $agentInvoiceId = (string) ($user['Processing_value_tow'] ?? '');
+    // The answers are handed over to the function, because the fields of the
+    // user are cleared right afterwards.
+    if (function_exists('nexora_agent_shop_finish')) {
+        nexora_agent_shop_finish($agentInvoiceId, (string) $from_id, $agentAnswers);
+    }
     update("user", "Processing_value_tow", '', "id", $from_id);
     update("user", "Processing_value_four", '', "id", $from_id);
     step('home', $from_id);
-    if (function_exists('nexora_agent_shop_finish')) {
-        nexora_agent_shop_finish($agentInvoiceId, (string) $from_id);
-    }
 } elseif ($datain == "agentshop_buy") {
     $agentCode = (string) $user['Processing_value_one'];
     $agentProduct = select("product", "*", "code_product", $agentCode, "select");
@@ -6744,7 +6758,9 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         0,
         0,
         'unpaid',
-        (string) ($agentPanelProduct['description'] ?? ''),
+        // The marker tells the payment handler that this order delivers an
+        // agent panel and not a VPN service.
+        'agentpanelshop:' . (int) $agentPanelProduct['id'] . '|' . (string) ($agentPanelProduct['description'] ?? ''),
         $agentPanelNotif,
     ]);
     update("invoice", "payable_amount", $agentPanelPrice, "id_invoice", $agentPanelRandom);
@@ -6865,13 +6881,21 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $topupShop = $datain === "topup_agentpanelshop" ? 'agentpanelshop' : 'agentshop';
     $topupPanels = function_exists('nexora_topup_targets') ? nexora_topup_targets((string) $from_id, $topupShop) : nexora_user_panels($from_id, $topupShop);
     if (!$topupPanels) {
-        // The customer has no panel yet, so the button of the agent shop is
+        // The customer has no panel yet, so the button of the shop is
         // shown right under the message.
+        $isAgentPanelShop = ($topupShop === 'agentpanelshop');
+        $topupBuyLabel = $isAgentPanelShop
+            ? ($textbotlang['textbot']['agentPanelShop'] ?? '🖥 خرید اجنت پنل')
+            : ($textbotlang['textbot']['agentShop'] ?? '🛒 خرید پنل نمایندگی');
+        $topupBuyCallback = $isAgentPanelShop ? 'agentpanelshop' : 'agentshop';
         $topupBuyKeyboard = json_encode(['inline_keyboard' => [
-            [['text' => ($textbotlang['textbot']['agentShop'] ?? '🛒 خرید پنل نمایندگی'), 'callback_data' => "agentshop"]],
+            [['text' => $topupBuyLabel, 'callback_data' => $topupBuyCallback]],
             [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]],
         ]]);
-        sendmessage($from_id, ($textbotlang['users']['topUp']['noPanelBuy'] ?? "⚠️ شما هنوز هیچ پنل نمایندگی نخریده‌اید که شارژ انجام بدید.\nلطفاً اول با دکمهٔ پایین یک پنل تهیه کنید 👇"), $topupBuyKeyboard, 'HTML');
+        $topupNoPanelText = $isAgentPanelShop
+            ? ($textbotlang['users']['topUp']['noPanelBuyAgentPanel'] ?? "⚠️ شما هنوز هیچ اجنت پنل نمایندگی نخریده‌اید که شارژ انجام بدید.\nلطفاً اول با دکمهٔ پایین یک اجنت پنل تهیه کنید 👇")
+            : ($textbotlang['users']['topUp']['noPanelBuy'] ?? "⚠️ شما هنوز هیچ پنل نمایندگی نخریده‌اید که شارژ انجام بدید.\nلطفاً اول با دکمهٔ پایین یک پنل تهیه کنید 👇");
+        sendmessage($from_id, $topupNoPanelText, $topupBuyKeyboard, 'HTML');
         return;
     }
     $topupRows = [];

@@ -17,7 +17,10 @@ if (!function_exists('nexora_agent_current')) {
         global $pdo;
         if (empty($_SESSION['nexora_agent_id'])) return null;
         try {
-            $stmt = $pdo->prepare('SELECT * FROM `user` WHERE id = ? LIMIT 1');
+            // The access to the panel is bound to the row of the agent_auth:
+            // when the administrator takes the access away, the session of the
+            // agent stops working right away.
+            $stmt = $pdo->prepare('SELECT u.* FROM `user` u INNER JOIN agent_auth a ON a.id_user = u.id WHERE u.id = ? LIMIT 1');
             $stmt->execute([(string) $_SESSION['nexora_agent_id']]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             return is_array($user) ? $user : null;

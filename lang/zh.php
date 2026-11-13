@@ -251,6 +251,7 @@ return [
 🎁 增加余额：<b>{credit}</b>
 💰 当前余额：<b>{balance}</b> 汤曼',
                 
+    'noPanelBuyAgentPanel' => '⚠️ 您还没有购买代理面板，无法进行充值。\n请先用下面的按钮购买一个代理面板 👇',
     'noPanelBuy' => '⚠️ 您还没有购买代理面板，无法进行充值。\n请先用下面的按钮购买一个面板 👇',
     'selectProduct' => '🛒 您想为哪个商品充值？',
     'successManual' => '✅ 操作已成功，详情已发送给客服。\n\n将在 24 小时内生效。如需加快进度，可以给机器人客服发消息。',],
@@ -258,6 +259,7 @@ return [
                         'intro' => '🧪 <b>测试服务</b>
 
 请选择一个测试服务：',
+                        'remaining' => '👥 您的剩余额度：{limit} 个测试服务',
                         'empty' => '⭕️ 目前没有测试服务。',
                         'details' => '🧪 <b>{name}</b>
 
@@ -1321,7 +1323,7 @@ https://t.me/%s?start=%s',
                 ],
                 'usertest' => [
                         'errorcreat' => '❌ 创建订阅时出错，请联系客服解决问题。',
-                        'limitwarning' => '⛔️ 您已达到测试账号的上限。\n\n需要更多请联系机器人客服。',
+                        'limitwarning' => '⛔️ 您已达到测试账号的上限。\n\n您的测试服务额度已用完。如需更多，请联系机器人客服。',
                         'unavailable' => '📌 测试服务目前不可用。',
                 ],
                 'wheelLuck' => [

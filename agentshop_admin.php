@@ -50,9 +50,12 @@ if (!function_exists('nexora_agent_shop_set_questions')) {
 
 if (!function_exists('nexora_agent_shop_bought_products')) {
     /**
-     * The products of the agent shop that a customer already bought. They are
-     * shown before the top up options, so the customer can choose the panel
-     * that should be charged.
+     * The products of a shop that a customer already bought. They are shown
+     * before the top up options, so the customer can choose the panel that
+     * should be charged.
+     *
+     * The result is a list (numeric keys) of rows: the name of the product,
+     * its price, the credit and the panel it belongs to.
      */
     function nexora_agent_shop_bought_products(string $userId, string $shop = 'agentshop'): array
     {
@@ -64,11 +67,26 @@ if (!function_exists('nexora_agent_shop_bought_products')) {
         $active = "('active','end_of_time','end_of_volume','sendedwarn','send_on_hold')";
         try {
             if ($shop === 'agentpanelshop') {
-                $st = $pdo->prepare("SELECT id, name, description, price, credit FROM agent_panel_product WHERE status_product = 'active' ORDER BY display_order, id");
-                $st->execute();
+                // Only the agent panels the customer really bought: the name of
+                // the product is stored in the invoice of the purchase. The
+                // marker of the note and the catalog of the agent panel are
+                // both used, so a product that was renamed still counts.
+                $st = $pdo->prepare("SELECT i.name_product AS name, i.Service_location AS panel_name, MAX(i.time_sell) AS last_time FROM invoice i WHERE i.id_user = ? AND i.name_product <> '' AND i.note NOT LIKE 'topup:%' AND i.Status IN $active AND (i.note LIKE 'agentpanelshop:%' OR i.name_product IN (SELECT name FROM agent_panel_product)) GROUP BY i.name_product, i.Service_location ORDER BY last_time DESC");
+                $st->execute([$userId]);
                 $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+                // The catalog of the agent panel is added to the row, so the
+                // price and the credit of the product are known as well.
+                foreach ($rows as $index => $row) {
+                    $product = nexora_agent_panel_product_by_name((string) ($row['name'] ?? ''));
+                    $rows[$index]['price'] = $product['price'] ?? 0;
+                    $rows[$index]['credit'] = $product['credit'] ?? 0;
+                    $rows[$index]['description'] = $product['description'] ?? '';
+                }
             } else {
-                $st = $pdo->prepare("SELECT i.id_invoice AS id, p.id AS product_id, p.name_product AS name, p.note AS description, p.price_product AS price, p.Location AS panel_name FROM invoice i INNER JOIN product p ON p.name_product = i.name_product AND p.agent = 'agentshop' WHERE i.id_user = ? AND i.Status IN $active GROUP BY p.id ORDER BY MAX(i.time_sell) DESC");
+                // The top up orders are not products of the shop, so they are
+                // left out. Every column of the select is in the GROUP BY, so
+                // the query also works with ONLY_FULL_GROUP_BY turned on.
+                $st = $pdo->prepare("SELECT COALESCE(p.name_product, i.name_product) AS name, p.note AS description, p.price_product AS price, COALESCE(p.Location, i.Service_location) AS panel_name, MAX(i.time_sell) AS last_time FROM invoice i LEFT JOIN product p ON p.name_product = i.name_product AND p.agent = 'agentshop' WHERE i.id_user = ? AND i.name_product <> '' AND i.note NOT LIKE 'topup:%' AND i.Status IN $active GROUP BY i.name_product, i.Service_location, p.id, p.name_product, p.note, p.price_product, p.Location ORDER BY last_time DESC");
                 $st->execute([$userId]);
                 $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             }
@@ -77,14 +95,35 @@ if (!function_exists('nexora_agent_shop_bought_products')) {
             return [];
         }
         $out = [];
+        $seen = [];
         foreach ($rows as $row) {
             $name = trim((string) ($row['name'] ?? ''));
-            if ($name === '' || isset($out[$name])) {
+            if ($name === '' || isset($seen[$name])) {
                 continue;
             }
-            $out[$name] = $row;
+            $seen[$name] = true;
+            $out[] = $row;
         }
         return $out;
+    }
+}
+
+if (!function_exists('nexora_agent_shop_bought_names')) {
+    /**
+     * The names of the products of a shop that a customer already bought. The
+     * top up menu works with the names, because the name is what the customer
+     * sees and what the administrator needs in the report.
+     */
+    function nexora_agent_shop_bought_names(string $userId, string $shop = 'agentshop'): array
+    {
+        $names = [];
+        foreach (nexora_agent_shop_bought_products((string) $userId, $shop) as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name !== '' && !in_array($name, $names, true)) {
+                $names[] = $name;
+            }
+        }
+        return $names;
     }
 }
 
@@ -128,8 +167,12 @@ if (!function_exists('nexora_agent_shop_finish')) {
     /**
      * The order is complete: the administrator gets the details of the payment
      * and of the answers, the customer gets the confirmation.
+     *
+     * The answers can be handed over directly. When they are not, they are
+     * read from the user, so the function can also be called right after the
+     * last answer was stored.
      */
-    function nexora_agent_shop_finish(string $invoiceId, string $userId): bool
+    function nexora_agent_shop_finish(string $invoiceId, string $userId, ?array $answers = null): bool
     {
         global $pdo, $textbotlang;
         $invoice = select("invoice", "*", "id_invoice", $invoiceId, "select");
@@ -153,7 +196,9 @@ if (!function_exists('nexora_agent_shop_finish')) {
             $productName = (string) $product['name_product'];
         }
         $questions = nexora_agent_shop_questions('agentshop');
-        $answers = json_decode((string) (select("user", "Processing_value_four", "id", $userId, "select")['Processing_value_four'] ?? '[]'), true);
+        if ($answers === null) {
+            $answers = json_decode((string) (select("user", "Processing_value_four", "id", $userId, "select")['Processing_value_four'] ?? '[]'), true);
+        }
         $answers = is_array($answers) ? $answers : [];
         $user = select("user", "*", "id", $userId, "select");
         $userName = trim((string) ($user['username'] ?? ''));

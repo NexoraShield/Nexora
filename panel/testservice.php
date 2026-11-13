@@ -220,6 +220,8 @@ include __DIR__ . '/inc/layout_head.php';
   <button class="btn btn-primary" onclick="openModal('addModal')"><?= icon('plus', 14) ?> افزودن سرویس تست</button>
 </div>
 
+<?php include __DIR__ . '/inc/emoji_picker_bar.php'; ?>
+
 <?php
 $testLimit = (int) (db_fetch($pdo, "SELECT limit_usertest_all FROM setting LIMIT 1")['limit_usertest_all'] ?? 1);
 $testUsersWith = (int) db_count($pdo, "SELECT COUNT(*) FROM user WHERE limit_usertest > 0");
@@ -380,7 +382,7 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
             <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر خالی بماند، اینباند پیش‌فرض پنل استفاده می‌شود.</small>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="2"></textarea></label>
         </div>
       </div>
@@ -431,7 +433,7 @@ $tsInboundField = function (string $id, array $selected = []) use ($panelInbound
             <?= $tsInboundField('ts_edit_inbounds') ?>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_testservice_style_select('', 'btn_style', 'ts_edit_style') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="ts_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" id="ts_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="ts_edit_status" class="select">
               <option value="active">فعال</option>
@@ -521,5 +523,6 @@ window.openEditTest = function (p) {
     openModal('editModal');
 };
 </script>
+<script src="js/emoji-insert.js"></script>
 
 <?php include __DIR__ . '/inc/layout_foot.php'; ?>

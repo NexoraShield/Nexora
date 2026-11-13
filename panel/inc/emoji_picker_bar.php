@@ -1,4 +1,14 @@
 <?php
+// The library of the premium emoji is built here, so every form that shows
+// this bar gets the picker - even when the page did not build the rows.
+if (empty($msEmojiRows) || !is_array($msEmojiRows)) {
+    $msEmojiRows = [];
+    if (function_exists('nexora_emoji_list') && function_exists('nexora_emoji_placeholder')) {
+        foreach (nexora_emoji_list() as $er) {
+            $msEmojiRows[] = ['placeholder' => nexora_emoji_placeholder($er), 'label' => trim((string) ($er['emoji_name'] ?? ''))];
+        }
+    }
+}
 if (empty($msEmojiRows) || !is_array($msEmojiRows)) return;
 ?>
 <style>.ms-emoji-bar{border:1px solid rgba(128,128,128,.35);border-radius:10px;padding:10px 12px;margin-bottom:14px}.ms-emoji-bar-title{font-weight:700;font-size:.85rem;margin-bottom:8px}.ms-emoji-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow-y:auto}.ms-emoji-chip{border:1px solid rgba(128,128,128,.4);border-radius:8px;padding:4px 10px;font-size:.78rem;cursor:pointer;background:transparent;color:inherit}.ms-emoji-chip:hover{border-color:#3390ec}</style>

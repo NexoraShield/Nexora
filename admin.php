@@ -422,24 +422,44 @@ if ($datain == "paygwback") {
     }
     update("user", "Processing_value_one", (string) $shopId, "id", $from_id);
     update("user", "Processing_value_tow", $shopKind, "id", $from_id);
-    update("user", "Processing_value_four", json_encode([
-        'name' => nexora_shop_product_name($shopRow),
-        'description' => nexora_shop_product_description($shopRow),
-        'emoji' => (string) ($shopRow['btn_emoji_id'] ?? ''),
-    ], JSON_UNESCAPED_UNICODE), "id", $from_id);
+    $shopData = nexora_shop_product_data($shopKind, $shopRow);
+    $shopData['stage'] = 'name';
+    update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
     step('adv_shop_edit', $from_id);
-    sendmessage($from_id, "✏️ نام جدید محصول را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.\n\nنام فعلی: <b>" . nexora_shop_product_name($shopRow) . "</b>\nبرای نگه‌داشتن نام فعلی <code>-</code> بفرستید.", null, 'HTML');
+    sendmessage($from_id, "✏️ نام جدید محصول را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.\n\nنام فعلی: <b>" . $shopData['name'] . "</b>\nبرای نگه‌داشتن نام فعلی <code>-</code> بفرستید.", null, 'HTML');
 } elseif (preg_match('/^adv_shop_new_(agentshop|agentpanelshop)$/', $datain, $shopMatch) && $adminrulecheck['rule'] == "administrator") {
     $shopKind = $shopMatch[1] === 'agentpanelshop' ? 'agentpanelshop' : 'agentshop';
     update("user", "Processing_value_one", '0', "id", $from_id);
     update("user", "Processing_value_tow", $shopKind, "id", $from_id);
-    update("user", "Processing_value_four", json_encode([
+    $shopData = [
         'name' => '',
         'description' => '',
         'emoji' => '',
-    ], JSON_UNESCAPED_UNICODE), "id", $from_id);
+        'price' => 0,
+        'credit' => 0,
+        'volume' => 0,
+        'time' => 0,
+        'panel' => '',
+        'stage' => 'name',
+    ];
+    update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
     step('adv_shop_edit', $from_id);
     sendmessage($from_id, "📝 نام محصول جدید را بفرستید.\nمی‌توانید همراه آن ایموجی پرمیوم هم بفرستید.", null, 'HTML');
+} elseif (preg_match('/^adv_shop_panel_(\d+)$/', $datain, $shopMatch) && $adminrulecheck['rule'] == "administrator") {
+    $shopKind = (string) ($user['Processing_value_tow'] ?? 'agentshop');
+    $shopData = json_decode((string) ($user['Processing_value_four'] ?? '{}'), true);
+    $shopData = is_array($shopData) ? $shopData : [];
+    $shopPanels = nexora_shop_panels();
+    $shopPanelIdx = (int) $shopMatch[1];
+    if (!isset($shopPanels[$shopPanelIdx])) {
+        sendmessage($from_id, "⭕️ این پنل پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $shopData['panel'] = (string) $shopPanels[$shopPanelIdx];
+    $shopData['stage'] = 'description';
+    update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+    step('adv_shop_edit', $from_id);
+    sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
 } elseif ($user['step'] == "adv_shop_edit" && $adminrulecheck['rule'] == "administrator") {
     $shopKind = (string) ($user['Processing_value_tow'] ?? 'agentshop');
     $shopId = (int) ($user['Processing_value_one'] ?? 0);
@@ -449,7 +469,8 @@ if ($datain == "paygwback") {
     if (!isset($shopData['stage'])) {
         $shopData['stage'] = 'name';
     }
-    if ($shopData['stage'] === 'name') {
+    $shopStage = (string) $shopData['stage'];
+    if ($shopStage === 'name') {
         if (!$shopSkip) {
             $shopLabel = splitCustomEmojiLabel((string) $text);
             $shopPlain = trim((string) ($shopLabel['text'] ?? ''));
@@ -462,10 +483,108 @@ if ($datain == "paygwback") {
                 $shopData['emoji'] = trim((string) $shopLabel['icon']);
             }
         }
-        $shopData['stage'] = 'description';
+        $shopData['stage'] = nexora_shop_wizard_next_stage($shopKind, 'name');
         update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
-        step('adv_shop_desc', $from_id);
-        sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
+        step('adv_shop_edit', $from_id);
+        if ($shopData['stage'] === 'credit') {
+            sendmessage($from_id, "🎁 اعتبار داخل پنل را بفرستید (به تومان).\nقیمت محصول به صورت پیش‌فرض همان اعتبار است و در مرحلهٔ بعد می‌توانید آن را تغییر دهید.\n\nاعتبار فعلی: <b>" . number_format((float) ($shopData['credit'] ?? 0)) . "</b>", null, 'HTML');
+        } elseif ($shopData['stage'] === 'price') {
+            sendmessage($from_id, "💰 قیمت محصول را بفرستید (به تومان).\n\nقیمت فعلی: <b>" . number_format((float) ($shopData['price'] ?? 0)) . "</b>", null, 'HTML');
+        } elseif ($shopData['stage'] === 'volume') {
+            sendmessage($from_id, "💾 حجم محصول را بفرستید (گیگابایت).\n\nحجم فعلی: <b>" . number_format((float) ($shopData['volume'] ?? 0)) . "</b> GB", null, 'HTML');
+        } elseif ($shopData['stage'] === 'time') {
+            sendmessage($from_id, "⏳ مدت محصول را بفرستید (روز).\n\nمدت فعلی: <b>" . (int) ($shopData['time'] ?? 0) . "</b> روز", null, 'HTML');
+        } else {
+            step('adv_shop_edit', $from_id);
+            sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
+        }
+        return;
+    }
+    if ($shopStage === 'credit') {
+        if (!$shopSkip) {
+            $shopCredit = preg_replace('/[^0-9.]/', '', (string) $text);
+            if ($shopCredit === '' || !is_numeric($shopCredit)) {
+                sendmessage($from_id, "⭕️ فقط یک عدد بفرستید.", null, 'HTML');
+                return;
+            }
+            $shopData['credit'] = (float) $shopCredit;
+            $shopData['price'] = (float) $shopCredit;
+        }
+        $shopData['stage'] = nexora_shop_wizard_next_stage($shopKind, 'credit');
+        update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+        step('adv_shop_edit', $from_id);
+        sendmessage($from_id, "💰 قیمت محصول را بفرستید (به تومان).\n\nقیمت فعلی: <b>" . number_format((float) ($shopData['price'] ?? 0)) . "</b>", null, 'HTML');
+        return;
+    }
+    if ($shopStage === 'price') {
+        if (!$shopSkip) {
+            $shopPrice = preg_replace('/[^0-9.]/', '', (string) $text);
+            if ($shopPrice === '' || !is_numeric($shopPrice)) {
+                sendmessage($from_id, "⭕️ فقط یک عدد بفرستید.", null, 'HTML');
+                return;
+            }
+            $shopData['price'] = (float) $shopPrice;
+        }
+        $shopData['stage'] = nexora_shop_wizard_next_stage($shopKind, 'price');
+        update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+        step('adv_shop_edit', $from_id);
+        if ($shopData['stage'] === 'volume') {
+            sendmessage($from_id, "💾 حجم محصول را بفرستید (گیگابایت).\n\nحجم فعلی: <b>" . number_format((float) ($shopData['volume'] ?? 0)) . "</b> GB", null, 'HTML');
+        } elseif ($shopData['stage'] === 'time') {
+            sendmessage($from_id, "⏳ مدت محصول را بفرستید (روز).\n\nمدت فعلی: <b>" . (int) ($shopData['time'] ?? 0) . "</b> روز", null, 'HTML');
+        } elseif ($shopData['stage'] === 'panel') {
+            $shopPanelRows = [];
+            foreach (nexora_shop_panels() as $shopPanelIdx => $shopPanelName) {
+                $shopPanelRows[] = [['text' => (string) $shopPanelName, 'callback_data' => 'adv_shop_panel_' . $shopPanelIdx]];
+            }
+            sendmessage($from_id, "🖥 پنل محصول را انتخاب کنید.\n\nپنل فعلی: " . (string) ($shopData['panel'] ?? '-'), $shopPanelRows ? json_encode(['inline_keyboard' => $shopPanelRows]) : null, 'HTML');
+        } else {
+            step('adv_shop_edit', $from_id);
+            sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
+        }
+        return;
+    }
+    if ($shopStage === 'volume') {
+        if (!$shopSkip) {
+            $shopVolume = preg_replace('/[^0-9.]/', '', (string) $text);
+            if ($shopVolume === '' || !is_numeric($shopVolume)) {
+                sendmessage($from_id, "⭕️ فقط یک عدد بفرستید.", null, 'HTML');
+                return;
+            }
+            $shopData['volume'] = (float) $shopVolume;
+        }
+        $shopData['stage'] = 'time';
+        update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+        step('adv_shop_edit', $from_id);
+        sendmessage($from_id, "⏳ مدت محصول را بفرستید (روز).\n\nمدت فعلی: <b>" . (int) ($shopData['time'] ?? 0) . "</b> روز", null, 'HTML');
+        return;
+    }
+    if ($shopStage === 'time') {
+        if (!$shopSkip) {
+            $shopTime = preg_replace('/[^0-9]/', '', (string) $text);
+            if ($shopTime === '') {
+                sendmessage($from_id, "⭕️ فقط یک عدد بفرستید.", null, 'HTML');
+                return;
+            }
+            $shopData['time'] = (int) $shopTime;
+        }
+        $shopData['stage'] = 'panel';
+        update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+        step('adv_shop_edit', $from_id);
+        $shopPanelRows = [];
+        foreach (nexora_shop_panels() as $shopPanelIdx => $shopPanelName) {
+            $shopPanelRows[] = [['text' => (string) $shopPanelName, 'callback_data' => 'adv_shop_panel_' . $shopPanelIdx]];
+        }
+        sendmessage($from_id, "🖥 پنل محصول را انتخاب کنید.\n\nپنل فعلی: " . (string) ($shopData['panel'] ?? '-'), $shopPanelRows ? json_encode(['inline_keyboard' => $shopPanelRows]) : null, 'HTML');
+        return;
+    }
+    if ($shopStage === 'panel') {
+        // The panel is chosen with a button, a text does not belong here.
+        $shopPanelRows = [];
+        foreach (nexora_shop_panels() as $shopPanelIdx => $shopPanelName) {
+            $shopPanelRows[] = [['text' => (string) $shopPanelName, 'callback_data' => 'adv_shop_panel_' . $shopPanelIdx]];
+        }
+        sendmessage($from_id, "🖥 پنل محصول را انتخاب کنید (یکی از دکمه‌های زیر را بزنید).\n\nپنل فعلی: " . (string) ($shopData['panel'] ?? '-'), $shopPanelRows ? json_encode(['inline_keyboard' => $shopPanelRows]) : null, 'HTML');
         return;
     }
     if (!$shopSkip) {
@@ -477,7 +596,7 @@ if ($datain == "paygwback") {
     update("user", "Processing_value_tow", '', "id", $from_id);
     update("user", "Processing_value_four", '', "id", $from_id);
     if ($shopSavedId > 0) {
-        sendmessage($from_id, "✅ محصول ذخیره شد.\n\n🏷 نام: " . (string) ($shopData['name'] ?? '') . "\n📝 توضیحات: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
+        sendmessage($from_id, "✅ محصول ذخیره شد.\n\n🏷 نام: " . (string) ($shopData['name'] ?? '') . "\n💰 قیمت: " . number_format((float) ($shopData['price'] ?? 0)) . " تومان" . ($shopKind === 'agentpanelshop' ? "\n🎁 اعتبار پنل: " . number_format((float) ($shopData['credit'] ?? 0)) . " تومان" : '') . "\n📝 توضیحات: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
     } else {
         sendmessage($from_id, "⭕️ محصول ذخیره نشد.", null, 'HTML');
     }
@@ -488,12 +607,44 @@ if ($datain == "paygwback") {
         $tsRows[] = ['text' => '🧪 ' . nexora_test_service_summary($tsRow), 'callback_data' => 'adv_test_edit_' . $tsId];
     }
     $tsKeyboard = ['inline_keyboard' => $tsRows];
+    // The share of the test services of every user: every user has a numeric
+    // id and may open this many test accounts.
+    $tsLimit = (int) (select("setting", "limit_usertest_all", null, null, "select")['limit_usertest_all'] ?? 0);
+    $tsUsersTotal = (int) (select("user", "*", null, null, "count") ?? 0);
+    $tsKeyboard['inline_keyboard'][] = [['text' => '👥 سهمیه تست هر کاربر: ' . $tsLimit, 'callback_data' => 'adv_test_limit']];
     $tsKeyboard['inline_keyboard'][] = [['text' => '➕ سرویس تست جدید', 'callback_data' => 'adv_test_new']];
     $tsKeyboard['inline_keyboard'][] = [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => 'admin']];
     $tsText = "<b>🧪 سرویس تست</b>\n\n"
-        . "اینجا همان کاری را می‌توانید بکنید که در پنل تحت وب می‌شود: سرویس تست بسازید، حجم و مدت و پنل و اینباند آن را تنظیم کنید.\n\n"
+        . "اینجا می‌توانید سرویس تست بسازید، حجم و مدت و پنل و اینباند آن را تنظیم کنید.\n\n"
+        . "👥 <b>هر کاربر (با آیدی عددی) می‌تواند " . $tsLimit . " سرویس تست باز کند.</b>\n"
+        . "🧑 تعداد کاربران ربات: " . $tsUsersTotal . "\n"
+        . "⛔️ بعد از تمام شدن سهمیه، ربات به کاربر اجازه سرویس تست بیشتری نمی‌دهد.\n\n"
         . (count($tsRows) ? count($tsRows) . " سرویس تست تعریف شده است. برای ویرایش روی آن بزنید." : "هنوز سرویس تستی تعریف نشده است.");
     sendmessage($from_id, $tsText, json_encode($tsKeyboard), 'HTML');
+} elseif ($datain == "adv_test_limit" && $adminrulecheck['rule'] == "administrator") {
+    $tsLimitNow = (int) (select("setting", "limit_usertest_all", null, null, "select")['limit_usertest_all'] ?? 0);
+    sendmessage($from_id, "👥 تعداد سرویس تستی که هر کاربر می‌تواند بگیرد را بفرستید.\n\nمقدار فعلی: <b>" . $tsLimitNow . "</b>", null, 'HTML');
+    step('adv_test_limit_set', $from_id);
+} elseif ($user['step'] == "adv_test_limit_set" && $adminrulecheck['rule'] == "administrator") {
+    if (!ctype_digit(trim((string) $text))) {
+        sendmessage($from_id, "⭕️ فقط یک عدد بفرستید (مثلا 4).", null, 'HTML');
+        return;
+    }
+    $tsNewLimit = (int) trim((string) $text);
+    update("setting", "limit_usertest_all", (string) $tsNewLimit);
+    step('home', $from_id);
+    sendmessage($from_id, "✅ سهمیه سرویس تست کاربران جدید روی <b>" . $tsNewLimit . "</b> تنظیم شد.\n\nاگر می‌خواهید این سهمیه برای کاربران فعلی هم اعمال شود، دکمهٔ زیر را بزنید.", json_encode(['inline_keyboard' => [
+        [['text' => '👥 اعمال برای همه کاربران فعلی', 'callback_data' => 'adv_test_limit_all']],
+        [['text' => '🧪 بازگشت به سرویس تست', 'callback_data' => 'adv_testservices']],
+    ]]), 'HTML');
+} elseif ($datain == "adv_test_limit_all" && $adminrulecheck['rule'] == "administrator") {
+    $tsLimitAll = (int) (select("setting", "limit_usertest_all", null, null, "select")['limit_usertest_all'] ?? 0);
+    $tsLimitStmt = $pdo->prepare("UPDATE user SET limit_usertest = ?");
+    $tsLimitStmt->execute([$tsLimitAll]);
+    clearSelectCache('user');
+    sendmessage($from_id, "👥 سهمیه سرویس تست روی <b>" . $tsLimitAll . "</b> برای همه کاربران تنظیم شد.", json_encode(['inline_keyboard' => [
+        [['text' => '🧪 بازگشت به سرویس تست', 'callback_data' => 'adv_testservices']],
+    ]]), 'HTML');
 } elseif ($datain == "adv_test_new" && $adminrulecheck['rule'] == "administrator") {
     $tsState = ['id' => 0, 'step' => 'name', 'data' => [
         'Volume_constraint' => 1,

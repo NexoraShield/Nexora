@@ -244,7 +244,7 @@ else: ?>
             </select>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="note_product" rows="3" placeholder="توضیح محصول، مزیت‌ها، شرایط استفاده و ..."></textarea></label>
         </div>
       </div>
@@ -288,7 +288,7 @@ else: ?>
             </select>
           </label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentshop_style_select('', 'btn_style', 'edit_btn_style') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" id="edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="edit_status" class="select">
               <option value="active">فعال</option>
@@ -307,6 +307,7 @@ else: ?>
   </div>
 </div>
 
+<script src="js/emoji-insert.js"></script>
 <script>
 window.openEditModal = function (p) {
     p = p || {};

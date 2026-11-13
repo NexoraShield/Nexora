@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
+// The questions of the agent shop are needed by the payment handlers as well:
+// they are asked right after the payment is confirmed.
+require_once __DIR__ . '/agentshop_admin.php';
 
 const MIN_PHP_VERSION = '8.2.0';
 
@@ -1522,6 +1525,9 @@ function DirectPayment($order_id, $image = 'images.jpg')
                 }
                 $topupCredit = floatval($topupItem['credit'] ?? 0);
                 $topupPanel = trim((string) ($get_invoice['Service_location'] ?? ''));
+                // The balance before the charge is kept, so the administrator
+                // sees how much the panel had and how much it has now.
+                $topupBalanceBefore = floatval(select("user", "Balance", "id", $Balance_id['id'], "select")['Balance'] ?? 0);
                 if ($topupShop === 'agentpanelshop' && $topupCredit > 0) {
                     addBalance($Balance_id['id'], $topupCredit);
                 }
@@ -1540,14 +1546,26 @@ function DirectPayment($order_id, $image = 'images.jpg')
                 sendmessage($Balance_id['id'], $topupText, null, 'HTML');
                 // the admin gets the details, so the charge can be done
                 $topupAdminText = "💳 <b>شارژ پنل تایید شد</b>\n"
-                    . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                    . "👤 کاربر: " . $Balance_id['id'] . " (" . trim((string) ($Balance_id['username'] ?? '')) . ")\n"
                     . ($topupShop === 'agentshop'
                         ? "🛒 محصول خریداری‌شده: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n"
-                        : "🖥 پنل: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n")
+                        : "🖥 پنل انتخاب‌شده: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n")
                     . "🏷 گزینه شارژ: " . $topupItem['name'] . "\n"
                     . "💳 مبلغ پرداختی: " . number_format($orderPrice) . " تومان\n"
-                    . "🎁 اعتبار: " . number_format($topupCredit) . "\n"
-                    . ($topupShop === 'agentshop' ? "⚠️ این شارژ باید دستی انجام شود." : "✅ اعتبار به کیف پول کاربر اضافه شد.");
+                    . "🎁 اعتبار: " . number_format($topupCredit) . "\n";
+                if (trim((string) ($topupItem['description'] ?? '')) !== '') {
+                    $topupAdminText .= "📝 توضیحات گزینه: " . strip_tags((string) $topupItem['description']) . "\n";
+                }
+                if ($topupShop === 'agentpanelshop') {
+                    // The panel of the customer is shown with its details, so
+                    // the administrator knows which panel was charged.
+                    $topupAdminText .= "👤 نام کاربری پنل: " . $Balance_id['id'] . "\n"
+                        . "🔗 لینک پنل: " . nexora_agent_panel_link() . "\n"
+                        . "💰 موجودی قبل از شارژ: " . number_format($topupBalanceBefore) . " تومان\n"
+                        . "✅ اعتبار به کیف پول کاربر اضافه شد. موجودی فعلی: " . number_format($topupBalance) . " تومان.";
+                } else {
+                    $topupAdminText .= "⚠️ این شارژ باید دستی انجام شود.";
+                }
                 if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                     telegram('sendmessage', [
                         'chat_id' => $setting['Channel_Report'],
@@ -1630,8 +1648,42 @@ function DirectPayment($order_id, $image = 'images.jpg')
             return;
         }
         // Agent panel packages are delivered as an agent login + wallet credit
-        // instead of a VPN service.
-        $agentPanelProduct = nexora_agent_panel_product_by_name($get_invoice['name_product'] ?? '');
+        // instead of a VPN service. The id of the product is in the marker of
+        // the note, so an order that was paid is still delivered when the
+        // product was renamed in the meantime.
+        $agentPanelMarker = [];
+        preg_match('/^agentpanelshop:(\d+)\|?(.*)$/s', (string) ($get_invoice['note'] ?? ''), $agentPanelMarker);
+        $agentPanelProduct = null;
+        if (!empty($agentPanelMarker[1])) {
+            $agentPanelProduct = nexora_agent_panel_product_by_id((int) $agentPanelMarker[1]);
+        }
+        if (!$agentPanelProduct) {
+            $agentPanelProduct = nexora_agent_panel_product_by_name($get_invoice['name_product'] ?? '');
+        }
+        if (!$agentPanelProduct && preg_match('/^agentpanelshop:/', (string) ($get_invoice['note'] ?? ''))) {
+            // The product was deleted after the payment. The order can not be
+            // delivered automatically, so the administrator has to do it.
+            $claimAgentInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
+            $claimAgentInvoice->execute([$get_invoice['id_invoice']]);
+            clearSelectCache('invoice');
+            $agentPanelAdminText = "⚠️ <b>پنل نمایندگی پرداخت شد ولی محصول حذف شده است</b>\n"
+                . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                . "🖥 محصول: " . (string) ($get_invoice['name_product'] ?? '-') . "\n"
+                . "💰 مبلغ: " . number_format($orderPrice) . " تومان\n"
+                . "⚠️ این پنل باید دستی تحویل شود.";
+            sendmessage($Balance_id['id'], "⚠️ پرداخت شما ثبت شد ولی پنل درخواستی در فروشگاه موجود نیست. پشتیبانی تا ۲۴ ساعت آینده پنل شما را تحویل می‌دهد.", null, 'HTML');
+            foreach ((array) $admin_ids as $agentPanelAdminId) {
+                if (trim((string) $agentPanelAdminId) === '') {
+                    continue;
+                }
+                telegram('sendmessage', [
+                    'chat_id' => $agentPanelAdminId,
+                    'text' => $agentPanelAdminText,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+            return;
+        }
         if ($agentPanelProduct) {
             $claimAgentInvoice = $pdo->prepare("UPDATE invoice SET Status = 'active' WHERE id_invoice = ? AND Status <> 'active'");
             $claimAgentInvoice->execute([$get_invoice['id_invoice']]);
@@ -1641,6 +1693,27 @@ function DirectPayment($order_id, $image = 'images.jpg')
                 return;
             }
             $agentCreds = nexora_agent_panel_deliver($agentPanelProduct, (string) $Balance_id['id']);
+            if (empty($agentCreds['ok'])) {
+                // The access of the panel could not be written: the
+                // administrator has to create it by hand.
+                $agentPanelAdminText = "⚠️ <b>پنل نمایندگی پرداخت شد ولی دسترسی ساخته نشد</b>\n"
+                    . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                    . "🖥 محصول: " . $agentPanelProduct['name'] . "\n"
+                    . "💰 مبلغ: " . number_format($orderPrice) . " تومان\n"
+                    . "⚠️ دسترسی پنل نمایندگی را دستی بسازید.";
+                sendmessage($Balance_id['id'], "⚠️ پرداخت شما ثبت شد. دسترسی پنل نمایندگی باید دستی ساخته شود، پشتیبانی تا ۲۴ ساعت آینده آن را برای شما می‌فرستد.", null, 'HTML');
+                foreach ((array) $admin_ids as $agentPanelAdminId) {
+                    if (trim((string) $agentPanelAdminId) === '') {
+                        continue;
+                    }
+                    telegram('sendmessage', [
+                        'chat_id' => $agentPanelAdminId,
+                        'text' => $agentPanelAdminText,
+                        'parse_mode' => 'HTML'
+                    ]);
+                }
+                return;
+            }
             $agentText = strtr($textbotlang['users']['agentPanelShop']['credentials'], [
                 '{username}' => $agentCreds['username'],
                 '{password}' => $agentCreds['password'],
@@ -1649,14 +1722,25 @@ function DirectPayment($order_id, $image = 'images.jpg')
             ]);
             sendmessage($Balance_id['id'], $agentText, null, 'HTML');
             $agentReport = "✅ پرداخت پنل نمایندگی تایید شد\n"
-                . "👤 کاربر: " . $Balance_id['id'] . "\n"
+                . "👤 کاربر: " . $Balance_id['id'] . " (" . trim((string) ($Balance_id['username'] ?? '')) . ")\n"
                 . "🖥 پنل: " . $agentPanelProduct['name'] . "\n"
+                . "👤 نام کاربری پنل: " . $agentCreds['username'] . "\n"
                 . "💰 مبلغ: " . number_format($orderPrice) . " تومان\n"
                 . "🎁 اعتبار پنل: " . number_format(floatval($agentPanelProduct['credit'] ?? 0)) . " تومان";
             if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
                     'message_thread_id' => $buyreport,
+                    'text' => $agentReport,
+                    'parse_mode' => 'HTML'
+                ]);
+            }
+            foreach ((array) $admin_ids as $agentPanelAdminId) {
+                if (trim((string) $agentPanelAdminId) === '') {
+                    continue;
+                }
+                telegram('sendmessage', [
+                    'chat_id' => $agentPanelAdminId,
                     'text' => $agentReport,
                     'parse_mode' => 'HTML'
                 ]);
@@ -2272,8 +2356,26 @@ function nexora_agent_panel_product_by_name($name): ?array
         return null;
     }
     try {
-        $st = $pdo->prepare("SELECT * FROM agent_panel_product WHERE name = ? AND status_product = 'active' LIMIT 1");
+        // The status is not filtered here: an order that was paid must be
+        // delivered even when the product was hidden or deleted afterwards.
+        $st = $pdo->prepare("SELECT * FROM agent_panel_product WHERE name = ? LIMIT 1");
         $st->execute([$name]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+function nexora_agent_panel_product_by_id($id): ?array
+{
+    global $pdo;
+    $id = (int) $id;
+    if ($id <= 0) {
+        return null;
+    }
+    try {
+        $st = $pdo->prepare("SELECT * FROM agent_panel_product WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     } catch (Throwable $e) {
@@ -2289,12 +2391,14 @@ function nexora_agent_panel_deliver(array $product, string $userId): array
     global $pdo, $domainhosts;
     $username = trim($userId);
     $pass = 'Nx' . bin2hex(random_bytes(3));
+    $ok = true;
     try {
         $hash = password_hash($pass, PASSWORD_DEFAULT);
         $st = $pdo->prepare("INSERT INTO agent_auth (id_user, pass_hash, created_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE pass_hash = VALUES(pass_hash), created_at = VALUES(created_at)");
         $st->execute([$username, $hash, time()]);
     } catch (Throwable $e) {
         error_log('nexora_agent_panel_deliver: ' . $e->getMessage());
+        $ok = false;
     }
     $credit = floatval($product['credit'] ?? 0);
     if ($credit > 0) {
@@ -2302,11 +2406,186 @@ function nexora_agent_panel_deliver(array $product, string $userId): array
     }
     $link = 'https://' . (string) $domainhosts . '/agent-panel/';
     return [
+        'ok' => $ok,
         'username' => $username,
         'password' => $pass,
         'link' => $link,
         'credit' => $credit,
     ];
+}
+
+/**
+ * The link of the agent panel. The domain of the installation is used, so the
+ * link is always the one of the running installation.
+ */
+function nexora_agent_panel_link(): string
+{
+    global $domainhosts;
+    return 'https://' . (string) $domainhosts . '/agent-panel/';
+}
+
+/**
+ * The agent panels that were delivered to the customers.
+ *
+ * The row of the agent_auth is the access to the panel of the customer, the
+ * wallet of the customer is the credit of the panel. The product the customer
+ * bought is taken from the invoice of the purchase, so the administrator sees
+ * which package the panel belongs to.
+ */
+function nexora_agent_panel_accounts(int $limit = 500): array
+{
+    global $pdo;
+    $limit = max(1, min(2000, $limit));
+    $rows = [];
+    try {
+        $st = $pdo->prepare("SELECT a.id_user, a.created_at, u.username, u.Balance, u.register FROM agent_auth a INNER JOIN `user` u ON u.id = a.id_user ORDER BY a.created_at DESC, a.id_user ASC LIMIT " . (int) $limit);
+        $st->execute();
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_accounts: ' . $e->getMessage());
+        return [];
+    }
+    $ids = [];
+    foreach ($rows as $row) {
+        $ids[] = (string) ($row['id_user'] ?? '');
+    }
+    // One query for all the packages, so the list does not run a query for
+    // every single panel.
+    $products = nexora_agent_panel_last_products($ids);
+    foreach ($rows as $index => $row) {
+        $rows[$index]['id_user'] = (string) ($row['id_user'] ?? '');
+        $rows[$index]['credit'] = floatval($row['Balance'] ?? 0);
+        $rows[$index]['created_at'] = (int) ($row['created_at'] ?? 0);
+        $rows[$index]['product'] = $products[$rows[$index]['id_user']] ?? '';
+        $rows[$index]['link'] = nexora_agent_panel_link();
+    }
+    return $rows;
+}
+
+/**
+ * The name of the package of the agent panel shop every customer bought last.
+ * The result is a map: the id of the customer => the name of the package.
+ */
+function nexora_agent_panel_last_products(array $userIds): array
+{
+    global $pdo;
+    $ids = [];
+    foreach ($userIds as $userId) {
+        $userId = trim((string) $userId);
+        if ($userId !== '' && !in_array($userId, $ids, true)) {
+            $ids[] = $userId;
+        }
+    }
+    if (!$ids) {
+        return [];
+    }
+    $products = [];
+    try {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $st = $pdo->prepare("SELECT id_user, name_product FROM invoice WHERE id_user IN ($placeholders) AND (note LIKE 'agentpanelshop:%' OR name_product IN (SELECT name FROM agent_panel_product)) ORDER BY time_sell DESC, id_invoice DESC");
+        $st->execute($ids);
+        // The newest invoice of every customer is the first one of the list.
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $id = (string) ($row['id_user'] ?? '');
+            if ($id !== '' && !isset($products[$id])) {
+                $products[$id] = trim((string) ($row['name_product'] ?? ''));
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_last_products: ' . $e->getMessage());
+        return [];
+    }
+    return $products;
+}
+
+/**
+ * The name of the package of the agent panel shop the customer bought last.
+ */
+function nexora_agent_panel_last_product(string $userId): string
+{
+    $products = nexora_agent_panel_last_products([$userId]);
+    return (string) ($products[trim($userId)] ?? '');
+}
+
+/**
+ * Changes the credit of an agent panel by hand (the web panel of the
+ * administrator). The credit of the panel is the wallet of the customer, so
+ * the balance of the user is changed. The balance never goes below zero.
+ *
+ * Returns the new balance or null when the change was not possible.
+ */
+function nexora_agent_panel_set_credit(string $userId, float $amount): ?float
+{
+    global $pdo;
+    $userId = trim($userId);
+    if ($userId === '' || $amount == 0.0) {
+        return null;
+    }
+    try {
+        if ($amount > 0) {
+            $st = $pdo->prepare("UPDATE `user` SET Balance = Balance + ? WHERE id = ?");
+            $st->execute([$amount, $userId]);
+        } else {
+            // The balance never goes below zero.
+            $st = $pdo->prepare("UPDATE `user` SET Balance = Balance + ? WHERE id = ? AND Balance + ? >= 0");
+            $st->execute([$amount, $userId, $amount]);
+            if ($st->rowCount() === 0) {
+                return null;
+            }
+        }
+        clearSelectCache('user');
+        $bal = $pdo->prepare("SELECT Balance FROM `user` WHERE id = ? LIMIT 1");
+        $bal->execute([$userId]);
+        $newBalance = $bal->fetchColumn();
+        return $newBalance === false ? null : floatval($newBalance);
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_set_credit: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Creates a new password for the panel of a customer and returns it. The
+ * password is only stored as a hash, so it is shown to the administrator once.
+ */
+function nexora_agent_panel_reset_password(string $userId): ?string
+{
+    global $pdo;
+    $userId = trim($userId);
+    if ($userId === '') {
+        return null;
+    }
+    $pass = 'Nx' . bin2hex(random_bytes(3));
+    try {
+        $st = $pdo->prepare("INSERT INTO agent_auth (id_user, pass_hash, created_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE pass_hash = VALUES(pass_hash), created_at = VALUES(created_at)");
+        $st->execute([$userId, password_hash($pass, PASSWORD_DEFAULT), time()]);
+        return $pass;
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_reset_password: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Takes the panel of a customer away: the access to the panel is deleted, so
+ * the customer can not log in any more. The invoices stay untouched, so the
+ * history of the payments is not lost.
+ */
+function nexora_agent_panel_revoke(string $userId): bool
+{
+    global $pdo;
+    $userId = trim($userId);
+    if ($userId === '') {
+        return false;
+    }
+    try {
+        $st = $pdo->prepare("DELETE FROM agent_auth WHERE id_user = ?");
+        $st->execute([$userId]);
+        return true;
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_revoke: ' . $e->getMessage());
+        return false;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2408,18 +2687,18 @@ function nexora_user_panels($from_id, $shop = 'agentshop'): array
  * The things a customer can charge.
  *
  * For the agent shop these are the products the customer already bought, for
- * the agent panel shop the panels of their running services.
+ * the agent panel shop the agent panels the customer already bought. The
+ * result is always a list of names, because the top up menu works with the
+ * position of the name in the list.
  */
 function nexora_topup_targets(string $userId, string $shop = 'agentshop'): array
 {
     $shop = nexora_topup_shop_key($shop);
-    if ($shop === 'agentshop' && function_exists('nexora_agent_shop_bought_products')) {
-        $bought = nexora_agent_shop_bought_products((string) $userId, 'agentshop');
-        if ($bought) {
-            return $bought;
-        }
+    if (function_exists('nexora_agent_shop_bought_names')) {
+        // Only the products the customer really bought can be charged.
+        return nexora_agent_shop_bought_names((string) $userId, $shop);
     }
-    return nexora_user_panels((string) $userId, $shop);
+    return array_values(nexora_user_panels((string) $userId, $shop));
 }
 
 function nexora_topup_set_button($shop, $label, $style): void{

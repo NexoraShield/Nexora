@@ -26,9 +26,9 @@ if (isset($_GET['dark'])) {
 
 // ---------------------------------------------------------------- data
 $credit = (float) ($me['Balance'] ?? 0);
-// The prices of the ready products are 15% below the prices of the bot.
+// The prices of the ready products are 10% below the prices of the bot.
 // When the owner gives this agent a special discount, that one is used.
-$percent = 15.0;
+$percent = 10.0;
 $agentDiscount = (float) ($me['pricediscount'] ?? 0);
 if ($agentDiscount > 0) {
     $percent = $agentDiscount;

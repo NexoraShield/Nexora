@@ -19,6 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = $stmt->fetchColumn();
                 if (is_string($hash) && password_verify($pass, $hash)) {
                     nexora_agent_login_reset();
+                    // A new session id after the login, so a session that was
+                    // planted before the login cannot be used afterwards.
+                    if (function_exists('session_regenerate_id')) {
+                        @session_regenerate_id(true);
+                    }
                     $_SESSION['nexora_agent_id'] = $id;
                     header('Location: index.php');
                     exit;

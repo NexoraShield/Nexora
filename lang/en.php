@@ -251,6 +251,7 @@ Choose the panel that should be charged:',
 🎁 Credit added: <b>{credit}</b>
 💰 Your balance: <b>{balance}</b> Toman',
                 
+    'noPanelBuyAgentPanel' => '⚠️ You have not bought an agent panel yet, so there is nothing to charge.\nPlease get an agent panel first with the button below 👇',
     'noPanelBuy' => '⚠️ You have not bought an agent panel yet, so there is nothing to charge.\nPlease get a panel first with the button below 👇',
     'selectProduct' => '🛒 Which product do you want to charge?',
     'successManual' => '✅ The operation was successful and the details were sent to the support.\n\nIt is applied within 24 hours. To speed things up you can message the support of the bot.',],
@@ -258,6 +259,7 @@ Choose the panel that should be charged:',
                         'intro' => '🧪 <b>Test service</b>
 
 Choose one of the test services:',
+                        'remaining' => '👥 Your remaining share: {limit} test services',
                         'empty' => '⭕️ There is no test service yet.',
                         'details' => '🧪 <b>{name}</b>
 
@@ -1321,7 +1323,7 @@ Message text:
                 ],
                 'usertest' => [
                         'errorcreat' => '❌ An error occurred while creating the subscription. Please contact support to resolve the issue.',
-                        'limitwarning' => '⛔️ You have reached the limit of the test accounts.\n\nPlease contact the support of the bot to get more.',
+                        'limitwarning' => '⛔️ You have reached the limit of the test accounts.\n\nYour share of the test services is used up. Please contact the support of the bot to get more.',
                         'unavailable' => '📌 The test service is not available at the moment.',
                 ],
                 'wheelLuck' => [

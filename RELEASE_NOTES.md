@@ -1,4 +1,45 @@
 # Nexora Bot — Release Notes
+## v1.22.75 (2026-11-13) — The two panel shops work from end to end
+
+**The test services**
+- The test tab of the bot shows the share of the test services: every user (every one has a numeric id) may open this many test accounts. The share can be changed there, with the option to apply it to the users that are already in the bot.
+- The list of the test services shows how many of them the customer has left.
+- When the share is used up, the customer gets "⛔️ شما حد نصاب سرویس تست را گرفتید." instead of a test account.
+
+**The agent panel (اجنت پنل)**
+- The button "افزودن پنل" of the web panel did not add anything: the form sent "ap_add" but the code only looked for "add", so the insert was turned into an update of the row with the id 0. The panel is added now.
+- The dropdown "پنل" of the form was empty on a normal page load (the list was only built while a form was posted). It shows the panels of the administrator now.
+- The price of a package is the credit of the package when no price is typed.
+- The ten default packages are created: "پنل اجنت نمایندگی با ۱ میلیون اعتبار" up to "پنل اجنت نمایندگی با ۱۰ میلیون اعتبار". The price of a package is its credit.
+- The products of the agent panel can be created and edited in the bot (مدیریت ربات → محصولات اجنت پنل): name (with a premium emoji), credit, price and description. The wizard of the bot never saved the product before, because it changed the step of the user to a step that nothing handled.
+- The credentials of the panel (user name, password, link) are delivered automatically after the payment, and the report of the purchase goes to the report channel and to every administrator.
+- When the product was deleted after the payment, the customer got nothing. The customer and the administrators are warned now.
+
+**The top up (شارژ پنل)**
+- The top up of the agent shop was broken: the list of the bought products was keyed by the name, so the buttons showed "Array" and the callback of the button did not match any order. Only the products the customer really bought are shown now.
+- The top up of the agent panel showed every product of the shop, not the ones the customer bought.
+- The customer that has no panel gets the message and the button of his own shop ("خرید پنل نمایندگی" or "خرید اجنت پنل").
+- The credit of the top up of the agent panel is added to the wallet of the customer automatically, the message shows the new balance and the report names the panel, the option and the amount.
+- The report of the top up of the agent panel now also shows the credentials of the panel (user name, link) and the balance of the panel before the charge, next to the new balance. The description of the top up option is written into the report as well.
+- The report of the top up of the agent shop names the product the customer bought and the option of the top up, so the administrator sees both.
+
+**The agent shop (پنل نمایندگی)**
+- The answers of the customer were deleted before they were sent to the administrator. The administrator receives the details of the payment and the answers now.
+- The questions of the shop are asked by the payment handlers of the gateways as well (the file with the questions is loaded with the core).
+
+**The agent panel of the reseller**
+- The products of the bot are 10% below the bot price in the panel of the reseller (it was 15%).
+- The access of a reseller is bound to his login row: when the administrator takes the access away, the open session stops working right away. The session id is renewed after every login.
+
+**The panels that were delivered (new tab)**
+- The web panel shows the panels that were delivered to the customers now: **مدیریت نمایندگان → پنل‌های تحویل‌شده**.
+- The list has the user name of the panel, the customer, the package the customer bought, the credit of the panel, the login link and the date.
+- The credit of a panel can be increased and decreased by hand (the balance of the panel never goes below zero).
+- A new password can be created for a panel. The password is shown once, because only its hash is stored.
+- A panel can be deleted: the access of the customer is taken away right away, the payments stay untouched.
+
+---
+
 ## v1.22.74 (2026-11-12) — The test services inside the bot
 
 **The bot**

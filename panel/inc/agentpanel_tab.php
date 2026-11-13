@@ -47,31 +47,55 @@ function nexora_agentpanel_preview($name, $style, $emoji, $colors): string
     return '<span style="display:inline-block;background:' . $bg . ';color:' . $fg . ';border-radius:8px;padding:4px 12px;font-size:.8rem">' . $icon . $label . '</span>';
 }
 
+// The panels that can be picked for the agent panel are the ones the
+// administrator defined. The panels of the type "nexora_agent" (the ones that
+// are built for the agent panel itself) come first, the other panels of the
+// administrator follow. The list is built before the form is handled, so the
+// dropdown is filled on a normal page load as well and not only after a form
+// was submitted.
+$agentPanels = [];
+$otherPanels = [];
+foreach (panel_load_panels($pdo) as $panelRow) {
+    $panelName = (string) ($panelRow['name_panel'] ?? '');
+    if ($panelName === '') {
+        continue;
+    }
+    if ((string) ($panelRow['type'] ?? '') === 'nexora_agent') {
+        $agentPanels[] = $panelName;
+    } else {
+        $otherPanels[] = $panelName;
+    }
+}
+$agentPanels = array_merge($agentPanels, $otherPanels);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
     $action = (string) $_POST['action'];
-    // The panels that can be picked for the agent panel are the ones the
-    // administrator defined with the type "nexora_agent".
-    $agentPanels = [];
-    foreach (panel_load_panels($pdo) as $panelRow) {
-        if ((string) ($panelRow['type'] ?? '') === 'nexora_agent') {
-            $agentPanels[] = (string) ($panelRow['name_panel'] ?? '');
-        }
-    }
     if ($action === 'ap_add' || $action === 'ap_edit') {
         $name = trim($_POST['name_panel'] ?? '');
+        $price = (int) ($_POST['price'] ?? 0);
+        $credit = (int) ($_POST['credit'] ?? 0);
+        // The price of a package is the credit it puts into the wallet of the
+        // customer. When no price is typed, or when the administrator asks for
+        // it, the credit is used.
+        if ($price <= 0 && $credit > 0) {
+            $price = $credit;
+        }
+        if ((string) ($_POST['price_same_credit'] ?? '0') === '1') {
+            $price = $credit;
+        }
         if ($name === '') {
             flash('error', 'نام پنل را وارد کنید.');
         } else {
             try {
-                if ($action === 'add') {
+                if ($action === 'ap_add') {
                     db_query(
                         $pdo,
                         "INSERT INTO agent_panel_product (name,price,credit,description,btn_style,btn_emoji_id,panel_name,status_product) VALUES (?,?,?,?,?,?,?,'active')",
                         [
                             $name,
-                            (int) ($_POST['price'] ?? 0),
-                            (int) ($_POST['credit'] ?? 0),
+                            $price,
+                            $credit,
                             (string) ($_POST['description'] ?? ''),
                             nexora_agentpanel_clean_style($_POST['btn_style'] ?? '') ?: null,
                             nexora_agentpanel_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
@@ -88,8 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                         "UPDATE agent_panel_product SET name=?,price=?,credit=?,description=?,status_product=?,btn_style=?,btn_emoji_id=?,panel_name=? WHERE id=?",
                         [
                             $name,
-                            (int) ($_POST['price'] ?? 0),
-                            (int) ($_POST['credit'] ?? 0),
+                            $price,
+                            $credit,
                             (string) ($_POST['description'] ?? ''),
                             ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
                             nexora_agentpanel_clean_style($_POST['btn_style'] ?? '') ?: null,
@@ -139,6 +163,13 @@ foreach (nexora_color_palette() as $slug => $info) {
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px" class="fade-up">
   <div style="font-size:.85rem;color:var(--mute)"><?= count($items) ?> پنل در فروشگاه نمایندگی</div>
   <button class="btn btn-primary" onclick="openModal('addAgentPanelModal')"><?= icon('plus', 14) ?> افزودن پنل</button>
+</div>
+
+<div class="card fade-up" style="margin-bottom:18px">
+  <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="font-size:.85rem;color:var(--mute)">پنل‌هایی که به مشتری‌ها تحویل داده‌اید (اعتبار، رمز و حذف پنل) در تب «پنل‌های تحویل‌شده» هستند.</div>
+    <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars((string) $panelReturn) ?>?tab=accounts">📦 پنل‌های تحویل‌شده</a>
+  </div>
 </div>
 
 <div class="card fade-up d1" style="margin-bottom:18px">
@@ -199,12 +230,12 @@ foreach (nexora_color_palette() as $slug => $info) {
                 <option value="<?= htmlspecialchars((string) $agentPanelName) ?>"><?= htmlspecialchars(panel_plain_name((string) $agentPanelName)) ?></option>
               <?php endforeach; ?>
             </select>
-            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">پنل‌هایی که در ربات با کلید بانکید «افزودن پنل» و نوع «اجنت پنل» ساخته‌اید اید انشان می‌شوید اید انم ی‌شوید.</small>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">پنل‌هایی که در ربات با کلید «افزودن پنل» و نوع «اجنت پنل» ساخته‌اید اینجا نمایش داده می‌شوند.</small>
           </label>
-          <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" value="0" required></label>
+          <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" value="0" required><small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">اگر خالی بماند، قیمت برابر با اعتبار پنل ذخیره می‌شود.</small></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="credit" value="1000000" required></label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field" style="grid-column:1/-1"><span>توضیحات (برای مشتری)</span><textarea class="input" name="description" rows="3" placeholder="مزیت‌های این پنل، تعداد کاربر، مدت اعتبار و ..."></textarea></label>
         </div>
       </div>
@@ -240,7 +271,7 @@ foreach (nexora_color_palette() as $slug => $info) {
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" id="ap_edit_price" value="0" required></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="credit" id="ap_edit_credit" value="0" required></label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('', 'btn_style', 'ap_edit_style') ?></label>
-          <label class="field"><span>ایموجی پرمیوم</span><input class="input" name="btn_emoji_id" id="ap_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
+          <label class="field"><span>ایموجی پرمیوم</span><input class="input ms-emoji-field" data-ms-max="1" name="btn_emoji_id" id="ap_edit_emoji" placeholder="آیدی عددی یا {emoji:نام}"></label>
           <label class="field"><span>وضعیت</span>
             <select name="status_product" id="ap_edit_status" class="select">
               <option value="active">فعال</option>

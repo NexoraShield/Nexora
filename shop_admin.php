@@ -46,6 +46,57 @@ if (!function_exists('nexora_shop_product_price')) {
     }
 }
 
+if (!function_exists('nexora_shop_product_data')) {
+    /**
+     * The values of a product of a shop in one shape, so the bot and the web
+     * panel work with the same fields.
+     */
+    function nexora_shop_product_data(string $shop, array $row): array
+    {
+        return [
+            'name' => nexora_shop_product_name($row),
+            'description' => nexora_shop_product_description($row),
+            'emoji' => (string) ($row['btn_emoji_id'] ?? ''),
+            'price' => nexora_shop_product_price($row),
+            'credit' => floatval($row['credit'] ?? 0),
+            'volume' => floatval($row['Volume_constraint'] ?? 0),
+            'time' => intval($row['Service_time'] ?? 0),
+            'panel' => (string) ($row['Location'] ?? ($row['panel_name'] ?? '')),
+        ];
+    }
+}
+
+if (!function_exists('nexora_shop_wizard_stages')) {
+    /**
+     * The steps of the wizard of a shop. The agent panel shop asks for the
+     * credit of the panel, the agent shop for the volume, the duration and
+     * the panel of the product.
+     */
+    function nexora_shop_wizard_stages(string $shop): array
+    {
+        if ($shop === 'agentpanelshop') {
+            return ['name', 'credit', 'price', 'description'];
+        }
+        return ['name', 'price', 'volume', 'time', 'panel', 'description'];
+    }
+}
+
+if (!function_exists('nexora_shop_wizard_next_stage')) {
+    /**
+     * The step that follows the given one. The last step of every shop is the
+     * description, so the wizard always ends there.
+     */
+    function nexora_shop_wizard_next_stage(string $shop, string $current): string
+    {
+        $stages = nexora_shop_wizard_stages($shop);
+        $position = array_search($current, $stages, true);
+        if ($position === false) {
+            return 'description';
+        }
+        return $stages[$position + 1] ?? 'description';
+    }
+}
+
 if (!function_exists('nexora_shop_product_save')) {
     /**
      * Writes a product of a shop.
@@ -59,29 +110,61 @@ if (!function_exists('nexora_shop_product_save')) {
         }
         $description = (string) ($data['description'] ?? '');
         $emoji = trim((string) ($data['emoji'] ?? ''));
+        $price = floatval($data['price'] ?? 0);
+        $panel = trim((string) ($data['panel'] ?? ''));
         if ($shop === 'agentpanelshop') {
+            $credit = floatval($data['credit'] ?? 0);
             if ($id > 0) {
-                $st = $pdo->prepare("UPDATE agent_panel_product SET name = ?, description = ?, btn_emoji_id = ? WHERE id = ?");
-                $st->execute([$name, $description, $emoji !== '' ? $emoji : null, $id]);
+                $st = $pdo->prepare("UPDATE agent_panel_product SET name = ?, price = ?, credit = ?, description = ?, btn_emoji_id = ?, panel_name = ? WHERE id = ?");
+                $st->execute([$name, $price, $credit, $description, $emoji !== '' ? $emoji : null, $panel !== '' ? $panel : null, $id]);
                 return $id;
             }
-            $st = $pdo->prepare("INSERT INTO agent_panel_product (name, price, credit, description, btn_emoji_id, status_product, display_order) VALUES (?,0,0,?,?,'active',0)");
-            $st->execute([$name, $description, $emoji !== '' ? $emoji : null]);
+            $st = $pdo->prepare("INSERT INTO agent_panel_product (name, price, credit, description, btn_emoji_id, panel_name, status_product, display_order) VALUES (?,?,?,?,?,?,'active',0)");
+            $st->execute([$name, $price, $credit, $description, $emoji !== '' ? $emoji : null, $panel !== '' ? $panel : null]);
             $newId = (int) $pdo->lastInsertId();
             $pdo->prepare("UPDATE agent_panel_product SET display_order = id WHERE id = ?")->execute([$newId]);
             return $newId;
         }
+        $volume = floatval($data['volume'] ?? 0);
+        $time = intval($data['time'] ?? 0);
         if ($id > 0) {
-            $st = $pdo->prepare("UPDATE product SET name_product = ?, note = ?, btn_emoji_id = ? WHERE id = ? AND agent = 'agentshop'");
-            $st->execute([$name, $description, $emoji !== '' ? $emoji : null, $id]);
+            $st = $pdo->prepare("UPDATE product SET name_product = ?, price_product = ?, Volume_constraint = ?, Service_time = ?, Location = ?, note = ?, btn_emoji_id = ? WHERE id = ? AND agent = 'agentshop'");
+            $st->execute([$name, $price, $volume, $time, $panel, $description, $emoji !== '' ? $emoji : null, $id]);
             return $id;
         }
         $code = bin2hex(random_bytes(2));
-        $st = $pdo->prepare("INSERT INTO product (name_product, code_product, price_product, Volume_constraint, Service_time, Location, agent, data_limit_reset, note, category, hide_panel, one_buy_status, status_product, btn_emoji_id) VALUES (?,?,0,0,0,'','agentshop','no_reset',?,'','{}','0','active',?)");
-        $st->execute([$name, $code, $description, $emoji !== '' ? $emoji : null]);
+        // The placeholders are: name, code, price, volume, time, panel, note,
+        // emoji - the other columns are written as a constant.
+        $st = $pdo->prepare("INSERT INTO product (name_product, code_product, price_product, Volume_constraint, Service_time, Location, agent, data_limit_reset, note, category, hide_panel, one_buy_status, status_product, btn_emoji_id) VALUES (?,?,?,?,?,?,'agentshop','no_reset',?,'','{}','0','active',?)");
+        $st->execute([$name, $code, $price, $volume, $time, $panel, $description, $emoji !== '' ? $emoji : null]);
         $newId = (int) $pdo->lastInsertId();
         $pdo->prepare("UPDATE product SET display_order = id WHERE id = ?")->execute([$newId]);
         return $newId;
+    }
+}
+
+if (!function_exists('nexora_shop_panels')) {
+    /**
+     * The panels of the administrator. A product of the agent shop belongs to
+     * one of them, so the customer sees the panel of the product he buys.
+     */
+    function nexora_shop_panels(): array
+    {
+        global $pdo;
+        try {
+            $st = $pdo->prepare("SELECT name_panel FROM marzban_panel ORDER BY name_panel");
+            $st->execute();
+            $panels = [];
+            foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $panelName) {
+                $panelName = trim((string) $panelName);
+                if ($panelName !== '') {
+                    $panels[] = $panelName;
+                }
+            }
+            return $panels;
+        } catch (Throwable $e) {
+            return [];
+        }
     }
 }
 
