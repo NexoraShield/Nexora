@@ -1,4 +1,23 @@
 # Nexora Bot — Release Notes
+## v1.22.74 (2026-11-12) — The test services inside the bot
+
+**The bot**
+- The test services are managed in the bot now, exactly like in the web panel: name, volume in megabytes or gigabytes, duration, panel, inbound, note, colour, premium emoji and the status. Every step can be skipped with a "-".
+- A test service can be created and deleted in the bot.
+- The accounts that are created by hand (the panel management) can be deleted again, so a test account does not stay in the panel forever.
+
+**The behaviour of the test accounts**
+- A test service is a normal service now: it is usable right away and does not wait for the first connection of the customer before it starts.
+- The test accounts of the existing panels are switched to the same behaviour.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.74
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.74
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.74
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.74
+
+---
+
 ## v1.22.73 (2026-11-12) — The test service can really be edited
 
 **The test service of the web panel**

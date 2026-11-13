@@ -348,7 +348,10 @@ if ($datain == "paygwback") {
                 if (!$advancedLines) {
                     $advancedLines[] = 'هنوز سرویس تستی تعریف نشده است.';
                 }
-                $advancedActions = [[['text' => '➕ سرویس تست جدید', 'callback_data' => "adv_test_new"]]];
+                $advancedActions = [
+                    [['text' => '🧪 مدیریت سرویس تست', 'callback_data' => "adv_testservices"]],
+                    [['text' => '➕ سرویس تست جدید', 'callback_data' => "adv_test_new"]],
+                ];
                 break;
             case 'topup':
                 $advancedTitle = '💳 شارژ پنل';
@@ -605,6 +608,58 @@ if ($datain == "paygwback") {
     }
     // the remaining steps are chosen with the buttons of the keyboard
     sendmessage($from_id, "⭕️ یکی از گزینه‌های بالا را انتخاب کنید.", null, 'HTML');
+} elseif (preg_match('/^adv_delconfig_([A-Za-z0-9_\-]+)_([A-Za-z0-9_\-]+)$/', $datain, $tsDelMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsDelPanel = select("marzban_panel", "*", "code_panel", (string) $tsDelMatch[1], "select");
+    if (!$tsDelPanel) {
+        sendmessage($from_id, "⭕️ این پنل پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $tsDelBase = (string) $tsDelMatch[2];
+    $tsDelNames = [];
+    for ($i = 0; $i < 10; $i++) {
+        $tsDelName = $tsDelBase . "_" . $i;
+        $tsDelUser = select("invoice", "*", "username", $tsDelName, "select");
+        if ($tsDelUser) {
+            $tsDelNames[] = $tsDelName;
+        }
+    }
+    if (!$tsDelNames) {
+        sendmessage($from_id, "⭕️ اکانتی با این نام‌ها پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $tsDelKeyboard = json_encode(['inline_keyboard' => [
+        [['text' => '🗑 بله، حذف شوند', 'callback_data' => 'adv_delconfigok_' . substr((string) $tsDelPanel['code_panel'], 0, 150) . '_' . substr($tsDelBase, 0, 40)]],
+        [['text' => '❌ انصراف', 'callback_data' => 'admin']],
+    ]]);
+    sendmessage($from_id, "🗑 این اکانت‌ها از پنل <b>" . htmlspecialchars((string) $tsDelPanel['name_panel']) . "</b> حذف شوند؟\n<code>" . implode("</code>\n<code>", $tsDelNames) . "</code>", $tsDelKeyboard, 'HTML');
+} elseif (preg_match('/^adv_delconfigok_([A-Za-z0-9_\-]+)_([A-Za-z0-9_\-]+)$/', $datain, $tsDelMatch) && $adminrulecheck['rule'] == "administrator") {
+    $tsDelPanel = select("marzban_panel", "*", "code_panel", (string) $tsDelMatch[1], "select");
+    if (!$tsDelPanel) {
+        sendmessage($from_id, "⭕️ این پنل پیدا نشد.", null, 'HTML');
+        return;
+    }
+    $tsDelBase = (string) $tsDelMatch[2];
+    $tsDelDone = [];
+    $tsDelFailed = [];
+    for ($i = 0; $i < 10; $i++) {
+        $tsDelName = $tsDelBase . "_" . $i;
+        $tsDelUser = select("invoice", "*", "username", $tsDelName, "select");
+        if (!$tsDelUser) {
+            continue;
+        }
+        $tsDelResult = $ManagePanel->RemoveUser((string) $tsDelPanel['name_panel'], $tsDelName);
+        if (!empty($tsDelResult['status']) && $tsDelResult['status'] == 'successful') {
+            $tsDelDone[] = $tsDelName;
+            db_query($pdo, "DELETE FROM invoice WHERE username = ?", [$tsDelName]);
+        } else {
+            $tsDelFailed[] = $tsDelName;
+        }
+    }
+    $tsDelText = "🗑 حذف شد: " . ($tsDelDone ? implode('، ', $tsDelDone) : '-');
+    if ($tsDelFailed) {
+        $tsDelText .= "\n⚠️ حذف نشد: " . implode('، ', $tsDelFailed);
+    }
+    sendmessage($from_id, $tsDelText, null, 'HTML');
 } elseif (preg_match('/^adv_edit_topup_(\d+)$/', $datain, $advancedEdit) && $adminrulecheck['rule'] == "administrator") {
     $topupRow = nexora_topup_product_by_id((int) $advancedEdit[1]);
     if (!$topupRow) {
@@ -6035,6 +6090,19 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
             update("invoice", "user_info", $dataoutput['subscription_url'], "id_invoice", $randomString);
         }
         sendMessageService($panel, $dataoutput['configs'], $output_config_link, $dataoutput['username'], null, $textcreatuser, $randomString, wireguard: $dataoutput['wireguard'] ?? []);
+    }
+    // The accounts that were created by hand can be deleted again, so a test
+    // account does not stay in the panel forever.
+    $tsCreatedAccounts = [];
+    for ($i = 0; $i < (int) ($userdata['count'] ?? 0); $i++) {
+        $tsCreatedAccounts[] = $user['Processing_value_one'] . "_" . $i;
+    }
+    if ($tsCreatedAccounts) {
+        $tsDelKeyboard = json_encode(['inline_keyboard' => [
+            [['text' => '🗑 حذف این اکانت‌ها از پنل', 'callback_data' => 'adv_delconfig_' . substr((string) $panel['code_panel'], 0, 150) . '_' . substr((string) $user['Processing_value_one'], 0, 40)]],
+            [['text' => $textbotlang['Admin']['backAdminBtn'], 'callback_data' => 'admin']],
+        ]]);
+        sendmessage($from_id, "🧹 اکانت‌های ساخته‌شده:\n<code>" . implode("</code>\n<code>", $tsCreatedAccounts) . "</code>\n\nاگر لازم شد می‌توانید همین‌جا حذفشان کنید.", $tsDelKeyboard, 'HTML');
     }
     update("user", "Processing_value", $panel['name_panel'], "id", $from_id);
     outtypepanel($panel['type'], $textbotlang['users']['selectoption']);
