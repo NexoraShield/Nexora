@@ -34,12 +34,34 @@ if (!function_exists('nx_agent_columns')) {
     }
 }
 
+if (!function_exists('nx_agent_manual_panels')) {
+    /**
+     * The panels whose accounts are not created by the api: the manual panels
+     * (the administrator hands the accounts out by hand) and the panel of the
+     * agent. A product of such a panel can not be bought in the panel of the
+     * agent, so it is not in the list of the ready products.
+     */
+    function nx_agent_manual_panels(PDO $pdo): array
+    {
+        try {
+            $st = $pdo->prepare("SELECT name_panel FROM marzban_panel WHERE type IN ('Manualsale','nexora_agent')");
+            $st->execute();
+            return array_map('strval', $st->fetchAll(PDO::FETCH_COLUMN));
+        } catch (Throwable $e) {
+            error_log('nx_agent_manual_panels: ' . $e->getMessage());
+            return [];
+        }
+    }
+}
+
 if (!function_exists('nx_agent_products')) {
     /**
      * The products of the bot the agent may sell.
      *
      * Only the products of the bot itself are listed: the products of the two
-     * panel shops and the test services are never in this list.
+     * panel shops and the test services are never in this list. The products
+     * of a manual panel are not in the list either: they can not be created
+     * by the api, so buying them would not work.
      */
     function nx_agent_products(PDO $pdo): array
     {
@@ -57,11 +79,21 @@ if (!function_exists('nx_agent_products')) {
         }, $selected);
         $sql = "SELECT " . implode(', ', $selected) . " FROM product WHERE status_product = 'active' AND agent = 'f'" . $testFilter . " ORDER BY display_order, id LIMIT 300";
         try {
-            return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Throwable $e) {
             error_log('nx_agent_products: ' . $e->getMessage());
             return [];
         }
+        $manualPanels = nx_agent_manual_panels($pdo);
+        if (!$manualPanels) {
+            return $rows;
+        }
+        // The products of a manual panel are left out: the account of such a
+        // product is made by hand by the administrator.
+        return array_values(array_filter($rows, function ($row) use ($manualPanels) {
+            $location = trim((string) ($row['Location'] ?? ''));
+            return $location === '' || $location === '/all' || !in_array($location, $manualPanels, true);
+        }));
     }
 }
 
@@ -268,6 +300,70 @@ if (!function_exists('nx_agent_create_customer')) {
     }
 }
 
+if (!function_exists('nx_agent_service_panels')) {
+    /**
+     * The panels that can create an account automatically.
+     *
+     * The panel of the agent (اجنت پنل) and the manual panels are not part of
+     * the list: a service of the agent has to be created by the API of the
+     * panel, never by hand.
+     */
+    function nx_agent_service_panels(PDO $pdo): array
+    {
+        try {
+            $st = $pdo->prepare("SELECT * FROM marzban_panel WHERE status = 'active' AND type <> 'nexora_agent' AND type <> 'Manualsale' ORDER BY display_order, id");
+            $st->execute();
+            return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('nx_agent_service_panels: ' . $e->getMessage());
+            return [];
+        }
+    }
+}
+
+if (!function_exists('nx_agent_panel_candidates')) {
+    /**
+     * The panels a product can be created on: the panel of the product first
+     * and then the other panels that sell services. The list is never empty
+     * when the bot has a panel that sells services.
+     */
+    function nx_agent_panel_candidates(PDO $pdo, string $location): array
+    {
+        $candidates = [];
+        $location = trim($location);
+        if ($location !== '' && $location !== '/all') {
+            try {
+                $st = $pdo->prepare("SELECT * FROM marzban_panel WHERE name_panel = ? LIMIT 1");
+                $st->execute([$location]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if ($row && (string) ($row['status'] ?? '') === 'active'
+                    && !in_array((string) ($row['type'] ?? ''), ['nexora_agent', 'Manualsale'], true)) {
+                    $candidates[] = $row;
+                }
+            } catch (Throwable $e) {
+                error_log('nx_agent_panel_candidates: ' . $e->getMessage());
+            }
+        }
+        foreach (nx_agent_service_panels($pdo) as $row) {
+            $name = (string) ($row['name_panel'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $known = false;
+            foreach ($candidates as $candidate) {
+                if ((string) ($candidate['name_panel'] ?? '') === $name) {
+                    $known = true;
+                    break;
+                }
+            }
+            if (!$known) {
+                $candidates[] = $row;
+            }
+        }
+        return $candidates;
+    }
+}
+
 if (!function_exists('nx_agent_buy_product')) {
     /**
      * Buys a product of the bot for one of the customers of the agent.
@@ -320,33 +416,46 @@ if (!function_exists('nx_agent_buy_product')) {
                 return ['ok' => false, 'msg' => 'این کاربر در پنل شما ثبت نشده است.', 'detail' => []];
             }
         }
-        $location = trim((string) ($product['Location'] ?? ''));
-        $panel = null;
-        if ($location !== '' && $location !== '/all') {
-            $panel = select("marzban_panel", "*", "name_panel", $location, "select");
-        } else {
-            // A product of every panel: the first panel that sells services
-            // takes the account.
+        // The panels the account can be created on. The panel of the product
+        // comes first, the other panels of the bot are the backup: a service
+        // of the agent is always created automatically.
+        $productPanel = null;
+        $productLocation = trim((string) ($product['Location'] ?? ''));
+        if ($productLocation !== '' && $productLocation !== '/all') {
             try {
-                $st = $pdo->prepare("SELECT * FROM marzban_panel WHERE status = 'active' AND type <> 'nexora_agent' AND type <> 'Manualsale' ORDER BY display_order, id LIMIT 1");
-                $st->execute();
-                $panel = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+                $st = $pdo->prepare("SELECT * FROM marzban_panel WHERE name_panel = ? LIMIT 1");
+                $st->execute([$productLocation]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    $productPanel = $row;
+                }
             } catch (Throwable $e) {
-                $panel = null;
+                error_log('nx_agent_buy_product (panel): ' . $e->getMessage());
             }
         }
-        if (!$panel || (string) ($panel['status'] ?? '') !== 'active') {
-            return ['ok' => false, 'msg' => 'پنل این محصول در دسترس نیست.', 'detail' => []];
+        if ($productPanel && (string) ($productPanel['type'] ?? '') === 'Manualsale') {
+            // A manual panel has a stock of accounts that the administrator
+            // hands out by hand: it can not create an account by itself.
+            return ['ok' => false, 'msg' => 'این محصول فروش دستی است و از این بخش قابل خریدنیست.', 'detail' => []];
         }
-        // The panel of the agent is not a panel that sells services.
-        if ((string) ($panel['type'] ?? '') === 'nexora_agent') {
-            return ['ok' => false, 'msg' => 'این محصول روی پنل نمایندگی ساخته نمی‌شود.', 'detail' => []];
+        $candidates = nx_agent_panel_candidates($pdo, $productLocation);
+        if (!$candidates) {
+            return ['ok' => false, 'msg' => 'هیچ پنل فعالی برای ساخت سرویس وجود ندارد.', 'detail' => []];
         }
-        $panelAgent = trim((string) ($panel['agent'] ?? ''));
         $agentKind = trim((string) ($agent['agent'] ?? 'f'));
-        if ($panelAgent !== '' && $panelAgent !== 'all' && $agentKind !== '' && $panelAgent !== $agentKind) {
+        $allowed = [];
+        foreach ($candidates as $candidate) {
+            $candidateAgent = trim((string) ($candidate['agent'] ?? ''));
+            if ($candidateAgent !== '' && $candidateAgent !== 'all' && $agentKind !== '' && $candidateAgent !== $agentKind) {
+                // The panel is not for the role of this agent.
+                continue;
+            }
+            $allowed[] = $candidate;
+        }
+        if (!$allowed) {
             return ['ok' => false, 'msg' => 'این محصول برای نقش شما در دسترس نیست.', 'detail' => []];
         }
+        $panel = $allowed[0];
         $price = (float) $product['price_product'];
         if ($percent > 0) {
             $price = $price - (($price * $percent) / 100);
@@ -362,42 +471,59 @@ if (!function_exists('nx_agent_buy_product')) {
         $randomString = bin2hex(random_bytes(4));
         $username = '';
         $dataoutput = [];
-        try {
-            $username = generateUsername(
-                (string) $customer['id'],
-                (string) ($panel['MethodUsername'] ?? ''),
-                (string) ($customer['username'] ?? ''),
-                $randomString,
-                $customName !== '' ? $customName : $randomString,
-                (string) ($panel['namecustom'] ?? ''),
-                (string) ($customer['namecustom'] ?? '')
-            );
-            $username = strtolower(trim((string) $username));
-            if ($username === '') {
-                throw new RuntimeException('نام کاربری ساخته نشد.');
+        $lastError = '';
+        $usedPanel = null;
+        foreach ($allowed as $candidate) {
+            try {
+                $username = generateUsername(
+                    (string) $customer['id'],
+                    (string) ($candidate['MethodUsername'] ?? ''),
+                    (string) ($customer['username'] ?? ''),
+                    $randomString,
+                    $customName !== '' ? $customName : $randomString,
+                    (string) ($candidate['namecustom'] ?? ''),
+                    (string) ($customer['namecustom'] ?? '')
+                );
+                $username = strtolower(trim((string) $username));
+                if ($username === '') {
+                    throw new RuntimeException('نام کاربری ساخته نشد.');
+                }
+                $days = (int) ($product['Service_time'] ?? 0);
+                $timestamp = $days > 0 ? strtotime(date("Y-m-d H:i:s", strtotime("+" . $days . "days"))) : 0;
+                $datac = [
+                    'expire' => $timestamp,
+                    'data_limit' => (float) ($product['Volume_constraint'] ?? 0) * pow(1024, 3),
+                    'from_id' => (string) $customer['id'],
+                    'username' => (string) ($customer['username'] ?? ''),
+                    'type' => 'buy',
+                ];
+                $dataoutput = $ManagePanel->createUser((string) $candidate['name_panel'], (string) ($product['code_product'] ?? ''), $username, $datac);
+                if (!is_array($dataoutput) || empty($dataoutput['username'])) {
+                    $lastError = trim((string) ($dataoutput['msg'] ?? 'اکانت روی پنل ساخته نشد.'));
+                    throw new RuntimeException($lastError !== '' ? $lastError : 'اکانت روی پنل ساخته نشد.');
+                }
+                $username = (string) $dataoutput['username'];
+                $usedPanel = $candidate;
+                break;
+            } catch (Throwable $e) {
+                error_log('nx_agent_buy_product: ' . $e->getMessage());
+                $lastError = $e->getMessage();
+                $dataoutput = [];
             }
-            $days = (int) ($product['Service_time'] ?? 0);
-            $timestamp = $days > 0 ? strtotime(date("Y-m-d H:i:s", strtotime("+" . $days . "days"))) : 0;
-            $datac = [
-                'expire' => $timestamp,
-                'data_limit' => (float) ($product['Volume_constraint'] ?? 0) * pow(1024, 3),
-                'from_id' => (string) $customer['id'],
-                'username' => (string) ($customer['username'] ?? ''),
-                'type' => 'buy',
-            ];
-            $dataoutput = $ManagePanel->createUser((string) $panel['name_panel'], (string) ($product['code_product'] ?? ''), $username, $datac);
-            if (!is_array($dataoutput) || empty($dataoutput['username'])) {
-                throw new RuntimeException('اکانت روی پنل ساخته نشد.');
-            }
-            $username = (string) $dataoutput['username'];
-        } catch (Throwable $e) {
-            error_log('nx_agent_buy_product: ' . $e->getMessage());
+        }
+        if ($usedPanel === null) {
             if ($price > 0) {
                 $st = $pdo->prepare("UPDATE `user` SET Balance = Balance + ? WHERE id = ?");
                 $st->execute([$price, $agentId]);
             }
-            return ['ok' => false, 'msg' => 'ساخت سرویس انجام نشد؛ مبلغ از کیف پول شما برداشته شد و برگشت داده شد.', 'detail' => []];
+            return [
+                'ok' => false,
+                'msg' => 'ساخت سرویس انجام نشد؛ مبلغ از کیف پول شما برداشته شد و برگشت داده شد.'
+                    . ($lastError !== '' ? ' (' . $lastError . ')' : ''),
+                'detail' => [],
+            ];
         }
+        $panel = $usedPanel;
         // The invoice: the service belongs to the customer, the agent paid for it.
         $notifctions = json_encode(['volume' => false, 'time' => false]);
         $st = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, refral, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");

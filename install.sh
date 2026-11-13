@@ -420,6 +420,62 @@ fi
 echo "==> Running database migration (additive only)"
 "$PHP_BIN" "$PACKAGE_DIR/migrate.php" "$TARGET"
 
+# ---------------------------------------------------------------------------
+# Speed of the bot. The language files (350 KB) and the bot itself are parsed
+# on every request: without the opcode cache a small server needs a lot of
+# CPU for every single message. The settings are written for every PHP
+# version that is installed, so the bot answers in a fraction of a second even
+# with a small server.
+# ---------------------------------------------------------------------------
+nexora_tune_php() {
+  local php_ver
+  php_ver="$("$PHP_BIN" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo '')"
+  if [[ -z "$php_ver" ]]; then
+    return 0
+  fi
+  local ini_dirs=(
+    "/etc/php/${php_ver}/fpm/conf.d"
+    "/etc/php/${php_ver}/cli/conf.d"
+    "/etc/php/${php_ver}/apache2/conf.d"
+    "/etc/php/${php_ver}/cgi/conf.d"
+    "/usr/local/etc/php/conf.d"
+    "/etc/php/conf.d"
+  )
+  local dir ini_file
+  for dir in "${ini_dirs[@]}"; do
+    [[ -d "$dir" ]] || continue
+    [[ -w "$dir" ]] || continue
+    ini_file="$dir/99-nexora-performance.ini"
+    {
+      echo "; Nexora - performance of the bot (written by the installer)."
+      echo "; The opcode cache keeps the big language files in memory, so the"
+      echo "; bot answers fast even on a small server."
+      echo "opcache.enable=1"
+      echo "opcache.memory_consumption=192"
+      echo "opcache.interned_strings_buffer=16"
+      echo "opcache.max_accelerated_files=20000"
+      echo "opcache.max_wasted_percentage=10"
+      echo "opcache.validate_timestamps=1"
+      echo "opcache.revalidate_freq=60"
+      echo "opcache.save_comments=1"
+      echo "opcache.enable_file_override=0"
+      if [[ "$php_ver" == 8.* ]]; then
+        # The JIT costs memory and does not help the workload of the bot.
+        echo "opcache.jit=disable"
+        echo "opcache.jit_buffer_size=0"
+      else
+        echo "opcache.jit_buffer_size=0"
+      fi
+      echo "realpath_cache_size=4096K"
+      echo "realpath_cache_ttl=600"
+    } > "$ini_file" 2>/dev/null || true
+    if [[ -f "$ini_file" ]]; then
+      echo "    PHP performance settings written to $ini_file" >&3
+    fi
+  done
+}
+nexora_tune_php || echo "    WARNING: the PHP performance settings could not be written" >&3
+
 echo "==> Ensuring the cron dispatcher is installed"
 if [[ -f "$TARGET/cronbot/migrate-crontab.php" ]]; then
   _cron_user="$(stat -c '%U' "$TARGET" 2>/dev/null || echo root)"

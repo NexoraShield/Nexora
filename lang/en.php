@@ -297,10 +297,10 @@ Choose one of the test services:',
 💰 Panel wallet credit: <b>{credit}</b> Toman',
                 ],
                 'agentShop' => [
-    'paid' => '✅ Your payment was confirmed.\nProduct: {name}\nAmount: {price} Toman\n\nThis product is delivered to you manually.',
+    'paid' => '✅ Your payment was confirmed.\nProduct: {name}\nAmount: {price} Toman\n\nThis product is delivered to you manually.\n💳 The paid amount is not added to your wallet.',
                         'intro' => '🛒 <b>Reseller panel shop</b>',
-                        'note' => "Description:\n\n💎 The reseller panel is a Pasarguard panel and is meant for professionals\n📊 It is paid by consumption",
-                        'choose' => 'Choose one of the panels below:',
+                        'note' => "Description:\n\n📦 The administrator delivers the products of this shop to you by hand (a direct message in Telegram)\n💳 The paid amount is not added to your wallet",
+                        'choose' => '',
                         'empty' => '⭕️ There is no product in the agent panel shop yet.',
                         'details' => '🛍 <b>{name}</b>
 
@@ -309,17 +309,16 @@ Choose one of the test services:',
 💰 Price: <b>{price}</b> Toman
 💾 Volume: <b>{volume}</b>
 ⏳ Duration: <b>{time}</b> days
-📍 Panel: <b>{location}</b>
 
-After the payment the service is created automatically.',
+After the payment the product is delivered to you manually.',
                         'buyBtn' => '🛒 Buy and pay',
                         'backBtn' => '🔙 Back to the shop',
                         'steps' => 'How to buy:
 1️⃣ Choose a product
 2️⃣ Check the price and the details
 3️⃣ Choose a payment method
-4️⃣ The service is delivered automatically after the payment',
-                
+4️⃣ The product is delivered to you manually after the payment',
+                    
     'registered' => '✅ Your details are registered and the order is final.\n\nAn agent sets up your panel and delivers it within 24 hours. For the delivery and the panel please contact the support.',],
                 'Rules' => '✅ The rules have been accepted. You can now use the bot\'s services.',
                 'SendMessage' => '📩 Send message to user',

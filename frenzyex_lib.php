@@ -162,6 +162,9 @@ if (!function_exists('frenzyex_normalize_status_storage')) {
                 if (function_exists('clearSelectCache')) {
                     clearSelectCache('PaySetting');
                 }
+                if (function_exists('nexora_clear_table_cache')) {
+                    nexora_clear_table_cache('PaySetting');
+                }
             } catch (Throwable $e) {
                 error_log('FrenzyEx: could not normalize statusfrenzyex — ' . $e->getMessage());
             }

@@ -1,4 +1,48 @@
 # Nexora Bot — Release Notes
+## v1.22.80 (2026-11-13) — The reseller shop is a manual shop, every answer of the customer gets a reaction and the bot is faster
+
+**The reseller shop (فروشگاه نمایندگی)**
+- The products of the reseller shop are not services of a panel. The option "پنل" is gone from the
+  form of the web panel and from the wizard of the bot, no account is created on a panel any more and
+  the administrator delivers the product by hand (a direct message in Telegram).
+- The money of the customer never touches his wallet: the amount of a product of this shop (and the
+  amount of a top up of this shop) is not booked on the wallet of the buyer any more. Only the
+  difference between the paid amount and the price is reported to the administrator.
+- The two shops stay apart: the products of the reseller shop, the packages of the agent panel and
+  the top up options of every shop are three different lists. The agent panel shop still puts the
+  credit of a top up into the wallet of the customer — that part was right and is untouched.
+- The migration `024` removes the panel of the products of the reseller shop that still carry one.
+
+**The questions of the customer**
+- The answer of the customer is handled before every other part of the bot, so no other branch of the
+  bot can swallow it any more. Before, the first answer of the customer often had no reaction at all.
+- Every answer gets a reaction: the answer is saved and the next question is sent. A question that
+  carries a "&" or a "<" can not break the message of Telegram any more (the text is escaped).
+- A button of the menu or a command of the bot is not an answer any more: the order goes to the
+  administrator with the answers that were given, so a paid order is never lost.
+- The report of the administrator carries a link to the customer, so the product can be sent with one
+  message, and it shows when not every question was answered.
+
+**The agent panel (اجنت پنل)**
+- The delivery of the agent panel is automatic on every bot: the table of the access is created
+  before the access is written, so a database that was never migrated does not turn the automatic
+  delivery into a manual one any more.
+- The service of the agent is always created by the api of a panel: a manual panel (a panel whose
+  accounts are handed out by hand) is refused with a clear message, and if the panel of the product
+  can not create the account, the other panels of the bot are used. The amount is refunded when no
+  panel can create the account.
+
+**The speed of the bot**
+- The installer writes the settings of the opcode cache (opcache) for every PHP version that is
+  installed: the language files (350 KB) are parsed once and stay in memory, so the bot answers fast
+  even on a small server. The jit is switched off, it costs memory and does not help the bot.
+- The connection to Telegram is kept open inside a request: every message of the bot costs a
+  roundtrip to Telegram and the handshake of a new connection was the slowest part of it.
+- The settings of the shop and of the payments are read from the file cache, so a message of the bot
+  does not need two queries for them any more. A change in the web panel drops the cache at once.
+
+---
+
 ## v1.22.79 (2026-11-13) — The reseller panel: the ready products, the direct buy and the top up of 1:1
 
 **The web application of the bot (the mini app)**

@@ -144,6 +144,62 @@ if (!function_exists('nexora_agent_shop_format_answers')) {
     }
 }
 
+if (!function_exists('nexora_agent_shop_question_text')) {
+    /**
+     * The text of a question, safe for the HTML mode of Telegram.
+     *
+     * A question that carries a "&" or a "<" would break the message of
+     * Telegram ("can't parse entities"), so the text is escaped here. The
+     * customer always gets the question, never an empty answer.
+     */
+    function nexora_agent_shop_question_text($question): string
+    {
+        $text = is_array($question) ? (string) ($question['question'] ?? '') : (string) $question;
+        $text = (string) preg_replace('#<tg-emoji\b[^>]*>(.*?)</tg-emoji>#isu', '$1', $text);
+        $text = trim(strip_tags($text));
+        if ($text === '') {
+            return '';
+        }
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('nexora_agent_shop_digit')) {
+    /**
+     * A number in Persian digits, so the numbers of the questions look like
+     * the rest of the texts of the bot.
+     */
+    function nexora_agent_shop_digit($number): string
+    {
+        return strtr((string) $number, [
+            '0' => '۰', '1' => '۱', '2' => '۲', '3' => '۳', '4' => '۴',
+            '5' => '۵', '6' => '۶', '7' => '۷', '8' => '۸', '9' => '۹',
+        ]);
+    }
+}
+
+if (!function_exists('nexora_agent_shop_send_question')) {
+    /**
+     * Sends one question of the shop to the customer.
+     *
+     * @return bool true when the question really left the bot.
+     */
+    function nexora_agent_shop_send_question(string $userId, array $questions, int $index): bool
+    {
+        $total = count($questions);
+        if ($index < 0 || $index >= $total) {
+            return false;
+        }
+        $text = nexora_agent_shop_question_text($questions[$index]);
+        if ($text === '') {
+            return false;
+        }
+        $message = "❓ سوال " . nexora_agent_shop_digit($index + 1) . " از " . nexora_agent_shop_digit($total) . ":\n" . $text;
+        $result = sendmessage($userId, $message, null, 'HTML');
+        return !empty($result['ok']);
+    }
+}
+
 if (!function_exists('nexora_agent_shop_ask_questions')) {
     /**
      * Asks the customer the questions of the shop. The answers are kept until
@@ -158,7 +214,90 @@ if (!function_exists('nexora_agent_shop_ask_questions')) {
         update("user", "Processing_value_tow", $invoiceId, "id", $userId);
         update("user", "Processing_value_four", json_encode([], JSON_UNESCAPED_UNICODE), "id", $userId);
         step('agentshop_questions', $userId);
-        sendmessage($userId, "❓ سوال ۱ از " . count($questions) . ":\n" . strip_tags((string) $questions[0]['question']), null, 'HTML');
+        nexora_agent_shop_send_question($userId, $questions, 0);
+        return true;
+    }
+}
+
+if (!function_exists('nexora_agent_shop_handle_answer')) {
+    /**
+     * Handles one answer of the customer of the reseller shop.
+     *
+     * The function is called before every other part of the bot, so no other
+     * branch can swallow the answer. Every answer gets a reaction, so the
+     * customer always knows that his answer was saved.
+     *
+     * @param array $menuTexts the labels of the menu of the bot: a message
+     *                         that is one of them is a menu button and not an
+     *                         answer, so the round of the questions is closed.
+     *
+     * @return bool true when the message was handled as an answer.
+     */
+    function nexora_agent_shop_handle_answer(string $userId, string $text, array $menuTexts = []): bool
+    {
+        global $textbotlang;
+        $userId = trim($userId);
+        if ($userId === '') {
+            return false;
+        }
+        $user = select("user", "*", "id", $userId, "select");
+        if (!$user) {
+            return false;
+        }
+        $questions = nexora_agent_shop_questions('agentshop');
+        $invoiceId = trim((string) ($user['Processing_value_tow'] ?? ''));
+        $invoice = ($invoiceId !== '' && $invoiceId !== '0')
+            ? select("invoice", "*", "id_invoice", $invoiceId, "select")
+            : false;
+        // The order has to be an order of the reseller shop, otherwise the
+        // customer is not in a round of the questions at all.
+        if (!$questions || !$invoice || !preg_match('/^agentshop:/', (string) ($invoice['note'] ?? ''))) {
+            if ((string) ($user['step'] ?? '') === 'agentshop_questions') {
+                step('home', $userId);
+                update("user", "Processing_value_tow", '', "id", $userId);
+                update("user", "Processing_value_four", '', "id", $userId);
+            }
+            return false;
+        }
+        $answer = trim((string) $text);
+        if ($answer !== '' && (in_array($answer, $menuTexts, true) || strpos($answer, '/') === 0)) {
+            // A button of the menu and a command of the bot are not answers:
+            // the button does its usual work. The order is not lost: it goes
+            // to the administrator with the answers that were given.
+            $cancelAnswers = json_decode((string) ($user['Processing_value_four'] ?? '[]'), true);
+            $cancelAnswers = is_array($cancelAnswers) ? array_values($cancelAnswers) : [];
+            if (function_exists('nexora_agent_shop_finish')) {
+                nexora_agent_shop_finish($invoiceId, $userId, $cancelAnswers, true);
+            }
+            step('home', $userId);
+            update("user", "Processing_value_tow", '', "id", $userId);
+            update("user", "Processing_value_four", '', "id", $userId);
+            return false;
+        }
+        $answers = json_decode((string) ($user['Processing_value_four'] ?? '[]'), true);
+        $answers = is_array($answers) ? array_values($answers) : [];
+        if ($answer === '') {
+            // An empty message is not an answer: the question is asked again.
+            nexora_agent_shop_send_question($userId, $questions, count($answers));
+            return true;
+        }
+        $answers[] = $answer;
+        update("user", "Processing_value_four", json_encode($answers, JSON_UNESCAPED_UNICODE), "id", $userId);
+        $index = count($answers);
+        if ($index < count($questions)) {
+            // The answer was saved: the customer gets the next question.
+            if (!nexora_agent_shop_send_question($userId, $questions, $index)) {
+                sendmessage($userId, "❓ سوال " . nexora_agent_shop_digit($index + 1) . " از " . nexora_agent_shop_digit(count($questions)) . ":\n" . nexora_agent_shop_question_text($questions[$index]), null, 'HTML');
+            }
+            return true;
+        }
+        // Every question is answered: the order goes to the administrator.
+        if (function_exists('nexora_agent_shop_finish')) {
+            nexora_agent_shop_finish($invoiceId, $userId, $answers);
+        }
+        update("user", "Processing_value_tow", '', "id", $userId);
+        update("user", "Processing_value_four", '', "id", $userId);
+        step('home', $userId);
         return true;
     }
 }
@@ -172,11 +311,12 @@ if (!function_exists('nexora_agent_shop_finish')) {
      * read from the user, so the function can also be called right after the
      * last answer was stored.
      */
-    function nexora_agent_shop_finish(string $invoiceId, string $userId, ?array $answers = null): bool
+    function nexora_agent_shop_finish(string $invoiceId, string $userId, ?array $answers = null, bool $cancelled = false): bool
     {
         global $pdo, $textbotlang;
-        $invoice = select("invoice", "*", "id_invoice", $invoiceId, "select");
+        $invoice = $invoiceId !== '' ? select("invoice", "*", "id_invoice", $invoiceId, "select") : false;
         if (!$invoice) {
+            error_log('nexora_agent_shop_finish: the invoice ' . $invoiceId . ' does not exist');
             return false;
         }
         $marker = [];
@@ -199,13 +339,17 @@ if (!function_exists('nexora_agent_shop_finish')) {
         if ($answers === null) {
             $answers = json_decode((string) (select("user", "Processing_value_four", "id", $userId, "select")['Processing_value_four'] ?? '[]'), true);
         }
-        $answers = is_array($answers) ? $answers : [];
+        $answers = is_array($answers) ? array_values($answers) : [];
         $user = select("user", "*", "id", $userId, "select");
         $userName = trim((string) ($user['username'] ?? ''));
         $price = (float) ($invoice['price_product'] ?? 0);
 
         // the customer gets the confirmation
-        $buyerText = ($textbotlang['users']['agentShop']['registered'] ?? "✅ مشخصات شما ثبت شد و سفارش نهایی شد.\n\nعامل انسانی نهایتا تا ۲۴ ساعت پنل شما رو تنظیم و به دستتون می‌رسونه. برای تحویل و دریافت پنل به پشتیبانی مراجعه کنید و پیام بدین.");
+        if ($cancelled) {
+            $buyerText = "✅ پاسخ‌های شما ثبت شد و سفارش برای پشتیبانی ارسال شد.\n\nپشتیبانی تا ۲۴ ساعت آینده محصول را برای شما ارسال می‌کند.";
+        } else {
+            $buyerText = ($textbotlang['users']['agentShop']['registered'] ?? "✅ مشخصات شما ثبت شد و سفارش نهایی شد.\n\nعامل انسانی نهایتا تا ۲۴ ساعت پنل شما رو تنظیم و به دستتون می‌رسونه. برای تحویل و دریافت پنل به پشتیبانی مراجعه کنید و پیام بدین.");
+        }
         $buyerText = strtr($buyerText, [
             '{name}' => $productName,
             '{price}' => number_format($price),
@@ -214,18 +358,21 @@ if (!function_exists('nexora_agent_shop_finish')) {
 
         // the administrator gets the details of the payment and the answers
         $adminText = "🛒 <b>سفارش فروشگاه نمایندگی</b>\n"
-            . "👤 کاربر: " . $userId . ($userName !== '' ? " (" . $userName . ")" : '') . "\n"
+            . "👤 کاربر: <a href=\"tg://user?id=" . htmlspecialchars((string) $userId, ENT_QUOTES) . "\">" . htmlspecialchars((string) $userId, ENT_QUOTES) . "</a>"
+            . ($userName !== '' ? " (" . $userName . ")" : '') . "\n"
             . "🏷 محصول: " . $productName . "\n"
             . "💳 مبلغ پرداختی: " . number_format($price) . " تومان\n"
-            . "🧾 شماره فاکتور: " . $invoiceId . "\n"
-            . "🖥 پنل درخواستی: " . (string) ($invoice['Service_location'] ?? '-') . "\n";
+            . "🧾 شماره فاکتور: " . $invoiceId . "\n";
         if ($questions) {
             $adminText .= "\n❓ <b>پاسخ‌های مشتری:</b>\n" . nexora_agent_shop_format_answers($questions, $answers) . "\n";
+            if (count($answers) < count($questions)) {
+                $adminText .= "⚠️ همهٔ سوال‌ها پاسخ داده نشده است (" . count($answers) . " از " . count($questions) . ").\n";
+            }
         }
         if (!empty($marker[2])) {
             $adminText .= "📝 توضیحات محصول: " . strip_tags((string) $marker[2]) . "\n";
         }
-        $adminText .= "⚠️ این سفارش باید دستی برای خریدار تحویل شود.";
+        $adminText .= "⚠️ این سفارش باید دستی برای خریدار تحویل شود (پیام مستقیم در تلگرام).";
         $setting = select("setting", "*");
         $adminIds = select("admin", "id_admin", null, null, "FETCH_COLUMN");
         $buyreport = select("topicid", "idreport", "report", "buyreport", "select")['idreport'] ?? 0;

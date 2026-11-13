@@ -69,15 +69,17 @@ if (!function_exists('nexora_shop_product_data')) {
 if (!function_exists('nexora_shop_wizard_stages')) {
     /**
      * The steps of the wizard of a shop. The agent panel shop asks for the
-     * credit of the panel, the agent shop for the volume, the duration and
-     * the panel of the product.
+     * credit of the panel, the agent shop for the volume and the duration.
+     *
+     * The product of the agent shop is not a service of a panel: the
+     * administrator delivers it by hand, so there is no panel to choose.
      */
     function nexora_shop_wizard_stages(string $shop): array
     {
         if ($shop === 'agentpanelshop') {
             return ['name', 'credit', 'price', 'description'];
         }
-        return ['name', 'price', 'volume', 'time', 'panel', 'description'];
+        return ['name', 'price', 'volume', 'time', 'description'];
     }
 }
 
@@ -127,6 +129,9 @@ if (!function_exists('nexora_shop_product_save')) {
         }
         $volume = floatval($data['volume'] ?? 0);
         $time = intval($data['time'] ?? 0);
+        // The product of the agent shop is delivered by hand: it does not
+        // belong to a panel, so the column of the panel stays empty.
+        $panel = '';
         if ($id > 0) {
             $st = $pdo->prepare("UPDATE product SET name_product = ?, price_product = ?, Volume_constraint = ?, Service_time = ?, Location = ?, note = ?, btn_emoji_id = ? WHERE id = ? AND agent = 'agentshop'");
             $st->execute([$name, $price, $volume, $time, $panel, $description, $emoji !== '' ? $emoji : null, $id]);

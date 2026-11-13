@@ -423,6 +423,26 @@ if ($setting['Bot_Status'] == "botstatusoff" && !in_array($from_id, $admin_ids))
     sendmessage($from_id, $textbotlang['textbot']['botOff'], null, 'html');
     return;
 }
+#-----------answers of the reseller shop------------#
+// The answers of the questions of the reseller shop are handled before every
+// other part of the bot: no other branch may swallow them and every answer
+// gets a reaction.
+if ($user['step'] == "agentshop_questions" && !in_array($from_id, $admin_ids) && function_exists('nexora_agent_shop_handle_answer')) {
+    $__nexoraMenuTexts = [];
+    $__nexoraMenu = is_array($keyboard ?? null) ? $keyboard : json_decode((string) ($keyboard ?? ''), true);
+    if (is_array($__nexoraMenu) && isset($__nexoraMenu['keyboard']) && is_array($__nexoraMenu['keyboard'])) {
+        foreach ($__nexoraMenu['keyboard'] as $__nexoraRow) {
+            foreach ((array) $__nexoraRow as $__nexoraButton) {
+                if (is_array($__nexoraButton) && isset($__nexoraButton['text']) && is_string($__nexoraButton['text'])) {
+                    $__nexoraMenuTexts[] = $__nexoraButton['text'];
+                }
+            }
+        }
+    }
+    if (nexora_agent_shop_handle_answer((string) $from_id, (string) $text, $__nexoraMenuTexts)) {
+        return;
+    }
+}
 #-----------/start------------#
 if ($user['joinchannel'] != "active") {
     if (count($channels_id) != 0) {
@@ -6663,7 +6683,12 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     step('agentshop_product', $from_id);
 } elseif ($user['step'] == "agentshop_questions" && !in_array($from_id, $admin_ids)) {
     // The customer answers the questions of the agent shop. When every question
-    // is answered the order is sent to the administrator.
+    // is answered the order is sent to the administrator. The answers are
+    // handled by a helper, so the same code runs everywhere.
+    if (function_exists('nexora_agent_shop_handle_answer')) {
+        nexora_agent_shop_handle_answer((string) $from_id, (string) $text);
+        return;
+    }
     $agentQuestions = function_exists('nexora_agent_shop_questions') ? nexora_agent_shop_questions('agentshop') : [];
     if (!$agentQuestions) {
         step('home', $from_id);
@@ -6695,11 +6720,6 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textbotlang['users']['agentShop']['empty'], $backuser, 'HTML');
         return;
     }
-    $agentPanel = select("marzban_panel", "*", "name_panel", $agentProduct['Location'], "select");
-    if (!$agentPanel) {
-        sendmessage($from_id, $textbotlang['users']['sell']['errorConfig'], $backuser, 'HTML');
-        return;
-    }
     $agentPrice = floatval($agentProduct['price_product']);
     if (intval($user['pricediscount']) != 0) {
         $agentPrice = $agentPrice - (($agentPrice * $user['pricediscount']) / 100);
@@ -6718,15 +6738,17 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         'volume' => false,
         'time' => false,
     ]);
-    $agentUsername = generateUsername($from_id, $agentPanel['MethodUsername'], $username, $agentRandom, '', $agentPanel['namecustom'], $user['namecustom']);
-    $agentUsername = strtolower((string) $agentUsername);
+    // The product of the reseller shop is not a service of a panel: the
+    // administrator delivers it by hand. There is no panel and no account on a
+    // panel, so the order only carries the name of the product.
+    $agentUsername = 'ag' . $from_id . '_' . substr($agentRandom, 0, 6);
     $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
     $stmt->execute([
         $from_id,
         $agentRandom,
         $agentUsername,
         $agentDate,
-        $agentProduct['Location'],
+        '',
         $agentProduct['name_product'],
         $agentPrice,
         $agentProduct['Volume_constraint'],

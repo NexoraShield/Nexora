@@ -583,23 +583,21 @@ if ($datain == "paygwback") {
             }
             $shopData['time'] = (int) $shopTime;
         }
-        $shopData['stage'] = 'panel';
+        // The product of the reseller shop is delivered by hand: there is no
+        // panel to choose, the wizard goes on with the description.
+        $shopData['stage'] = nexora_shop_wizard_next_stage($shopKind, 'time');
         update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
         step('adv_shop_edit', $from_id);
-        $shopPanelRows = [];
-        foreach (nexora_shop_panels() as $shopPanelIdx => $shopPanelName) {
-            $shopPanelRows[] = [['text' => (string) $shopPanelName, 'callback_data' => 'adv_shop_panel_' . $shopPanelIdx]];
-        }
-        sendmessage($from_id, "🖥 پنل محصول را انتخاب کنید.\n\nپنل فعلی: " . (string) ($shopData['panel'] ?? '-'), $shopPanelRows ? json_encode(['inline_keyboard' => $shopPanelRows]) : null, 'HTML');
+        sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
         return;
     }
     if ($shopStage === 'panel') {
-        // The panel is chosen with a button, a text does not belong here.
-        $shopPanelRows = [];
-        foreach (nexora_shop_panels() as $shopPanelIdx => $shopPanelName) {
-            $shopPanelRows[] = [['text' => (string) $shopPanelName, 'callback_data' => 'adv_shop_panel_' . $shopPanelIdx]];
-        }
-        sendmessage($from_id, "🖥 پنل محصول را انتخاب کنید (یکی از دکمه‌های زیر را بزنید).\n\nپنل فعلی: " . (string) ($shopData['panel'] ?? '-'), $shopPanelRows ? json_encode(['inline_keyboard' => $shopPanelRows]) : null, 'HTML');
+        // The panel is not asked anymore: the product of the reseller shop is
+        // delivered by hand. The stage is closed, so the wizard goes on.
+        $shopData['stage'] = nexora_shop_wizard_next_stage($shopKind, 'panel');
+        update("user", "Processing_value_four", json_encode($shopData, JSON_UNESCAPED_UNICODE), "id", $from_id);
+        step('adv_shop_edit', $from_id);
+        sendmessage($from_id, "📝 توضیحات محصول را بفرستید.\nبرای نگه‌داشتن توضیح فعلی <code>-</code> بفرستید.\n\nتوضیح فعلی: " . (string) ($shopData['description'] ?? '-'), null, 'HTML');
         return;
     }
     if (!$shopSkip) {

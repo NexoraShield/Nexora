@@ -464,11 +464,15 @@ function update($table, $field, $newValue, $whereField = null, $whereValue = nul
 
     // Invalidate persistent file cache for rarely-changing tables
     if (in_array($table, ['setting', 'admin', 'topicid', 'marzban_panel', 'shopSetting', 'PaySetting', 'affiliates'], true)) {
-        $pcDir = __DIR__ . '/storage/cache';
-        $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
-        if (is_array($pcFiles)) {
-            foreach ($pcFiles as $pcFile) {
-                @unlink($pcFile);
+        if (function_exists('nexora_clear_table_cache')) {
+            nexora_clear_table_cache($table);
+        } else {
+            $pcDir = __DIR__ . '/storage/cache';
+            $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
+            if (is_array($pcFiles)) {
+                foreach ($pcFiles as $pcFile) {
+                    @unlink($pcFile);
+                }
             }
         }
     }
@@ -668,20 +672,49 @@ function select($table, $field, $whereField = null, $whereValue = null, $type = 
     return $result;
 }
 
+function nexora_table_file_cache(string $table, string $sql, int $ttl = 300): array
+{
+    global $pdo;
+    $cacheDir = __DIR__ . '/storage/cache';
+    // The name of the file matches the pattern of the invalidation of the
+    // update() function, so a change in the panel drops the cache at once.
+    $cacheFile = $cacheDir . '/pc_' . $table . '_all.json';
+    $data = null;
+    if (is_dir($cacheDir) || @mkdir($cacheDir, 0775, true) || is_dir($cacheDir)) {
+        if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < $ttl) {
+            $raw = @file_get_contents($cacheFile);
+            $decoded = ($raw === false || $raw === '') ? null : json_decode($raw, true);
+            if (is_array($decoded)) {
+                $data = $decoded;
+            }
+        }
+    }
+    if ($data === null) {
+        try {
+            $stmt = $pdo->query($sql);
+            $data = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        } catch (PDOException $e) {
+            error_log('nexora_table_file_cache: ' . $e->getMessage());
+            return [];
+        }
+        if (is_dir($cacheDir)) {
+            @file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        }
+    }
+    return $data;
+}
+
 function getShopSetting($namevalue) {
     static $cache = null;
     if ($cache === null) {
+        // The table of the settings of the shop changes very rarely: it is
+        // read from the file cache, so a message of the bot does not need a
+        // query for it.
         $cache = [];
-        global $pdo;
-        try {
-            $stmt = $pdo->query("SELECT * FROM shopSetting");
-            if ($stmt) {
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $cache[$row['Namevalue']] = $row;
-                }
+        foreach (nexora_table_file_cache('shopSetting', "SELECT * FROM shopSetting") as $row) {
+            if (isset($row['Namevalue'])) {
+                $cache[$row['Namevalue']] = $row;
             }
-        } catch (PDOException $e) {
-            error_log("getShopSetting failed: " . $e->getMessage());
         }
     }
     return $cache[$namevalue] ?? null;
@@ -691,16 +724,10 @@ function getPaySetting($namepay) {
     static $cache = null;
     if ($cache === null) {
         $cache = [];
-        global $pdo;
-        try {
-            $stmt = $pdo->query("SELECT * FROM PaySetting");
-            if ($stmt) {
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $cache[$row['NamePay']] = $row;
-                }
+        foreach (nexora_table_file_cache('PaySetting', "SELECT * FROM PaySetting") as $row) {
+            if (isset($row['NamePay'])) {
+                $cache[$row['NamePay']] = $row;
             }
-        } catch (PDOException $e) {
-            error_log("getPaySetting failed: " . $e->getMessage());
         }
     }
     return $cache[$namepay] ?? null;
@@ -1481,16 +1508,23 @@ function DirectPayment($order_id, $image = 'images.jpg')
     }
     $orderType = "topup";
     $orderPrice = 0;
+    $orderNote = '';
     if ($get_invoice) {
         $orderType = "buy";
         $orderPrice = intval($get_invoice['price_product']);
+        $orderNote = (string) ($get_invoice['note'] ?? '');
     } elseif ($service_order && in_array($service_order['type'], ['extend_user', 'extra_user', 'extra_time_user'], true)) {
         $orderType = $service_order['type'];
         $orderPrice = intval($service_order['price']);
         $serviceParams = json_decode($service_order['value'] ?? '', true) ?: [];
         $nameloc = select("invoice", "*", "username", $service_order['username'], "select");
     }
-    if ($orderType != "topup") {
+    // The products of the reseller shop (and the top up of that shop) are
+    // delivered by hand: the money of the customer never touches his wallet.
+    // The difference between the paid amount and the price is only reported
+    // to the administrator, it is not booked on the wallet.
+    $walletStaysUntouched = (strpos($orderNote, 'agentshop:') === 0) || (strpos($orderNote, 'topup:agentshop:') === 0);
+    if ($orderType != "topup" && !$walletStaysUntouched) {
         $paidAmount = intval($Payment_report['price']);
         $walletPortion = max(0, $orderPrice - $paidAmount);
         addBalance($Balance_id['id'], $paidAmount - $orderPrice);
@@ -1564,7 +1598,8 @@ function DirectPayment($order_id, $image = 'images.jpg')
                         . "💰 موجودی قبل از شارژ: " . number_format($topupBalanceBefore) . " تومان\n"
                         . "✅ اعتبار به کیف پول کاربر اضافه شد. موجودی فعلی: " . number_format($topupBalance) . " تومان.";
                 } else {
-                    $topupAdminText .= "⚠️ این شارژ باید دستی انجام شود.";
+                    $topupAdminText .= "ℹ️ این مبلغ به کیف پول کاربر اضافه نشده است.\n"
+                        . "⚠️ این شارژ باید دستی انجام شود.";
                 }
                 if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                     telegram('sendmessage', [
@@ -1621,12 +1656,19 @@ function DirectPayment($order_id, $image = 'images.jpg')
             ]);
             sendmessage($Balance_id['id'], $agentShopBuyerText, null, 'HTML');
             $agentShopAdminText = "🛒 <b>سفارش فروشگاه نمایندگی</b>\n"
-                . "👤 کاربر: " . $Balance_id['id'] . ($agentShopBuyerName !== '' ? " (" . $agentShopBuyerName . ")" : '') . "\n"
+                . "👤 کاربر: <a href=\"tg://user?id=" . htmlspecialchars((string) $Balance_id['id'], ENT_QUOTES) . "\">" . htmlspecialchars((string) $Balance_id['id'], ENT_QUOTES) . "</a>"
+                . ($agentShopBuyerName !== '' ? " (" . $agentShopBuyerName . ")" : '') . "\n"
                 . "🏷 محصول: " . $agentShopName . "\n"
                 . "💳 مبلغ پرداختی: " . number_format($orderPrice) . " تومان\n"
                 . "🧾 شماره فاکتور: " . $get_invoice['id_invoice'] . "\n"
-                . ($agentShopNote !== '' ? "📝 توضیحات: " . $agentShopNote . "\n" : '')
-                . "⚠️ این سفارش باید دستی برای خریدار ارسال شود.";
+                . ($agentShopNote !== '' ? "📝 توضیحات: " . $agentShopNote . "\n" : '');
+            $agentShopPaid = intval($Payment_report['price']);
+            if ($agentShopPaid !== intval($orderPrice)) {
+                $agentShopAdminText .= "ℹ️ مبلغ واقعی پرداختی: " . number_format($agentShopPaid) . " تومان (فرق با قیمت محصول: "
+                    . number_format($agentShopPaid - intval($orderPrice)) . ")\n";
+            }
+            $agentShopAdminText .= "ℹ️ این مبلغ به کیف پول خریدار اضافه نشده است.\n"
+                . "⚠️ این سفارش باید دستی برای خریدار ارسال شود (پیام مستقیم در تلگرام).";
             if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
                 telegram('sendmessage', [
                     'chat_id' => $setting['Channel_Report'],
@@ -2393,6 +2435,14 @@ function nexora_agent_panel_deliver(array $product, string $userId): array
     $pass = 'Nx' . bin2hex(random_bytes(3));
     $ok = true;
     try {
+        // The table of the access is created here as well: a database that was
+        // never migrated must not turn the automatic delivery of the panel
+        // into a manual one.
+        $pdo->exec('CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    } catch (Throwable $e) {
+        error_log('nexora_agent_panel_deliver (table): ' . $e->getMessage());
+    }
+    try {
         $hash = password_hash($pass, PASSWORD_DEFAULT);
         $st = $pdo->prepare("INSERT INTO agent_auth (id_user, pass_hash, created_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE pass_hash = VALUES(pass_hash), created_at = VALUES(created_at)");
         $st->execute([$username, $hash, time()]);
@@ -2713,6 +2763,9 @@ function nexora_topup_set_button($shop, $label, $style): void{
     $st = $pdo->prepare("INSERT INTO PaySetting (NamePay, ValuePay) VALUES (?,?) ON DUPLICATE KEY UPDATE ValuePay = VALUES(ValuePay)");
     $st->execute(["nx_topup_label_" . $shop, $label]);
     $st->execute(["nx_topup_style_" . $shop, $style]);
+    if (function_exists('nexora_clear_table_cache')) {
+        nexora_clear_table_cache('PaySetting');
+    }
 }
 // Test services: products that are flagged as a test service.
 function nexora_test_products($activeOnly = true): array

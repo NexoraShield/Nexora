@@ -195,15 +195,28 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
             : applyCustomEmojiPayload($datas);
     }
 
-    $ch = curl_init($url);
-    if ($ch === false) {
-        error_log('Unable to initialise cURL for Telegram request.');
-        return [
-            'ok' => false,
-            'description' => 'Unable to initialise cURL for Telegram request.'
-        ];
+    // The handle of the request is kept, so a second call to the same method
+    // of the bot uses the connection that is already open. Every message of
+    // the bot costs a roundtrip to Telegram; on a small server the handshake
+    // of a new connection is the slowest part of it.
+    static $handles = [];
+    $handleKey = $token . '|' . $method;
+    $ch = $handles[$handleKey] ?? null;
+    if ($ch === null) {
+        $ch = curl_init();
+        if ($ch === false) {
+            error_log('Unable to initialise cURL for Telegram request.');
+            return [
+                'ok' => false,
+                'description' => 'Unable to initialise cURL for Telegram request.'
+            ];
+        }
+        $handles[$handleKey] = $ch;
+    } else {
+        curl_reset($ch);
     }
 
+    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $timeout = max(1, (int) $timeout);
     curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);

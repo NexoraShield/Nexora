@@ -127,6 +127,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     db_query($pdo, "DELETE FROM PaySetting WHERE NamePay = ?", [$name]);
                 }
             }
+            // The bot reads the settings from the file cache: it has to be
+            // dropped, so the new value is used right away.
+            if (function_exists('nexora_clear_table_cache')) {
+                nexora_clear_table_cache('PaySetting');
+            }
             flash('success', 'ذخیره شد.');
         } catch (Exception $e) {
             flash('error', 'خطای دیتابیس: ' . $e->getMessage());

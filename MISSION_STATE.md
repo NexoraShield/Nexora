@@ -8,32 +8,44 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 2026-10-29 (session) — Phase 7
 
 ## Current phase
-Phase 9 — The reseller panel (the ready products, the direct buy), the repair of the bundle of the
-web application and the top up of the agent panel (1:1).
+Phase 10 — The reseller shop is a manual shop (no panel, no wallet), every answer of the customer
+gets a reaction and the bot is faster on a small server.
 
 ## Last successful checkpoint
-**v1.22.79** — working tree has uncommitted edits:
-- app/assets/buy-Cma1zvMm.js: the branch of the payment of the buy page had an unclosed parenthesis
-  (`:(I.need_payment?(...)` + `)):0`), so the whole bundle of the buy page was broken and the web
-  application answered with "Unexpected token '}'" (the error boundary of the router). The branch is
-  `I.need_payment?(...):0` now. Every file of `app/assets` passes `node --check`.
-- agent-panel/login.php: the animated logo of Nexora is in the middle of the card (a turning conic
-  ring + a glow), the note "پنل نمایندگی PasarGuard" is gone, the button is a gold luxury button
-  with a shine and the note under the button has 24 pixels of space.
-- agent-panel/inc/shop.php (new): the products of the bot the agent may sell (`agent = 'f'`, without
-  the test services), the premium emoji of a name as a picture (`nx_agent_emoji_html`), the palette
-  of the categories and `nx_agent_buy_product()` — the wallet of the agent pays, the account is made
-  on the panel of the product, the invoice is written and the customer gets the service in the bot.
-  A customer that does not exist yet is created (`nx_agent_create_customer`).
-- agent-panel/index.php: the section "محصولات آماده" has the categories of the products, the glass
-  cards with the colour of the category, the movement of the cards and the buy dialog.
-- agent-panel/reseller-panel.css: the rules of the shop of the agent. The `rgba(var(--lcrgb,…,.45),inset…)`
-  of the category button broke the parser of the browser: everything after that rule was dropped
-  (the animation, the emoji picture and the grid were dead). The alpha is outside the var() now.
-- db/migrations/018 + the new migration 023: the price of a top up option of the agent panel is the
-  credit it puts into the wallet (1:1) — it was the half of it.
-- Full-repo php -l (PHP 8.2.35 CLI): 248 files clean / 0 errors.
-- v1.22.78 (committed): the payment section of the web application and the luxury theme.
+**v1.22.80** — the changes are committed and the release is published:
+- The reseller shop (فروشگاه نمایندگی, `agent = 'agentshop'`):
+  - the option "پنل" is gone from `panel/agentshop.php` and from the wizard of the bot
+    (`shop_admin.php` → `nexora_shop_wizard_stages`), and the products carry no panel any more
+    (the migration `024` empties the column `Location` of the products that still had one);
+  - no account is created on a panel any more (`index.php`, the branch `agentshop_buy`): the order
+    only carries the name of the product and the administrator delivers it by hand;
+  - the money of the buyer never touches his wallet: `DirectPayment()` skips the wallet math when
+    the note of the order starts with `agentshop:` or `topup:agentshop:` — the difference between
+    the paid amount and the price is only reported to the administrator.
+- The questions of the customer (`agentshop_admin.php`):
+  - `nexora_agent_shop_handle_answer()` is called **before** every other branch of the bot
+    (`index.php`, right after the rules and the bot status), so no branch can swallow an answer;
+  - every answer gets a reaction (the next question or the confirmation), the text of a question is
+    escaped for the HTML mode of Telegram;
+  - a button of the menu or a command of the bot is not an answer: the order goes to the
+    administrator with the answers that were given, so a paid order is never lost;
+  - the report of the administrator carries a link to the customer.
+- The agent panel (اجنت پنل):
+  - `nexora_agent_panel_deliver()` creates the table `agent_auth` before the access is written, so
+    the delivery stays automatic on a database that was never migrated;
+  - `nx_agent_buy_product()` refuses a manual panel with a clear message and uses the other panels
+    of the bot when the panel of the product can not create the account (the amount is refunded when
+    no panel can do it).
+- The speed of the bot:
+  - `install.sh` writes the settings of the opcode cache (opcache) for every installed PHP version
+    (the jit is off, the realpath cache is on);
+  - `botapi.php` keeps the connection to Telegram open inside a request;
+  - the settings of the shop and of the payments are read from the file cache
+    (`nexora_table_file_cache()`), and a change in the web panel drops the cache at once
+    (`nexora_clear_table_cache()`).
+- Full-repo php -l (PHP 8.2.35 CLI): 238 files clean / 0 errors.
+- The flow of the questions is covered by a test (16 checks, all green).
+- v1.22.79 (committed): the payment section of the web application and the luxury theme.
 
 ## Phase 8 results (2026-11-13)
 - **Test quota.** `setting.limit_usertest_all` is the share of every user (every user has a numeric

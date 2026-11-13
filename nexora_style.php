@@ -5,6 +5,30 @@
  * are empty and no {emoji:} placeholders are used.
  */
 
+if (!function_exists('nexora_clear_table_cache')) {
+    /**
+     * Drops the file cache of a table.
+     *
+     * The settings of the bot and of the shop are read from the file cache,
+     * so a change in the web panel has to drop it: the bot picks the new
+     * value right away.
+     */
+    function nexora_clear_table_cache(string $table): void
+    {
+        $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        if ($table === '') {
+            return;
+        }
+        $pcDir = __DIR__ . '/storage/cache';
+        $pcFiles = glob($pcDir . '/pc_' . $table . '_*.json');
+        if (is_array($pcFiles)) {
+            foreach ($pcFiles as $pcFile) {
+                @unlink($pcFile);
+            }
+        }
+    }
+}
+
 if (!function_exists('nexora_color_palette')) {
     function nexora_color_palette(): array
     {

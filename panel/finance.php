@@ -22,6 +22,11 @@ function finance_save_setting(PDO $pdo, string $name, string $value): void
     } else {
         $pdo->prepare("UPDATE PaySetting SET ValuePay = ? WHERE NamePay = ?")->execute([$value, $name]);
     }
+    // The bot reads the settings from the file cache: it has to be dropped,
+    // so the new value is used right away.
+    if (function_exists('nexora_clear_table_cache')) {
+        nexora_clear_table_cache('PaySetting');
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {

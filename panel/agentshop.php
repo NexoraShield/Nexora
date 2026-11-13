@@ -18,26 +18,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     $action = (string) $_POST['action'];
     if ($action === 'add' || $action === 'edit') {
         $name = trim($_POST['name_product'] ?? '');
-        $panel = trim($_POST['namepanel'] ?? '');
         if ($name === '') {
             flash('error', 'نام محصول را وارد کنید.');
-        } elseif ($panel === '') {
-            flash('error', 'پنل را انتخاب کنید.');
         } else {
             try {
                 if ($action === 'add') {
                     $code = bin2hex(random_bytes(2));
                     db_query(
                         $pdo,
-                        "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status,status_product,btn_style,btn_emoji_id) VALUES (?,?,?,?,?,?,?,'no_reset',?,?,'{}','0','active',?,?)",
+                        "INSERT INTO product (name_product,code_product,price_product,Volume_constraint,Service_time,Location,agent,data_limit_reset,note,category,hide_panel,one_buy_status,status_product,btn_style,btn_emoji_id) VALUES (?,?,?,?,?,?,'agentshop','no_reset',?,?,'{}','0','active',?,?)",
                         [
                             $name,
                             $code,
                             (int) ($_POST['price_product'] ?? 0),
                             (int) ($_POST['volume_product'] ?? 0),
                             (int) ($_POST['time_product'] ?? 0),
-                            $panel,
-                            NEXORA_AGENT_SHOP_MARKER,
+                            // The product of the reseller shop is not a service
+                            // of a panel: the administrator delivers it by hand.
+                            '',
                             (string) ($_POST['note_product'] ?? ''),
                             (string) ($_POST['category_product'] ?? ''),
                             nexora_agentshop_clean_style($_POST['btn_style'] ?? '') ?: null,
@@ -50,13 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                     $id = (int) ($_POST['edit_id'] ?? 0);
                     db_query(
                         $pdo,
-                        "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,Location=?,note=?,category=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND agent=?",
+                        "UPDATE product SET name_product=?,price_product=?,Volume_constraint=?,Service_time=?,note=?,category=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=? AND agent=?",
                         [
                             $name,
                             (int) ($_POST['price_product'] ?? 0),
                             (int) ($_POST['volume_product'] ?? 0),
                             (int) ($_POST['time_product'] ?? 0),
-                            $panel,
                             (string) ($_POST['note_product'] ?? ''),
                             (string) ($_POST['category_product'] ?? ''),
                             ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
@@ -103,10 +100,8 @@ if (isset($_GET['delete'])) {
 }
 
 $questionsText = '';
-$panels = [];
 $categories = [];
 try {
-    $panels = panel_load_panels($pdo);
     $categories = db_fetchAll($pdo, "SELECT id, remark FROM category ORDER BY display_order, id");
 } catch (Exception $e) {
 }
@@ -119,7 +114,7 @@ foreach (nexora_color_palette() as $slug => $info) {
 }
 
 $pageTitle = 'فروشگاه پنل نمایندگی';
-$pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند. بعد از پرداخت، مشخصات پرداخت‌کننده و محصول سفارش‌شده برای ادمین ارسال می‌شود تا خودش آن را برای خریدار ارسال کند.';
+$pageLede = 'محصولات مخصوص فروش پنل نمایندگی را با قیمت، توضیحات و رنگ دکمه تعریف کنید. این محصولات فقط از کلید «خرید پنل نمایندگی» در منوی اصلی ربات نمایش داده می‌شوند. این محصولات سرویس ربات نیستند: بعد از پرداخت، مشخصات پرداخت‌کننده و محصول سفارش‌شده برای ادمین ارسال می‌شود تا خودش آن را با پیام مستقیم برای خریدار ارسال کند. مبلغ پرداختی خریدار به کیف پول او اضافه نمی‌شود.';
 $activeNav = 'agentshop';
 include __DIR__ . '/inc/layout_head.php';
 ?>
@@ -172,10 +167,10 @@ else: ?>
 
 <div class="card fade-up d1" style="margin-bottom:18px">
   <div class="tbl-wrap"><table class="tbl">
-    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>قیمت</th><th>حجم</th><th>زمان</th><th>پنل</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
+    <thead><tr><th>پیش‌نمایش</th><th>نام</th><th>قیمت</th><th>حجم</th><th>زمان</th><th>توضیحات</th><th>رنگ</th><th>ایموجی</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
       <?php if (!$items): ?>
-        <tr><td colspan="12" style="text-align:center;color:var(--mute);padding:22px">هنوز محصولی برای فروش پنل نمایندگی تعریف نشده است.</td></tr>
+        <tr><td colspan="11" style="text-align:center;color:var(--mute);padding:22px">هنوز محصولی برای فروش پنل نمایندگی تعریف نشده است.</td></tr>
       <?php endif; ?>
       <?php foreach ($items as $it): ?>
         <tr>
@@ -184,7 +179,6 @@ else: ?>
           <td><?= number_format((float) ($it['price_product'] ?? 0)) ?></td>
           <td><?= (int) ($it['Volume_constraint'] ?? 0) ?> GB</td>
           <td><?= (int) ($it['Service_time'] ?? 0) ?> روز</td>
-          <td><?= htmlspecialchars((string) ($it['Location'] ?? '')) ?></td>
           <td style="min-width:220px"><?= nl2br(htmlspecialchars((string) ($it['note'] ?? ''))) ?></td>
           <td><span class="pill"><?= htmlspecialchars((string) ($it['btn_style'] ?? 'پیش‌فرض')) ?></span></td>
           <td><?= nexora_emoji_preview_html((string) ($it['btn_emoji_id'] ?? '')) ?: '<span class="cf">—</span>' ?></td>
@@ -197,7 +191,6 @@ else: ?>
                 'price_product' => (int) ($it['price_product'] ?? 0),
                 'volume_product' => (int) ($it['Volume_constraint'] ?? 0),
                 'time_product' => (int) ($it['Service_time'] ?? 0),
-                'namepanel' => (string) ($it['Location'] ?? ''),
                 'note_product' => (string) ($it['note'] ?? ''),
                 'category_product' => (string) ($it['category'] ?? ''),
                 'btn_style' => (string) ($it['btn_style'] ?? ''),
@@ -228,13 +221,6 @@ else: ?>
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price_product" value="0" required></label>
           <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" value="0" required></label>
           <label class="field"><span>مدت (روز)</span><input class="input" type="number" name="time_product" value="0" required></label>
-          <label class="field"><span>پنل</span>
-            <select name="namepanel" class="select" required>
-              <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(panel_plain_name((string) $pn['name_panel'])) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </label>
           <label class="field"><span>دسته‌بندی (اختیاری)</span>
             <select name="category_product" class="select">
               <option value="">—</option>
@@ -272,13 +258,6 @@ else: ?>
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price_product" id="edit_price" value="0" required></label>
           <label class="field"><span>حجم (گیگابایت)</span><input class="input" type="number" name="volume_product" id="edit_volume" value="0" required></label>
           <label class="field"><span>مدت (روز)</span><input class="input" type="number" name="time_product" id="edit_time" value="0" required></label>
-          <label class="field"><span>پنل</span>
-            <select name="namepanel" id="edit_panel" class="select" required>
-              <?php foreach ($panels as $pn): ?>
-                <option value="<?= htmlspecialchars((string) $pn['name_panel']) ?>"><?= htmlspecialchars(panel_plain_name((string) $pn['name_panel'])) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </label>
           <label class="field"><span>دسته‌بندی</span>
             <select name="category_product" id="edit_category" class="select">
               <option value="">—</option>
@@ -320,12 +299,6 @@ window.openEditModal = function (p) {
     document.getElementById('edit_emoji').value = p.btn_emoji_id || '';
     document.getElementById('edit_position').value = p.position || 0;
     document.getElementById('edit_status').value = p.status_product || 'active';
-    var sel = document.getElementById('edit_panel');
-    if (sel) {
-        for (var i = 0; i < sel.options.length; i++) {
-            sel.options[i].selected = sel.options[i].value === (p.namepanel || '');
-        }
-    }
     var cat = document.getElementById('edit_category');
     if (cat) {
         for (var j = 0; j < cat.options.length; j++) {
