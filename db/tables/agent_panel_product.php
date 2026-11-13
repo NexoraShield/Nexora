@@ -10,7 +10,8 @@ return [
         btn_style VARCHAR(20) NULL,
         btn_emoji_id VARCHAR(32) NULL,
         status_product varchar(20) NOT NULL DEFAULT 'active',
-        display_order INT NOT NULL DEFAULT 0
+        display_order INT NOT NULL DEFAULT 0,
+        panel_name varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL
         SQL,
     'columns' => [
         ['price', null, 'varchar(2000)'],
@@ -20,5 +21,6 @@ return [
         ['btn_emoji_id', null, 'VARCHAR(32) NULL'],
         ['status_product', 'active', "VARCHAR(20) NOT NULL DEFAULT 'active'"],
         ['display_order', null, 'INT NOT NULL DEFAULT 0'],
+        ['panel_name', null, 'VARCHAR(300) NULL'],
     ],
 ];

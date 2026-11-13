@@ -50,6 +50,14 @@ function nexora_agentpanel_preview($name, $style, $emoji, $colors): string
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
     $action = (string) $_POST['action'];
+    // The panels that can be picked for the agent panel are the ones the
+    // administrator defined with the type "nexora_agent".
+    $agentPanels = [];
+    foreach (panel_load_panels($pdo) as $panelRow) {
+        if ((string) ($panelRow['type'] ?? '') === 'nexora_agent') {
+            $agentPanels[] = (string) ($panelRow['name_panel'] ?? '');
+        }
+    }
     if ($action === 'ap_add' || $action === 'ap_edit') {
         $name = trim($_POST['name_panel'] ?? '');
         if ($name === '') {
@@ -59,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                 if ($action === 'add') {
                     db_query(
                         $pdo,
-                        "INSERT INTO agent_panel_product (name,price,credit,description,btn_style,btn_emoji_id,status_product) VALUES (?,?,?,?,?,?,'active')",
+                        "INSERT INTO agent_panel_product (name,price,credit,description,btn_style,btn_emoji_id,panel_name,status_product) VALUES (?,?,?,?,?,?,?,'active')",
                         [
                             $name,
                             (int) ($_POST['price'] ?? 0),
@@ -67,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                             (string) ($_POST['description'] ?? ''),
                             nexora_agentpanel_clean_style($_POST['btn_style'] ?? '') ?: null,
                             nexora_agentpanel_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
+                            (string) ($_POST['panel_name'] ?? ''),
                         ]
                     );
                     $newId = (int) $pdo->lastInsertId();
@@ -76,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                     $id = (int) ($_POST['edit_id'] ?? 0);
                     db_query(
                         $pdo,
-                        "UPDATE agent_panel_product SET name=?,price=?,credit=?,description=?,status_product=?,btn_style=?,btn_emoji_id=? WHERE id=?",
+                        "UPDATE agent_panel_product SET name=?,price=?,credit=?,description=?,status_product=?,btn_style=?,btn_emoji_id=?,panel_name=? WHERE id=?",
                         [
                             $name,
                             (int) ($_POST['price'] ?? 0),
@@ -85,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                             ($_POST['status_product'] ?? 'active') === 'hidden' ? 'hidden' : 'active',
                             nexora_agentpanel_clean_style($_POST['btn_style'] ?? '') ?: null,
                             nexora_agentpanel_clean_emoji($_POST['btn_emoji_id'] ?? '') ?: null,
+                            (string) ($_POST['panel_name'] ?? ''),
                             $id,
                         ]
                     );
@@ -153,6 +163,7 @@ foreach (nexora_color_palette() as $slug => $info) {
             <button class="btn btn-primary btn-sm" type="button" onclick='openEditAgentPanel(<?= json_encode([
                 'id' => (int) $it['id'],
                 'name' => (string) ($it['name'] ?? ''),
+                'panel_name' => (string) ($it['panel_name'] ?? ''),
                 'price' => (int) ($it['price'] ?? 0),
                 'credit' => (int) ($it['credit'] ?? 0),
                 'description' => (string) ($it['description'] ?? ''),
@@ -181,6 +192,15 @@ foreach (nexora_color_palette() as $slug => $info) {
         <input type="hidden" name="action" value="ap_add">
         <div class="form-grid">
           <label class="field"><span>نام پنل (مثال: پنل ۱ میلیونی)</span><input class="input" name="name_panel" required></label>
+          <label class="field"><span>پنل (پنلی که بمشتری تحویل داده می‌شود)</span>
+            <select name="panel_name" class="select">
+              <option value="">— انتخاب کنید —</option>
+              <?php foreach ($agentPanels as $agentPanelName): ?>
+                <option value="<?= htmlspecialchars((string) $agentPanelName) ?>"><?= htmlspecialchars(panel_plain_name((string) $agentPanelName)) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <small style="display:block;color:var(--mute);font-size:.72rem;margin-top:5px">پنل‌هایی که در ربات با کلید بانکید «افزودن پنل» و نوع «اجنت پنل» ساخته‌اید اید انشان می‌شوید اید انم ی‌شوید.</small>
+          </label>
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" value="0" required></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="credit" value="1000000" required></label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('') ?></label>
@@ -209,6 +229,14 @@ foreach (nexora_color_palette() as $slug => $info) {
         <input type="hidden" name="edit_id" id="ap_edit_id">
         <div class="form-grid">
           <label class="field"><span>نام پنل</span><input class="input" name="name_panel" id="ap_edit_name" required></label>
+          <label class="field"><span>پنل</span>
+            <select name="panel_name" id="ap_edit_panel" class="select">
+              <option value="">— انتخاب کنید —</option>
+              <?php foreach ($agentPanels as $agentPanelName): ?>
+                <option value="<?= htmlspecialchars((string) $agentPanelName) ?>"><?= htmlspecialchars(panel_plain_name((string) $agentPanelName)) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
           <label class="field"><span>قیمت (تومان)</span><input class="input" type="number" name="price" id="ap_edit_price" value="0" required></label>
           <label class="field"><span>اعتبار داخل پنل (تومان)</span><input class="input" type="number" name="credit" id="ap_edit_credit" value="0" required></label>
           <label class="field"><span>رنگ دکمه</span><?= nexora_agentpanel_style_select('', 'btn_style', 'ap_edit_style') ?></label>
@@ -236,6 +264,10 @@ window.openEditAgentPanel = function (p) {
     p = p || {};
     document.getElementById('ap_edit_id').value = p.id || '';
     document.getElementById('ap_edit_name').value = p.name || '';
+    var apPanel = document.getElementById('ap_edit_panel');
+    if (apPanel) {
+        apPanel.value = p.panel_name || '';
+    }
     document.getElementById('ap_edit_price').value = p.price || 0;
     document.getElementById('ap_edit_credit').value = p.credit || 0;
     document.getElementById('ap_edit_description').value = p.description || '';

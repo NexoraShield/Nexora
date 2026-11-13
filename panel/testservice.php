@@ -175,6 +175,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     } elseif ($action === 'delete') {
         db_query($pdo, "DELETE FROM product WHERE id = ? AND is_test = 1", [(int) ($_POST['edit_id'] ?? 0)]);
         flash('success', 'سرویس تست حذف شد.');
+    } elseif ($action === 'save_limit') {
+        $limit = max(0, (int) ($_POST['test_limit'] ?? 0));
+        db_query($pdo, "UPDATE setting SET limit_usertest_all = ?", [(string) $limit]);
+        if (!empty($_POST['apply_all'])) {
+            db_query($pdo, "UPDATE user SET limit_usertest = ?", [$limit]);
+            flash('success', 'سهمیه سرویس تست برای همه کاربران روی ' . $limit . ' تنظیم شد.');
+        } else {
+            flash('success', 'سهمیه سرویس تست برای کاربران جدید روی ' . $limit . ' تنظیم شد.');
+        }
     }
     if ($protocolMessage !== '') {
         flash('success', $protocolMessage);
@@ -209,6 +218,48 @@ include __DIR__ . '/inc/layout_head.php';
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px" class="fade-up">
   <div style="font-size:.85rem;color:var(--mute)"><?= count($items) ?> سرویس تست</div>
   <button class="btn btn-primary" onclick="openModal('addModal')"><?= icon('plus', 14) ?> افزودن سرویس تست</button>
+</div>
+
+<?php
+$testLimit = (int) (db_fetch($pdo, "SELECT limit_usertest_all FROM setting LIMIT 1")['limit_usertest_all'] ?? 1);
+$testUsersWith = (int) db_count($pdo, "SELECT COUNT(*) FROM user WHERE limit_usertest > 0");
+$testUsersTotal = (int) db_count($pdo, "SELECT COUNT(*) FROM user");
+?>
+<div class="card fade-up d1" style="margin-bottom:18px;border-right:3px solid var(--ac)">
+  <div class="card-head">
+    <div>
+      <div class="card-title">🧪 سهمیه سرویس تست هر کاربر</div>
+      <div class="card-subtitle">هر کاربری که به ربات جوین می‌شود می‌تواند به این تعداد سرویس تست باز کند. بعد از آن ربات به او اجازه سرویس تست بیشتری نمی‌دهد.</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="kv-list" style="margin-bottom:14px">
+      <div class="kv">
+        <span class="kv-key">سهمیه هر کاربر</span>
+        <span class="kv-val"><?= $testLimit ?> سرویس تست</span>
+      </div>
+      <div class="kv">
+        <span class="kv-key">کاربرانی که هنوز تست دارند</span>
+        <span class="kv-val"><?= $testUsersWith ?> از <?= $testUsersTotal ?></span>
+      </div>
+      <div class="kv">
+        <span class="kv-key">سرویس‌های تعریف‌شده</span>
+        <span class="kv-val"><?= count($items) ?></span>
+      </div>
+    </div>
+    <form method="POST" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+      <input type="hidden" name="action" value="save_limit">
+      <div class="field" style="max-width:180px">
+        <label>تعداد سرویس تست هر کاربر</label>
+        <input class="input" type="number" name="test_limit" min="0" value="<?= $testLimit ?>">
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mute);margin-bottom:10px">
+        <input type="checkbox" name="apply_all" value="1"> برای همه کاربران فعلی هم اعمال شود
+      </label>
+      <button type="submit" class="btn btn-primary" style="margin-bottom:2px">💾 ذخیره سهمیه</button>
+    </form>
+  </div>
 </div>
 
 <?php if (!$panels): ?>

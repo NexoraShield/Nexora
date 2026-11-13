@@ -12,6 +12,7 @@ nexoraEnsureInstallerRemoved();
 require_once 'keyboard.php';
 require_once 'vendor/autoload.php';
 require_once 'panels.php';
+require_once 'agentshop_admin.php';
 $textbotlang = languagechange();
 // A premium emoji label is restored to its tagged form, so a button that was
 // renamed still works. While an administrator is typing a new text the
@@ -6567,6 +6568,31 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendmessage($from_id, $agentDetails, $agentKeyboard, 'HTML');
     update("user", "Processing_value_one", $agentCode, "id", $from_id);
     step('agentshop_product', $from_id);
+} elseif ($user['step'] == "agentshop_questions" && !in_array($from_id, $admin_ids)) {
+    // The customer answers the questions of the agent shop. When every question
+    // is answered the order is sent to the administrator.
+    $agentQuestions = function_exists('nexora_agent_shop_questions') ? nexora_agent_shop_questions('agentshop') : [];
+    if (!$agentQuestions) {
+        step('home', $from_id);
+        sendmessage($from_id, ($textbotlang['users']['agentShop']['empty'] ?? '⭕️ سوالی برای پرسیدن وجود ندارد.'), $backuser, 'HTML');
+        return;
+    }
+    $agentAnswers = json_decode((string) ($user['Processing_value_four'] ?? '[]'), true);
+    $agentAnswers = is_array($agentAnswers) ? $agentAnswers : [];
+    $agentAnswers[] = (string) $text;
+    update("user", "Processing_value_four", json_encode($agentAnswers, JSON_UNESCAPED_UNICODE), "id", $from_id);
+    $agentNext = count($agentAnswers);
+    if ($agentNext < count($agentQuestions)) {
+        sendmessage($from_id, "❓ سوال " . ($agentNext + 1) . " از " . count($agentQuestions) . ":\n" . strip_tags((string) $agentQuestions[$agentNext]['question']), null, 'HTML');
+        return;
+    }
+    $agentInvoiceId = (string) ($user['Processing_value_tow'] ?? '');
+    update("user", "Processing_value_tow", '', "id", $from_id);
+    update("user", "Processing_value_four", '', "id", $from_id);
+    step('home', $from_id);
+    if (function_exists('nexora_agent_shop_finish')) {
+        nexora_agent_shop_finish($agentInvoiceId, (string) $from_id);
+    }
 } elseif ($datain == "agentshop_buy") {
     $agentCode = (string) $user['Processing_value_one'];
     $agentProduct = select("product", "*", "code_product", $agentCode, "select");
@@ -6837,21 +6863,28 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     // ---------------- [ panel top up ] ----------------
     // The customer first chooses the panel that should be charged.
     $topupShop = $datain === "topup_agentpanelshop" ? 'agentpanelshop' : 'agentshop';
-    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanels = function_exists('nexora_topup_targets') ? nexora_topup_targets((string) $from_id, $topupShop) : nexora_user_panels($from_id, $topupShop);
     if (!$topupPanels) {
-        sendmessage($from_id, $textbotlang['users']['topUp']['noPanel'], $backuser, 'HTML');
+        // The customer has no panel yet, so the button of the agent shop is
+        // shown right under the message.
+        $topupBuyKeyboard = json_encode(['inline_keyboard' => [
+            [['text' => ($textbotlang['textbot']['agentShop'] ?? '🛒 خرید پنل نمایندگی'), 'callback_data' => "agentshop"]],
+            [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]],
+        ]]);
+        sendmessage($from_id, ($textbotlang['users']['topUp']['noPanelBuy'] ?? "⚠️ شما هنوز هیچ پنل نمایندگی نخریده‌اید که شارژ انجام بدید.\nلطفاً اول با دکمهٔ پایین یک پنل تهیه کنید 👇"), $topupBuyKeyboard, 'HTML');
         return;
     }
     $topupRows = [];
     foreach ($topupPanels as $topupPanelIdx => $topupPanelName) {
-        $topupRows[] = [nexora_style_btn($topupPanelName, "topup_panel_" . $topupShop . "_" . $topupPanelIdx, ['btn_style' => 'primary'])];
+        $topupRows[] = [nexora_style_btn((string) $topupPanelName, "topup_panel_" . $topupShop . "_" . $topupPanelIdx, ['btn_style' => 'primary'])];
     }
     $topupRows[] = [['text' => $textbotlang['users']['topUp']['backBtn'], 'callback_data' => $topupShop === 'agentshop' ? "agentshop" : "agentpanelshop"]];
-    sendmessage($from_id, $textbotlang['users']['topUp']['selectPanel'], json_encode(['inline_keyboard' => $topupRows]), 'HTML');
+    $topupIntro = ($textbotlang['users']['topUp']['selectProduct'] ?? "کدام محصول را می‌خواهید شارژ کنید؟");
+    sendmessage($from_id, $topupIntro, json_encode(['inline_keyboard' => $topupRows]), 'HTML');
     step('topup_select_panel', $from_id);
 } elseif (preg_match('/^topup_panel_(agentshop|agentpanelshop)_(\d+)$/', $datain, $topupMatch)) {
     $topupShop = nexora_topup_shop_key($topupMatch[1]);
-    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanels = function_exists('nexora_topup_targets') ? nexora_topup_targets((string) $from_id, $topupShop) : nexora_user_panels($from_id, $topupShop);
     $topupPanelIdx = (int) $topupMatch[2];
     if (!isset($topupPanels[$topupPanelIdx])) {
         sendmessage($from_id, $textbotlang['users']['topUp']['noPanel'], $backuser, 'HTML');
@@ -6872,7 +6905,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
 } elseif (preg_match('/^topup_buy_(agentshop|agentpanelshop)_(\d+)_(\d+)$/', $datain, $topupMatch)) {
     $topupShop = nexora_topup_shop_key($topupMatch[1]);
     $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
-    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanels = function_exists('nexora_topup_targets') ? nexora_topup_targets((string) $from_id, $topupShop) : nexora_user_panels($from_id, $topupShop);
     $topupPanelIdx = (int) $topupMatch[3];
     if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active' || !isset($topupPanels[$topupPanelIdx])) {
         sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');
@@ -6897,7 +6930,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
 } elseif (preg_match('/^topup_pay_(agentshop|agentpanelshop)_(\d+)_(\d+)$/', $datain, $topupMatch)) {
     $topupShop = nexora_topup_shop_key($topupMatch[1]);
     $topupItem = nexora_topup_product_by_id((int) $topupMatch[2]);
-    $topupPanels = nexora_user_panels($from_id, $topupShop);
+    $topupPanels = function_exists('nexora_topup_targets') ? nexora_topup_targets((string) $from_id, $topupShop) : nexora_user_panels($from_id, $topupShop);
     $topupPanelIdx = (int) $topupMatch[3];
     if (!$topupItem || $topupItem['shop'] !== $topupShop || $topupItem['status_product'] !== 'active' || !isset($topupPanels[$topupPanelIdx])) {
         sendmessage($from_id, $textbotlang['users']['topUp']['empty'], $backuser, 'HTML');

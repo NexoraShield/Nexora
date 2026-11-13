@@ -250,7 +250,10 @@ Choose the panel that should be charged:',
 💳 Paid: <b>{price}</b> Toman
 🎁 Credit added: <b>{credit}</b>
 💰 Your balance: <b>{balance}</b> Toman',
-                ],
+                
+    'noPanelBuy' => '⚠️ You have not bought an agent panel yet, so there is nothing to charge.\nPlease get a panel first with the button below 👇',
+    'selectProduct' => '🛒 Which product do you want to charge?',
+    'successManual' => '✅ The operation was successful and the details were sent to the support.\n\nIt is applied within 24 hours. To speed things up you can message the support of the bot.',],
                 'testService' => [
                         'intro' => '🧪 <b>Test service</b>
 
@@ -314,7 +317,8 @@ After the payment the service is created automatically.',
 2️⃣ Check the price and the details
 3️⃣ Choose a payment method
 4️⃣ The service is delivered automatically after the payment',
-                ],
+                
+    'registered' => '✅ Your details are registered and the order is final.\n\nAn agent sets up your panel and delivers it within 24 hours. For the delivery and the panel please contact the support.',],
                 'Rules' => '✅ The rules have been accepted. You can now use the bot\'s services.',
                 'SendMessage' => '📩 Send message to user',
                 'back' => 'You have returned to the main page!',
@@ -1317,7 +1321,7 @@ Message text:
                 ],
                 'usertest' => [
                         'errorcreat' => '❌ An error occurred while creating the subscription. Please contact support to resolve the issue.',
-                        'limitwarning' => '⚠️ Your test subscription creation limit has been reached.',
+                        'limitwarning' => '⛔️ You have reached the limit of the test accounts.\n\nPlease contact the support of the bot to get more.',
                         'unavailable' => '📌 The test service is not available at the moment.',
                 ],
                 'wheelLuck' => [

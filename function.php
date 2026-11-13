@@ -1532,12 +1532,19 @@ function DirectPayment($order_id, $image = 'images.jpg')
                     '{balance}' => number_format($topupBalance),
                     '{panel}' => $topupPanel,
                 ]);
+                if ($topupShop === 'agentshop') {
+                    // The charge of the agent shop is done by the support, so
+                    // the customer is told what happens next.
+                    $topupText = ($textbotlang['users']['topUp']['successManual'] ?? "✅ عملیات با موفقیت انجام شد و مشخصات برای پشتیبانی ارسال شد.\n\nنهایتا تا ۲۴ ساعت اعمال می‌شود. برای تسریع در روند می‌توانید به پشتیبانی ربات پیام بدهید.");
+                }
                 sendmessage($Balance_id['id'], $topupText, null, 'HTML');
                 // the admin gets the details, so the charge can be done
                 $topupAdminText = "💳 <b>شارژ پنل تایید شد</b>\n"
                     . "👤 کاربر: " . $Balance_id['id'] . "\n"
-                    . "🖥 پنل: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n"
-                    . "🏷 گزینه: " . $topupItem['name'] . "\n"
+                    . ($topupShop === 'agentshop'
+                        ? "🛒 محصول خریداری‌شده: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n"
+                        : "🖥 پنل: " . ($topupPanel !== '' ? $topupPanel : '-') . "\n")
+                    . "🏷 گزینه شارژ: " . $topupItem['name'] . "\n"
                     . "💳 مبلغ پرداختی: " . number_format($orderPrice) . " تومان\n"
                     . "🎁 اعتبار: " . number_format($topupCredit) . "\n"
                     . ($topupShop === 'agentshop' ? "⚠️ این شارژ باید دستی انجام شود." : "✅ اعتبار به کیف پول کاربر اضافه شد.");
@@ -1584,6 +1591,11 @@ function DirectPayment($order_id, $image = 'images.jpg')
             $agentShopName = (string) ($agentShopProduct['name_product'] ?? ($get_invoice['name_product'] ?? '—'));
             $agentShopNote = trim((string) $agentShopMarker[2]);
             $agentShopBuyerName = trim((string) ($Balance_id['username'] ?? ''));
+            // The customer answers the questions of the shop first, the
+            // administrator gets the answers together with the payment.
+            if (function_exists('nexora_agent_shop_ask_questions') && nexora_agent_shop_ask_questions((string) $get_invoice['id_invoice'], (string) $Balance_id['id'])) {
+                return;
+            }
             $agentShopBuyerText = ($textbotlang['users']['agentShop']['paid'] ?? "✅ پرداخت شما تایید شد.\nمحصول: {name}\nمبلغ: {price} تومان\n\nاین محصول به صورت دستی برای شما ارسال می‌شود.");
             $agentShopBuyerText = strtr($agentShopBuyerText, [
                 '{name}' => $agentShopName,
@@ -2392,8 +2404,25 @@ function nexora_user_panels($from_id, $shop = 'agentshop'): array
     }
     return $panels;
 }
-function nexora_topup_set_button($shop, $label, $style): void
+/**
+ * The things a customer can charge.
+ *
+ * For the agent shop these are the products the customer already bought, for
+ * the agent panel shop the panels of their running services.
+ */
+function nexora_topup_targets(string $userId, string $shop = 'agentshop'): array
 {
+    $shop = nexora_topup_shop_key($shop);
+    if ($shop === 'agentshop' && function_exists('nexora_agent_shop_bought_products')) {
+        $bought = nexora_agent_shop_bought_products((string) $userId, 'agentshop');
+        if ($bought) {
+            return $bought;
+        }
+    }
+    return nexora_user_panels((string) $userId, $shop);
+}
+
+function nexora_topup_set_button($shop, $label, $style): void{
     global $pdo;
     $shop = nexora_topup_shop_key($shop);
     $label = trim((string) $label);

@@ -6,11 +6,12 @@ if (is_file($__nexoraStyleLib)) {
     require_once $__nexoraStyleLib;
 }
 require_once __DIR__ . '/inc/shop_helpers.php';
+require_once __DIR__ . '/../agentshop_admin.php';
 require_auth();
 
 const NEXORA_AGENT_SHOP_MARKER = 'agentshop';
 
-$shopTab = (isset($_GET['tab']) && $_GET['tab'] === 'topup') ? 'topup' : 'products';
+$shopTab = (isset($_GET['tab']) && in_array($_GET['tab'], ['topup', 'questions'], true)) ? $_GET['tab'] : 'products';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
@@ -77,8 +78,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     } elseif ($action === 'delete') {
         db_query($pdo, "DELETE FROM product WHERE id = ? AND agent = ?", [(int) ($_POST['edit_id'] ?? 0), NEXORA_AGENT_SHOP_MARKER]);
         flash('success', 'محصول حذف شد.');
+    } elseif ($action === 'save_questions') {
+        $raw = (string) ($_POST['questions'] ?? '');
+        $list = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+            $line = trim($line);
+            if ($line !== '') {
+                $list[] = $line;
+            }
+        }
+        nexora_agent_shop_set_questions('agentshop', $list);
+        flash('success', count($list) . ' سوال برای مشتری ذخیره شد.');
     }
-    header('Location: agentshop.php?tab=' . ($shopTab === 'topup' ? 'topup' : 'products'));
+    header('Location: agentshop.php?tab=' . ($shopTab === 'products' ? 'products' : $shopTab));
     exit;
 }
 
@@ -90,6 +102,7 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
+$questionsText = '';
 $panels = [];
 $categories = [];
 try {
@@ -98,6 +111,7 @@ try {
 } catch (Exception $e) {
 }
 $items = db_fetchAll($pdo, "SELECT * FROM product WHERE agent = ? ORDER BY display_order, id", [NEXORA_AGENT_SHOP_MARKER]);
+$questionsText = implode("\n", array_map(fn($q) => (string) ($q['question'] ?? ''), nexora_agent_shop_questions('agentshop')));
 
 $STYLE_COLORS = [];
 foreach (nexora_color_palette() as $slug => $info) {
@@ -117,10 +131,34 @@ $flashErr = get_flash('error'); ?>
 
 <div class="card fade-up" style="margin-bottom:14px"><div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap">
   <a class="btn <?= $shopTab === 'products' ? 'btn-primary' : 'btn-ghost' ?>" href="agentshop.php?tab=products">🛒 محصولات فروشگاه</a>
+  <a class="btn <?= $shopTab === 'questions' ? 'btn-primary' : 'btn-ghost' ?>" href="agentshop.php?tab=questions">❓ سوال‌های مشتری</a>
   <a class="btn <?= $shopTab === 'topup' ? 'btn-primary' : 'btn-ghost' ?>" href="agentshop.php?tab=topup">💳 شارژ پنل</a>
 </div></div>
 
-<?php if ($shopTab === 'topup'):
+<?php if ($shopTab === 'questions'): ?>
+<div class="card fade-up">
+  <div class="card-head">
+    <div>
+      <div class="card-title">❓ سوال‌هایی که از مشتری پرسیده می‌شود</div>
+      <div class="card-subtitle">بعد از پرداخت، ربات این سوال‌ها را از مشتری می‌پرسد. پاسخ‌ها همراه مشخصات پرداخت برای ادمین ارسال می‌شود. هر سوال را در یک خط بنویسید.</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+      <input type="hidden" name="action" value="save_questions">
+      <div class="field">
+        <label>سوال‌ها (هر سوال در یک خط)</label>
+        <textarea class="input" name="questions" rows="8" placeholder="نام شما روی پنل چه باشه؟&#10;ایمیل شما چیست؟&#10;شماره تماس شما؟"><?= htmlspecialchars($questionsText) ?></textarea>
+        <span class="field-hint">اگر این قسمت خالی باشد، بعد از پرداخت فقط مشخصات پرداخت برای ادمین ارسال می‌شود.</span>
+      </div>
+      <div style="margin-top:14px">
+        <button type="submit" class="btn btn-primary">💾 ذخیره سوال‌ها</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php elseif ($shopTab === 'topup'):
     $topupShop = 'agentshop';
     $topupReturn = 'agentshop.php';
     include __DIR__ . '/inc/topup_tab.php';
