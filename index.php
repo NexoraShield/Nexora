@@ -335,27 +335,26 @@ if ((strpos($text, "/start ") !== false || $text == "/start") && $user['step'] !
     }
     if ($payInvoice !== '') {
         $payOrder = select("invoice", "*", "id_invoice", $payInvoice, "select");
-        if (!$payOrder || (string) $payOrder['id_user'] !== (string) $from_id || (string) $payOrder['Status'] !== 'unpaid') {
-            sendmessage($from_id, $textbotlang['users']['sell']['restartFromStart'], $keyboard, 'HTML');
-            step('home', $from_id);
+        if ($payOrder && (string) $payOrder['id_user'] === (string) $from_id && (string) $payOrder['Status'] === 'unpaid') {
+            update("user", "Processing_value", (string) $payOrder['payable_amount'], "id", $from_id);
+            update("user", "Processing_value_one", $payInvoice, "id", $from_id);
+            step('get_step_payment_buy', $from_id);
+            $payGateways = function_exists('nexora_available_gateways') ? nexora_available_gateways(['cardpayment' => $user['cardpayment'] ?? 1]) : [];
+            if ($payGateway !== '' && isset($payGateways[$payGateway])) {
+                // The customer chose the gateway in the web application, so only
+                // the confirmation is left.
+                $payKeyboard = json_encode(['inline_keyboard' => [
+                    [nexora_style_btn((string) ($payGateways[$payGateway]['icon'] ?? '') . ' ' . (string) $payGateways[$payGateway]['label'], $payGateway, ['btn_style' => (string) ($payGateways[$payGateway]['style'] ?? '')])],
+                    [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "colselist"]],
+                ]]);
+                sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $payKeyboard, 'HTML');
+            } else {
+                sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            }
             return;
         }
-        update("user", "Processing_value", (string) $payOrder['payable_amount'], "id", $from_id);
-        update("user", "Processing_value_one", $payInvoice, "id", $from_id);
-        step('get_step_payment_buy', $from_id);
-        $payGateways = function_exists('nexora_available_gateways') ? nexora_available_gateways(['cardpayment' => $user['cardpayment'] ?? 1]) : [];
-        if ($payGateway !== '' && isset($payGateways[$payGateway])) {
-            // The customer chose the gateway in the web application, so only
-            // the confirmation is left.
-            $payKeyboard = json_encode(['inline_keyboard' => [
-                [nexora_style_btn((string) ($payGateways[$payGateway]['icon'] ?? '') . ' ' . (string) $payGateways[$payGateway]['label'], $payGateway, ['btn_style' => (string) ($payGateways[$payGateway]['style'] ?? '')])],
-                [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "colselist"]],
-            ]]);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $payKeyboard, 'HTML');
-        } else {
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
-        }
-        return;
+        // The order is unknown or already paid: the payload is handled like
+        // every other start parameter (an invitation code for example).
     }
     if ($affiliatesid !== '' && !in_array($affiliatesid, ['start', "usertest", "/start", "buy", "help"])) {
         isValidInvitationCode($setting, $from_id, $user['verify']);

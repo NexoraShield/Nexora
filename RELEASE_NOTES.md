@@ -1,4 +1,37 @@
 # Nexora Bot — Release Notes
+## v1.22.78 (2026-11-13) — The web application of the bot gets its payment section and a luxury look
+
+**The web application (the mini app of the bot)**
+- The premium emoji of the products was shown as the raw code (`<tg-emoji emoji-id="...">`),
+  because the web application only knows plain text. The tag is replaced with the emoji it
+  carries now, so the code is never shown.
+- The web application could not pay: it only pays from the wallet of the account, so a customer
+  with an empty wallet was stuck. Now the gateways of the bot are part of the web application:
+  - the api returns the gateways that are switched on — the same list and the same rules as the
+    payment keyboard of the bot,
+  - an order that the wallet can not cover becomes a pending order and the customer is sent to
+    the new payment page,
+  - the new page `app/pay.php` shows the amount, the order and the gateways of the bot,
+  - the bot understands `/start pay_<invoice>` and `/start paygw_<gateway>_<invoice>`.
+- The look of the web application is a luxury theme now: a deep gradient with a slow aurora,
+  glass surfaces, gold buttons with a shine, soft shadows, a polished scrollbar and no horizontal
+  scrolling.
+
+**The cron of the servers**
+- The cron of the servers is clean now: the old individual jobs (which ran the code of an older
+  installation) are gone and the dispatcher of the current installation is the only line that is
+  left. On `206.1.97.193` 19 old jobs of the Mirza installation were removed, on `91.228.227.161`
+  23 old jobs that ran twice were removed.
+
+**Deployed**
+- `212.87.198.95` (arvanbot.snnap.site) — v1.22.78
+- `206.1.96.78` (mikhvpn.plussheild.site) — v1.22.78
+- `153.52.92.153` (arvanpro.projectsdg.site) — v1.22.78
+- `91.228.227.161` (kovpn.plussheild.site / Knockout_VpnBot) — v1.22.78
+- `206.1.97.193` (ostovarvpn.snnap.site / BotOstovar) — v1.22.78
+
+---
+
 ## v1.22.77 (2026-11-13) — One test menu, the difference of the two panel shops
 
 **The test service (سرویس تست)**

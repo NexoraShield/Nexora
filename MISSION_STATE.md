@@ -11,7 +11,25 @@ Mandatory: Persian (Farsi) is the only user-facing language (RTL preserved).
 Phase 8 — The two panel shops (پنل نمایندگی / اجنت پنل), the test quota and the top up.
 
 ## Last successful checkpoint
-**v1.22.77** — working tree has uncommitted edits:
+**v1.22.78** — working tree has uncommitted edits:
+- api/miniapp.php: the premium emoji of the panels, the products and the categories is replaced
+  with the emoji it carries (`mini_plain_text()`), so the raw code is never shown in the web
+  application. The new actions `gateways` (the gateways that are switched on) and the pending
+  order (`mini_pending_order()`) were added: an order the wallet can not cover becomes a pending
+  order and the customer is sent to the payment page.
+- app/pay.php (new): the payment page of the web application — the amount, the order and the
+  gateways of the bot; the customer pays in the bot.
+- index.php: `/start pay_<invoice>` shows the gateways of the bot for that order,
+  `/start paygw_<gateway>_<invoice>` shows the chosen gateway right away. An unknown order falls
+  through to the normal start handling (an invitation code for example).
+- gateways.php: `nexora_available_gateways()` / `nexora_gateway_is_usable()` — the gateways a
+  customer can pay with, with the same rules as the payment keyboard of the bot.
+- app/assets/nexora-theme.css + app/index.php: the luxury theme of the web application (a deep
+  gradient with a slow aurora, glass surfaces, gold buttons with a shine, a polished scrollbar).
+- The cron of the servers is clean now (the old individual jobs are gone, the dispatcher of the
+  current installation is the only line).
+- Full-repo php -l (PHP 8.2.35 CLI): 246 files clean / 0 errors.
+- v1.22.77 (committed): one test menu and the difference of the two panel shops.
 - index.php / function.php / keyboard.php: the two kinds of test service are merged. The customer sees
   the test products of the web panel AND the panels whose test capability is on (panel management) in
   one list, and both use the same share (`user.limit_usertest`). `nexora_test_panels()` is the single
