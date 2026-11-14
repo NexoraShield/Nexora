@@ -296,6 +296,34 @@
     flex: 0 0 auto;
 }
 
+.rp-donut-box svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+}
+
+.rp-donut-center {
+    fill: var(--text);
+    font-size: 17px;
+    font-weight: 800;
+    font-family: var(--font);
+}
+
+.rp-donut-sub {
+    fill: var(--mute);
+    font-size: 10px;
+    font-family: var(--font);
+}
+
+.rp-part {
+    transition: opacity .15s;
+}
+
+.rp-part-hot {
+    opacity: .75;
+}
+
 .rp-legend {
     display: flex;
     flex-direction: column;

@@ -19,8 +19,8 @@ function nexora_testservice_clean_emoji($v): string
     if ($v === '') return '';
     if (preg_match('/^\d{1,32}$/', $v)) return $v;
     if (preg_match('/emoji-id\s*=\s*"(\d{1,32})"/i', $v, $m)) return $m[1];
-    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v) && function_exists('nexora_emoji_lookup')) {
-        $row = nexora_emoji_lookup(trim($v));
+    if (preg_match('/^\{emoji:([^}]+)\}$/u', $v, $m) && function_exists('nexora_emoji_lookup')) {
+        $row = nexora_emoji_lookup(trim($m[1]));
         if ($row && !empty($row['custom_emoji_id'])) return (string) $row['custom_emoji_id'];
     }
     return '';

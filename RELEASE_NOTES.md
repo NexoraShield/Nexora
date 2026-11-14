@@ -1,4 +1,19 @@
 # Nexora Bot — Release Notes
+
+## v1.22.84 (2026-11-14) — The premium emoji of the shops and the pie charts of the reports are fixed
+
+**The premium emoji (every panel)**
+- The code of an emoji (for example `{emoji:tun}`) that was written in the field "premium emoji" was never saved: the whole code was given to the database instead of the name of the emoji, so the emoji was never found and the field stayed empty. The name of the emoji is now taken out of the code, so the emoji is saved and used.
+- It is fixed everywhere an emoji is saved: the reseller shop, the tab "top up", the agent panel, the test service, "the color and the emoji of the buttons" (the product, the category and the panel) and the panels.
+- The function `nexora_emoji_lookup()` opens the code `{emoji:name}` itself now, so every caller finds the same emoji, no matter if it passes the name or the code.
+
+**The pie charts of the page "reports and stats"**
+- The arcs of the circle were drawn with the wrong flag, so the ring fell apart and the pieces fell out of the frame. The ring is drawn exactly now.
+- When there is only one part (for example all the money comes from one panel), an arc can never be a whole circle; the circle itself is drawn now.
+- The text in the middle of the circle (the percentage and its title) got its color and its size, and every part can be looked at.
+
+---
+
 ## v1.22.83 (2026-11-14) — The test service never gets stuck on a broken account, the list of the representatives is complete and the Knockout bot is cleaned up
 
 **The test service (every bot)**

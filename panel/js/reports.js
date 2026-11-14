@@ -267,6 +267,7 @@
         var inner = radius * 0.62;
         var total = parts.reduce(function (sum, part) { return sum + (Number(part.value) || 0); }, 0);
         var svg = node('svg', { viewBox: '0 0 ' + size + ' ' + size, class: 'rp-donut', 'aria-hidden': 'true' }, box);
+        var tipNode = tip(box);
         if (total <= 0) {
             node('circle', {
                 cx: size / 2, cy: size / 2, r: (radius + inner) / 2, fill: 'none',
@@ -278,18 +279,44 @@
                 var value = Number(part.value) || 0;
                 if (value <= 0) return;
                 var angle = value / total * Math.PI * 2;
+                var color = part.color || palette[index % palette.length];
+                // A part of 100% is a whole circle: an arc can never draw it
+                // (the two ends of the arc would be the same point), so the
+                // circle itself is drawn.
+                if (angle >= Math.PI * 2 - 0.0001) {
+                    node('circle', {
+                        cx: size / 2, cy: size / 2, r: (radius + inner) / 2, fill: 'none',
+                        stroke: color, 'stroke-width': radius - inner
+                    }, svg);
+                    offset += angle;
+                    return;
+                }
                 var x1 = size / 2 + radius * Math.cos(-offset);
                 var y1 = size / 2 + radius * Math.sin(-offset);
                 var x2 = size / 2 + radius * Math.cos(-(offset + angle));
                 var y2 = size / 2 + radius * Math.sin(-(offset + angle));
                 var large = angle > Math.PI ? 1 : 0;
+                // The angles of the parts grow counterclockwise, so the flag of
+                // the arc is 0. With the flag 1 the arc is drawn around another
+                // center and the circle falls apart.
                 var path = node('path', {
                     d: 'M' + x1.toFixed(2) + ' ' + y1.toFixed(2) +
-                        ' A' + radius + ' ' + radius + ' 0 ' + large + ' 1 ' + x2.toFixed(2) + ' ' + y2.toFixed(2),
-                    fill: 'none', stroke: part.color || palette[index % palette.length],
+                        ' A' + radius + ' ' + radius + ' 0 ' + large + ' 0 ' + x2.toFixed(2) + ' ' + y2.toFixed(2),
+                    fill: 'none', stroke: color,
                     'stroke-width': radius - inner, 'stroke-linecap': 'butt'
                 }, svg);
                 path.setAttribute('data-part', 'rp-part');
+                path.addEventListener('pointerenter', function () {
+                    path.classList.add('rp-part-hot');
+                    showTip(box, tipNode, size / 2 - 40, 6,
+                        '<b>' + (part.name || '') + '</b><br>' +
+                        number(value) + ' ' + (box.dataset.unit || '') +
+                        '<br>' + number(Math.round(value / total * 1000) / 10) + '٪');
+                });
+                path.addEventListener('pointerleave', function () {
+                    path.classList.remove('rp-part-hot');
+                    tipNode.style.display = 'none';
+                });
                 offset += angle;
             });
         }

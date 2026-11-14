@@ -160,6 +160,13 @@ if (!function_exists('nexora_emoji_lookup')) {
     {
         $ref = trim($ref);
         if ($ref === '') return null;
+        // The code of an emoji ({emoji:slug}) points at the emoji itself: it is
+        // unwrapped here, so every caller finds the emoji no matter if it
+        // passes the code or the name.
+        if (preg_match('/^\{emoji:([^}]+)\}$/u', $ref, $m)) {
+            $ref = trim($m[1]);
+            if ($ref === '') return null;
+        }
         try { $list = nexora_emoji_list($pdo); } catch (Throwable $e) { return null; }
         if ($list === []) return null;
         if (preg_match('/^#?(\d+)$/', $ref, $num)) {

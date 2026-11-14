@@ -12,6 +12,15 @@ Phase 10 — The reseller shop is a manual shop (no panel, no wallet), every ans
 gets a reaction and the bot is faster on a small server.
 
 ## Last successful checkpoint
+**v1.22.84** — the premium emoji of the shops is applied and the pie charts of the reports are drawn right:
+- the code of an emoji (`{emoji:tun}`) is opened by `nexora_emoji_lookup()`, so the emoji of the reseller
+  shop, the top up, the agent panel, the test service, the buttons, the categories and the panels is
+  saved and used (before the whole code was given to the database, so the emoji was never found);
+- the arcs of the donut charts of the page "reports and stats" are drawn with the right flag (the ring
+  fell apart before), a part of 100% is drawn as a circle and the text in the middle got its style;
+- the installer gives the code of the bot to the web server of the bot (www-data), so an update that
+  runs as root can never take the bot and its panel down with an error 500.
+
 **v1.22.80** — the changes are committed and the release is published:
 - The reseller shop (فروشگاه نمایندگی, `agent = 'agentshop'`):
   - the option "پنل" is gone from `panel/agentshop.php` and from the wizard of the bot

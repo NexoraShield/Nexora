@@ -513,6 +513,34 @@ if command -v restorecon >/dev/null 2>&1; then
   restorecon -R "$TARGET" >/dev/null 2>&1 || true
 fi
 
+# ---------------------------------------------------------------------------
+# The owner of the files of the bot.
+#
+# The PHP of the bot runs as the web server of the bot (www-data on most of
+# the servers), so every file of the installation has to belong to it. A file
+# of root that only root may read (the config with the token, for example)
+# makes the whole bot and its panel answer with an error 500, and the scripts
+# of the hub write the code as root. The owner is fixed here, so an update can
+# never take a bot down.
+# ---------------------------------------------------------------------------
+_web_user=""
+_web_group=""
+if [[ -d "$TARGET" ]]; then
+  _web_user="$(stat -c '%U' "$TARGET" 2>/dev/null || echo '')"
+  _web_group="$(stat -c '%G' "$TARGET" 2>/dev/null || echo '')"
+fi
+if [[ -z "$_web_user" || "$_web_user" == "root" ]]; then
+  if id -u www-data >/dev/null 2>&1; then
+    _web_user="www-data"
+    _web_group="$(id -gn www-data 2>/dev/null || echo www-data)"
+  fi
+fi
+if [[ -n "$_web_user" && "$_web_user" != "root" ]]; then
+  chown -R "$_web_user:$_web_group" "$TARGET" 2>/dev/null || true
+  chmod 0640 "$TARGET/config.php" 2>/dev/null || true
+  echo "    the code of the bot belongs to $_web_user:$_web_group"
+fi
+
 nexora_progress 92
 if command -v php >/dev/null 2>&1; then
   php -r 'if (function_exists("opcache_reset")) { @opcache_reset(); echo "opcache reset\n"; }' 2>/dev/null || true
