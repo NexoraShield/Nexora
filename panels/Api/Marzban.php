@@ -19,6 +19,9 @@ function token_panel($code_panel, $verify = true)
         $date = json_decode($panel['datelogin'], true);
         if (isset($date['time'])) {
             $start_date = time() - strtotime($date['time']);
+            // The token of the panel is only used for an hour. A token that is
+            // older than that is not handed out any more, so the panel can not
+            // be reached with it.
             if ($start_date <= 3600) {
                 return $date;
             }
@@ -125,13 +128,16 @@ function Get_Node($location, $Nodeid)
 function getusers($location, $status)
 {
     $marzban_list_get = select("marzban_panel", "*", "name_panel", $location, "select");
+    if (!$marzban_list_get) {
+        return [];
+    }
     $Check_token = token_panel($marzban_list_get['code_panel']);
     if (!empty($Check_token['error'])) {
         return $Check_token;
     }
     $url = $marzban_list_get['url_panel'] . '/api/users?status=' . $status;
     if (!isset($Check_token['access_token']))
-        return;
+        return [];
     $header_value = 'Bearer ';
 
     $ch = curl_init();
@@ -145,7 +151,27 @@ function getusers($location, $status)
     ));
 
     $output = curl_exec($ch);
-    $data_useer = json_decode($output, true);
+    $data_useer = json_decode((string) $output, true);
+    if (!is_array($data_useer)) {
+        return [];
+    }
+    // The token of the panel can be older than the answer of the api: the
+    // panel answers with "Unauthorized" when it is. A new token is asked for
+    // then, so the panel is not written off as broken.
+    if (isset($data_useer['detail']) && stripos((string) $data_useer['detail'], 'unauthorized') !== false) {
+        $Check_token = token_panel($marzban_list_get['code_panel'], false);
+        if (isset($Check_token['access_token'])) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Accept: application/json',
+                'Authorization: ' . $header_value . $Check_token['access_token']
+            ));
+            $output = curl_exec($ch);
+            $data_useer = json_decode((string) $output, true);
+            if (!is_array($data_useer)) {
+                return [];
+            }
+        }
+    }
     return $data_useer;
 }
 #-----------------------------#

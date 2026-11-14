@@ -14,7 +14,13 @@ $setting = select("setting", "*");
 $stmt = $pdo->prepare("SELECT * FROM marzban_panel WHERE type = 'marzban'  ORDER BY RAND() LIMIT 25");
 $stmt->execute();
         while ($panel = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $users = getusers($panel['name_panel'],"on_hold")['users'];
+        // The panel can not be reached (or the token is not there): the list of
+        // the users is then empty and the job is skipped, so one broken panel
+        // never takes the whole cron down.
+        $usersResponse = getusers($panel['name_panel'],"on_hold");
+        $users = is_array($usersResponse) && isset($usersResponse['users']) && is_array($usersResponse['users'])
+            ? $usersResponse['users']
+            : [];
         foreach($users as $user){
         $invoice = select("invoice","*","username",$user['username'],"select");
         if($invoice == false )continue;
