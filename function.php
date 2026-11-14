@@ -1166,9 +1166,16 @@ function nexora_channel_chat_id($value): string
             return '';
         }
         $parts = explode('/', $path);
+        // An invite link (t.me/joinchat/... or t.me/+) can not be checked with
+        // getChatMember: there is no name of the channel in it.
+        foreach ($parts as $part) {
+            $part = strtolower(trim($part));
+            if ($part === 'joinchat' || $part === 'share' || $part === '+' || $part === 's') {
+                return '';
+            }
+        }
         $name = trim((string) end($parts));
-        if ($name === '' || in_array(strtolower($name), ['joinchat', 's', 'share'], true)) {
-            // An invite link can not be checked with getChatMember.
+        if ($name === '') {
             return '';
         }
         if (preg_match('/^-?\d{5,}$/', $name)) {
@@ -1195,6 +1202,9 @@ function channel(array $id_channel)
     // slow answer held the whole bot back.
     $cacheDir = __DIR__ . '/storage/cache';
     $cacheTtl = 60;
+    // A broken channel is only written once in the log of the request, not
+    // once for every message of the customer.
+    static $reported = [];
     foreach ($id_channel as $channel) {
         $chatId = nexora_channel_chat_id($channel);
         if ($chatId === '') {
@@ -1208,7 +1218,10 @@ function channel(array $id_channel)
         if ($chatId === '' || isTelegramChatIdEmpty($chatId)) {
             // The channel can not be checked at all: the customer is never
             // told that he did not join a channel the bot can not see.
-            error_log('channel: the chat id of the channel "' . (string) $channel . '" could not be found.');
+            if (!isset($reported[$channel])) {
+                $reported[$channel] = true;
+                error_log('channel: the chat id of the channel "' . (string) $channel . '" could not be found.');
+            }
             continue;
         }
         $cacheFile = $cacheDir . '/ch_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', (string) $from_id . '_' . $chatId) . '.json';
@@ -1228,7 +1241,10 @@ function channel(array $id_channel)
                 // The bot can not read the members of this channel (it is not an
                 // administrator of it, for example). The customer is not told
                 // that he did not join: the bot simply can not check it.
-                error_log('channel: the membership of "' . $chatId . '" could not be read: ' . (string) ($response['description'] ?? 'unknown'));
+                if (!isset($reported[$chatId])) {
+                    $reported[$chatId] = true;
+                    error_log('channel: the membership of "' . $chatId . '" could not be read: ' . (string) ($response['description'] ?? 'unknown'));
+                }
                 $status = 'member';
             }
             if (is_dir($cacheDir) || @mkdir($cacheDir, 0775, true)) {
