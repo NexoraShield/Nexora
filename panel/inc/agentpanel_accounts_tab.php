@@ -6,15 +6,15 @@
 // change the credit by hand, make a new password and delete the panel.
 //
 // The including page must define: $accountsReturn (the page to come back to).
-if (!isset($accountsReturn)) {
-    return;
+// When the page forgets it, the tab still works and comes back to this page.
+if (!isset($accountsReturn) || trim((string) $accountsReturn) === '') {
+    $accountsReturn = 'agents.php';
 }
+$accountsTab = $accountsReturn . '?tab=accounts';
 
 // The table of the access has to exist, otherwise the list would be empty
 // after an update that did not create it yet.
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-} catch (Throwable $e) {}
+panel_agent_ensure_table($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
@@ -51,11 +51,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
             flash('error', 'حذف پنل انجام نشد.');
         }
     }
-    header('Location: ' . $accountsReturn . '?tab=accounts');
+    header('Location: ' . $accountsTab);
     exit;
 }
 
 $agentAccounts = function_exists('nexora_agent_panel_accounts') ? nexora_agent_panel_accounts(500) : [];
+if (!$agentAccounts) {
+    // The helper of the bot is not there (or it failed): the list of the panel
+    // is built by the panel itself, so the tab never stays empty for nothing.
+    $agentAccounts = panel_agent_delivered_accounts($pdo, 500);
+}
+// The link of the login is always the real address of the reseller panel of
+// this installation. It is never empty and never the string "undefined".
+$accountsLink = panel_agent_link();
+foreach ($agentAccounts as $agentAccountIndex => $agentAccountRow) {
+    $agentLink = trim((string) ($agentAccountRow['link'] ?? ''));
+    if ($agentLink === '' || strpos($agentLink, '{') !== false || !preg_match('#^(https?://|/)#', $agentLink)) {
+        $agentLink = $accountsLink;
+    }
+    $agentAccounts[$agentAccountIndex]['link'] = $agentLink;
+}
+unset($agentAccountRow, $agentAccountIndex);
 $agentAccountsTotal = count($agentAccounts);
 $agentAccountsCredit = 0.0;
 foreach ($agentAccounts as $agentAccountRow) {
@@ -79,13 +95,18 @@ foreach ($agentAccounts as $agentAccountRow) {
       <?php if (!$agentAccounts): ?>
         <tr><td colspan="7" style="text-align:center;color:var(--mute);padding:22px">هنوز هیچ پنلی به مشتری تحویل داده نشده است.</td></tr>
       <?php endif; ?>
-      <?php foreach ($agentAccounts as $agentAccount): ?>
+      <?php foreach ($agentAccounts as $agentAccount):
+        $rowLink = trim((string) ($agentAccount['link'] ?? ''));
+        if ($rowLink === '') {
+            $rowLink = $accountsLink;
+        }
+      ?>
         <tr>
           <td><code><?= htmlspecialchars((string) $agentAccount['id_user']) ?></code></td>
           <td><?= htmlspecialchars((string) ($agentAccount['username'] ?? '—')) ?></td>
           <td><?= htmlspecialchars((string) ($agentAccount['product'] ?? '—')) ?></td>
           <td><b><?= number_format(floatval($agentAccount['credit'] ?? 0)) ?></b></td>
-          <td style="font-size:.75rem"><a href="<?= htmlspecialchars((string) ($agentAccount['link'] ?? '')) ?>" target="_blank" rel="noopener"><?= htmlspecialchars((string) ($agentAccount['link'] ?? '—')) ?></a></td>
+          <td style="font-size:.75rem"><a href="<?= htmlspecialchars($rowLink) ?>" target="_blank" rel="noopener" dir="ltr"><?= htmlspecialchars($rowLink) ?></a></td>
           <td><?= safe_date($agentAccount['created_at'] ?? 0) ?></td>
           <td style="white-space:nowrap">
             <button class="btn btn-primary btn-sm" type="button" onclick='openAgentCredit(<?= json_encode([

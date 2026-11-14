@@ -68,6 +68,18 @@ foreach (panel_load_panels($pdo) as $panelRow) {
 }
 $agentPanels = array_merge($agentPanels, $otherPanels);
 
+// The table of the packages of the reseller panel. A database that does not
+// know it yet must not turn this tab into a fatal error.
+$agentPanelProductReady = panel_table_exists($pdo, 'agent_panel_product');
+if (!$agentPanelProductReady) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS agent_panel_product (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, name varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, price varchar(2000) NULL, credit varchar(2000) NULL, description TEXT NULL, btn_style VARCHAR(20) NULL, btn_emoji_id VARCHAR(32) NULL, status_product varchar(20) NOT NULL DEFAULT 'active', display_order INT NOT NULL DEFAULT 0, panel_name varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $agentPanelProductReady = true;
+    } catch (Throwable $e) {
+        error_log('agentpanel_tab (table): ' . $e->getMessage());
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
     $action = (string) $_POST['action'];
@@ -86,6 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
         }
         if ($name === '') {
             flash('error', 'نام پنل را وارد کنید.');
+        } elseif (!$agentPanelProductReady) {
+            flash('error', 'جدول پنل‌های نمایندگی در دیتابیس نیست. ابتدا اسکریپت نصب/به‌روزرسانی را اجرا کنید.');
         } else {
             try {
                 if ($action === 'ap_add') {
@@ -123,11 +137,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                         ]
                     );
                     if (isset($_POST['position'])) {
-                        move_display_order($pdo, 'agent_panel_product', $id, (int) $_POST['position']);
+                        try {
+                            move_display_order($pdo, 'agent_panel_product', $id, (int) $_POST['position']);
+                        } catch (Throwable $e) {
+                            error_log('agentpanel_tab (order): ' . $e->getMessage());
+                        }
                     }
                     flash('success', 'پنل نمایندگی بروزرسانی شد.');
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 flash('error', 'خطای دیتابیس: ' . $e->getMessage());
             }
         }
@@ -135,8 +153,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
         exit;
     }
     if ($action === 'ap_delete') {
-        db_query($pdo, "DELETE FROM agent_panel_product WHERE id = ?", [(int) ($_POST['edit_id'] ?? 0)]);
-        flash('success', 'پنل نمایندگی حذف شد.');
+        try {
+            db_query($pdo, "DELETE FROM agent_panel_product WHERE id = ?", [(int) ($_POST['edit_id'] ?? 0)]);
+            flash('success', 'پنل نمایندگی حذف شد.');
+        } catch (Throwable $e) {
+            flash('error', 'حذف پنل انجام نشد: ' . $e->getMessage());
+        }
         header('Location: ' . $panelTab);
         exit;
     }
@@ -144,13 +166,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
 
 if (isset($_GET['delete'])) {
     csrf_check_get();
-    db_query($pdo, "DELETE FROM agent_panel_product WHERE id = ?", [(int) $_GET['delete']]);
-    flash('success', 'پنل نمایندگی حذف شد.');
+    try {
+        db_query($pdo, "DELETE FROM agent_panel_product WHERE id = ?", [(int) $_GET['delete']]);
+        flash('success', 'پنل نمایندگی حذف شد.');
+    } catch (Throwable $e) {
+        flash('error', 'حذف پنل انجام نشد: ' . $e->getMessage());
+    }
     header('Location: ' . $panelTab);
     exit;
 }
 
-$items = db_fetchAll($pdo, "SELECT * FROM agent_panel_product ORDER BY display_order, id");
+$items = [];
+if ($agentPanelProductReady) {
+    try {
+        $items = db_fetchAll($pdo, "SELECT * FROM agent_panel_product ORDER BY display_order, id");
+    } catch (Throwable $e) {
+        error_log('agentpanel_tab (list): ' . $e->getMessage());
+        $items = [];
+    }
+}
 
 $STYLE_COLORS = [];
 foreach (nexora_color_palette() as $slug => $info) {

@@ -8,6 +8,18 @@ if (!isset($topupShop) || !isset($topupReturn)) {
 require_once __DIR__ . '/shop_helpers.php';
 $topupShop = nexora_topup_shop_key($topupShop);
 
+// The table of the top up options. A database that does not know it yet must
+// not turn this tab into a fatal error.
+$topupProductReady = panel_table_exists($pdo, 'panel_topup_product');
+if (!$topupProductReady) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS panel_topup_product (id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, shop varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'agentshop', name varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, price varchar(2000) NULL, credit varchar(2000) NULL, description TEXT NULL, unit VARCHAR(32) NULL, btn_style VARCHAR(20) NULL, btn_emoji_id VARCHAR(32) NULL, status_product varchar(20) NOT NULL DEFAULT 'active', display_order INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $topupProductReady = true;
+    } catch (Throwable $e) {
+        error_log('topup_tab (table): ' . $e->getMessage());
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
     csrf_check_post();
     $action = (string) $_POST['action'];
@@ -18,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
         $name = trim($_POST['topup_name'] ?? '');
         if ($name === '') {
             flash('error', 'نام گزینه شارژ را وارد کنید.');
+        } elseif (!$topupProductReady) {
+            flash('error', 'جدول گزینه‌های شارژ در دیتابیس نیست. ابتدا اسکریپت نصب/به‌روزرسانی را اجرا کنید.');
         } else {
             $style = nexora_agentshop_clean_style($_POST['btn_style'] ?? '');
             $emoji = nexora_agentshop_clean_emoji($_POST['btn_emoji_id'] ?? '');
@@ -55,13 +69,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== '') {
                     );
                     flash('success', 'گزینه شارژ بروزرسانی شد.');
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 flash('error', 'خطای دیتابیس: ' . $e->getMessage());
             }
         }
     } elseif ($action === 'topup_delete') {
-        db_query($pdo, "DELETE FROM panel_topup_product WHERE id = ? AND shop = ?", [(int) ($_POST['edit_id'] ?? 0), $topupShop]);
-        flash('success', 'گزینه شارژ حذف شد.');
+        try {
+            db_query($pdo, "DELETE FROM panel_topup_product WHERE id = ? AND shop = ?", [(int) ($_POST['edit_id'] ?? 0), $topupShop]);
+            flash('success', 'گزینه شارژ حذف شد.');
+        } catch (Throwable $e) {
+            flash('error', 'حذف گزینهٔ شارژ انجام نشد: ' . $e->getMessage());
+        }
     }
     header('Location: ' . $topupReturn . '?tab=topup');
     exit;

@@ -426,8 +426,9 @@ if ($setting['Bot_Status'] == "botstatusoff" && !in_array($from_id, $admin_ids))
 #-----------answers of the reseller shop------------#
 // The answers of the questions of the reseller shop are handled before every
 // other part of the bot: no other branch may swallow them and every answer
-// gets a reaction.
-if ($user['step'] == "agentshop_questions" && !in_array($from_id, $admin_ids) && function_exists('nexora_agent_shop_handle_answer')) {
+// gets a reaction. The administrator of the bot buys the reseller panel like
+// every other customer, so he answers the questions of the shop too.
+if ($user['step'] == "agentshop_questions" && function_exists('nexora_agent_shop_handle_answer')) {
     $__nexoraMenuTexts = [];
     $__nexoraMenu = is_array($keyboard ?? null) ? $keyboard : json_decode((string) ($keyboard ?? ''), true);
     if (is_array($__nexoraMenu) && isset($__nexoraMenu['keyboard']) && is_array($__nexoraMenu['keyboard'])) {
@@ -6681,7 +6682,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     sendmessage($from_id, $agentDetails, $agentKeyboard, 'HTML');
     update("user", "Processing_value_one", $agentCode, "id", $from_id);
     step('agentshop_product', $from_id);
-} elseif ($user['step'] == "agentshop_questions" && !in_array($from_id, $admin_ids)) {
+} elseif ($user['step'] == "agentshop_questions") {
     // The customer answers the questions of the agent shop. When every question
     // is answered the order is sent to the administrator. The answers are
     // handled by a helper, so the same code runs everywhere.

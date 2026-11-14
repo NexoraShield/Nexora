@@ -980,7 +980,12 @@ $helpappremove['keyboard'][] = [
 ];
 $json_list_remove_helpـlink = json_encode($helpappremove);
 //------------------  [ listpanelusers ]----------------//
-$activePanelRows = array_filter($allPanelRows, fn($panel) => $panel['status'] == "active" && in_array($panel['agent'], [$users['agent'], "all"]));
+// The panel of the agent (the panel of the reseller) is not a panel that sells
+// services: it must never show up in the list of the panels a customer can
+// buy a service from.
+$activePanelRows = array_filter($allPanelRows, fn($panel) => $panel['status'] == "active"
+    && (string) ($panel['type'] ?? '') !== 'nexora_agent'
+    && in_array($panel['agent'], [$users['agent'], "all"]));
 $manualsellCounts = [];
 if (in_array('Manualsale', array_column($activePanelRows, 'type'))) {
     foreach ($pdo->query("SELECT codepanel, COUNT(*) AS c FROM manualsell WHERE status = 'active' GROUP BY codepanel")->fetchAll(PDO::FETCH_ASSOC) as $msRow) {

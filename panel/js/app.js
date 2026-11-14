@@ -112,16 +112,51 @@ document.getElementById('confirm-veil').addEventListener('click', function (e) {
     if (e.target === this) closeConfirm();
 });
 
-document.querySelectorAll('[data-confirm]').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-        e.preventDefault();
-        var href = el.href;
-        showConfirm(el.dataset.confirm || t('jsConfirmDefault'), function () {
-            _lb.start();
-            window.location.href = href;
+// The confirmation of an action.
+//
+// A link is followed after the confirmation, but a button (a button of a form)
+// has no href at all: using "el.href" of a button sent the browser to the page
+// "undefined" (the 404 of /panel/undefined) and the form was never sent. So a
+// button submits its own form instead of following a link.
+window.nxConfirmAction = function (el, event) {
+    if (event) event.preventDefault();
+    var isLink = (el.tagName === 'A') && !!el.getAttribute('href');
+    var message = el.getAttribute('data-confirm') || t('jsConfirmDefault');
+    showConfirm(message, function () {
+        _lb.start();
+        if (isLink) {
+            window.location.href = el.href;
+            return;
+        }
+        var form = el.form || (el.closest ? el.closest('form') : null);
+        if (form) {
+            if (typeof form.requestSubmit === 'function') {
+                try {
+                    form.requestSubmit(el);
+                    return;
+                } catch (x) {}
+            }
+            form.submit();
+            return;
+        }
+        // There is nothing to send: stay on the page.
+        _lb.done();
+    });
+};
+
+// Binds the confirmation of every element with a data-confirm. It can be used
+// again for the rows that are loaded later with ajax.
+window.nxBindConfirms = function (root) {
+    var scope = root || document;
+    scope.querySelectorAll('[data-confirm]').forEach(function (el) {
+        if (el.getAttribute('data-nx-confirm-bound')) return;
+        el.setAttribute('data-nx-confirm-bound', '1');
+        el.addEventListener('click', function (e) {
+            window.nxConfirmAction(el, e);
         });
     });
-});
+};
+nxBindConfirms();
 
 var _THEME_BG = {
     navy: '#0F172A', purple: '#180D2E', emerald: '#0A1F1C',

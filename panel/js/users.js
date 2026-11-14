@@ -46,16 +46,22 @@
                 updateClearBtn();
                 history.replaceState(null, '', location.pathname + '?' + params.toString());
 
-                usersBody.querySelectorAll('[data-confirm]').forEach(function (el) {
-                    el.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        var href = el.href;
-                        showConfirm(el.dataset.confirm, function () {
-                            _lb.start();
-                            window.location.href = href;
+                // The rows are new, so the confirmation of the buttons of the
+                // table has to be bound again (the shared binder of app.js).
+                if (window.nxBindConfirms) {
+                    window.nxBindConfirms(usersBody);
+                } else {
+                    usersBody.querySelectorAll('[data-confirm]').forEach(function (el) {
+                        el.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            var href = el.href;
+                            showConfirm(el.dataset.confirm, function () {
+                                _lb.start();
+                                window.location.href = href;
+                            });
                         });
                     });
-                });
+                }
 
                 hideLoader();
             })

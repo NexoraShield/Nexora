@@ -115,7 +115,8 @@ if ($activeCategory !== '') {
 }
 
 // A purchase of the agent: the wallet of the agent pays for the service of one
-// of his customers.
+// of his customers. The agent writes the name of his customer, never a
+// telegram id: a random suffix is added to the name of the account.
 $shopFlash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'buy') {
     if (!nx_agent_csrf_check()) {
@@ -124,10 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
         $buyResult = nx_agent_buy_product(
             $me,
             (int) ($_POST['product_id'] ?? 0),
-            (string) ($_POST['customer_id'] ?? ''),
             trim((string) ($_POST['username'] ?? '')),
-            $percent,
-            trim((string) ($_POST['new_user_id'] ?? ''))
+            $percent
         );
         $shopFlash = ['type' => $buyResult['ok'] ? 'success' : 'error', 'msg' => $buyResult['msg'], 'detail' => $buyResult['detail'] ?? []];
         if ($buyResult['ok']) {
@@ -181,7 +180,7 @@ function nx_num($v)
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="reseller-panel.css?v=9">
+<link rel="stylesheet" href="reseller-panel.css?v=10">
 <link rel="stylesheet" href="beauty.css?v=12">
 <link rel="stylesheet" href="mobile.css?v=13">
 </head>
@@ -294,23 +293,36 @@ function nx_num($v)
     <section id="v-users">
       <div class="rs-head"><div><h1>مدیریت کاربران</h1><p>کاربرانی که با پنل شما سرویس گرفته‌اند</p></div><div class="grow"></div></div>
       <div class="card">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>شناسه</th><th>نام کاربری</th><th>موجودی</th><th>تعداد سرویس</th><th>ثبت</th></tr></thead><tbody>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>شناسه</th><th>نام کاربری</th><th>سرویس‌ها</th><th>موجودی</th><th>تعداد سرویس</th><th>ثبت</th></tr></thead><tbody>
         <?php
         $subServiceCount = [];
+        $subServiceNames = [];
         foreach ($services as $svc) {
             $uid = (string) $svc['id_user'];
             $subServiceCount[$uid] = ($subServiceCount[$uid] ?? 0) + 1;
+            $subServiceNames[$uid][] = (string) $svc['username'];
         }
-        foreach ($subs as $sub): ?>
+        foreach ($subs as $sub):
+            $subId = (string) $sub['id'];
+            $subNames = array_values(array_unique(array_filter($subServiceNames[$subId] ?? []))); ?>
           <tr>
-            <td class="mono"><?= htmlspecialchars((string) $sub['id']) ?></td>
-            <td>@<?= htmlspecialchars((string) ($sub['username'] ?? '')) ?></td>
+            <td class="mono"><?= htmlspecialchars($subId) ?></td>
+            <td><?= htmlspecialchars((string) ($sub['username'] ?? '')) ?></td>
+            <td class="mono">
+              <?php if ($subNames): ?>
+                <?php foreach ($subNames as $subName): ?>
+                  <span class="nx-chip"><?= htmlspecialchars($subName) ?></span>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <span style="color:var(--muted)">—</span>
+              <?php endif; ?>
+            </td>
             <td class="mono"><?= nx_num($sub['Balance'] ?? 0) ?></td>
-            <td class="mono"><?= (int) ($subServiceCount[(string) $sub['id']] ?? 0) ?></td>
+            <td class="mono"><?= (int) ($subServiceCount[$subId] ?? 0) ?></td>
             <td class="mono"><?= htmlspecialchars((string) ($sub['register'] ?? '')) ?></td>
           </tr>
         <?php endforeach; ?>
-        <?php if (!$subs): ?><tr><td colspan="5" style="color:var(--muted)">هنوز کاربری با پنل شما ثبت نشده است.</td></tr><?php endif; ?>
+        <?php if (!$subs): ?><tr><td colspan="6" style="color:var(--muted)">هنوز کاربری با پنل شما ثبت نشده است.</td></tr><?php endif; ?>
         </tbody></table></div>
       </div>
     </section>
@@ -323,11 +335,35 @@ function nx_num($v)
         <div class="nx-flash nx-flash-<?= htmlspecialchars((string) $shopFlash['type']) ?>">
           <b><?= $shopFlash['type'] === 'success' ? '✅' : '⚠️' ?> <?= htmlspecialchars((string) $shopFlash['msg']) ?></b>
           <?php if (!empty($shopFlash['detail']['username'])): ?>
+            <?php
+            $flashLink = (string) ($shopFlash['detail']['link'] ?? '');
+            if ($flashLink === '') {
+                $flashLink = (string) ($shopFlash['detail']['subscription_url'] ?? '');
+            }
+            $flashConfigs = [];
+            foreach ((array) ($shopFlash['detail']['configs'] ?? []) as $flashConfig) {
+                $flashConfig = trim((string) $flashConfig);
+                if ($flashConfig !== '') {
+                    $flashConfigs[] = $flashConfig;
+                }
+            }
+            ?>
             <div class="nx-flash-detail">
-              <div class="kv"><span>نام کاربری</span><b class="mono"><?= htmlspecialchars((string) $shopFlash['detail']['username']) ?></b></div>
-              <?php if (!empty($shopFlash['detail']['link'])): ?>
-                <div class="kv"><span>لینک اتصال</span><b class="mono" style="word-break:break-all"><?= htmlspecialchars((string) $shopFlash['detail']['link']) ?></b></div>
+              <div class="kv"><span>نام کاربری سرویس</span><b class="mono"><?= htmlspecialchars((string) $shopFlash['detail']['username']) ?></b></div>
+              <div class="kv"><span>نام مشتری</span><b><?= htmlspecialchars((string) ($shopFlash['detail']['customer'] ?? '')) ?></b></div>
+              <?php if ($flashLink !== ''): ?>
+                <div class="kv"><span>لینک اتصال</span><b class="mono" style="word-break:break-all"><?= htmlspecialchars($flashLink) ?></b></div>
               <?php endif; ?>
+              <?php if ($flashConfigs): ?>
+                <div class="nx-flash-configs">
+                  <span class="nx-flash-label">کانفیگ‌ها (کپی کنید و به مشتری بدهید)</span>
+                  <?php foreach ($flashConfigs as $flashConfig): ?>
+                    <code class="nx-flash-config"><?= htmlspecialchars($flashConfig) ?></code>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+              <div class="kv"><span>محصول</span><b><?= htmlspecialchars((string) ($shopFlash['detail']['product'] ?? '')) ?></b></div>
+              <div class="kv"><span>لوکیشن</span><b><?= htmlspecialchars((string) ($shopFlash['detail']['panel'] ?? '')) ?></b></div>
               <div class="kv"><span>مبلغ پرداختی</span><b class="mono"><?= nx_num((float) ($shopFlash['detail']['price'] ?? 0)) ?> تومان</b></div>
             </div>
           <?php endif; ?>
@@ -402,16 +438,8 @@ function nx_num($v)
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars(nx_agent_csrf_token()) ?>">
             <input type="hidden" name="action" value="buy">
             <input type="hidden" name="product_id" id="nx-buy-id" value="">
-            <label><span>سرویس برای کدام کاربر؟</span>
-              <select name="customer_id" id="nx-buy-customer">
-                <option value="">➕ کاربر جدید (شناسه را پایین بنویسید)</option>
-                <?php foreach ($subs as $sub): ?>
-                  <option value="<?= htmlspecialchars((string) $sub['id']) ?>">@<?= htmlspecialchars((string) ($sub['username'] ?? '')) ?> — <?= htmlspecialchars((string) $sub['id']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label><span>شناسه عددی کاربر جدید (اختیاری)</span><input type="text" name="new_user_id" id="nx-buy-new" dir="ltr" inputmode="numeric" placeholder="مثلاً 123456789"></label>
-            <label><span>نام کاربری دلخواه سرویس (اختیاری)</span><input type="text" name="username" id="nx-buy-username" dir="ltr" placeholder="اگر پنل اجازه بدهد"></label>
+            <label><span>نام کاربری مشتری</span><input type="text" name="username" id="nx-buy-username" dir="ltr" placeholder="مثلاً ali" autocomplete="off" spellcheck="false" required></label>
+            <small class="nx-hint">یک بخش تصادفی خودکار به نام اضافه می‌شود (مثلاً <span class="mono">ali_a1b2c3</span>) تا نام تکراری نشود. همین نام در «مدیریت کاربران» ذخیره می‌شود.</small>
             <div class="kv"><span>قیمت شما</span><b id="nx-buy-price">—</b></div>
             <div class="modal-foot">
               <button class="rs-btn lux" type="submit">تأیید و خرید</button>
@@ -495,8 +523,9 @@ Token: <?= htmlspecialchars($apiToken) ?>
   </main>
 </div>
 <script>
-  // The order of the agent: a product is chosen, the customer is chosen and
-  // the wallet of the agent pays for the service.
+  // The order of the agent: a product is chosen, the name of the customer is
+  // written down and the wallet of the agent pays for the service. A random
+  // suffix is added to the name of the customer by the server.
   function nxOpenBuy(p) {
     var modal = document.getElementById('nx-buy-modal');
     if (!modal) return;
@@ -504,9 +533,7 @@ Token: <?= htmlspecialchars($apiToken) ?>
     document.getElementById('nx-buy-title').textContent = p.name + ' — ' + (p.panel || '');
     document.getElementById('nx-buy-price').textContent = new Intl.NumberFormat('fa-IR').format(p.price) + ' تومان';
     var user = document.getElementById('nx-buy-username');
-    if (user) user.value = '';
-    var fresh = document.getElementById('nx-buy-new');
-    if (fresh) fresh.value = '';
+    if (user) { user.value = ''; user.focus(); }
     modal.hidden = false;
   }
   function nxCloseBuy() {

@@ -1,4 +1,33 @@
 # Nexora Bot — Release Notes
+## v1.22.81 (2026-11-14) — The agent panel of the web panel works, the list of the representatives is there and the agent panel is never in the list of the panels
+
+**The agent panel of the web panel (پنل نمایندگی)**
+- The list of the representatives ("لیست نمایندگان") is never empty any more: it is built with a LEFT
+  JOIN of the table of the access, so a customer that bought a reseller panel shows up even when
+  he has no code of agent yet.
+- The 404 of the tab "پنل‌های تحویل‌شده" is gone: every link of the page is a real link and the
+  address of the reseller panel of this installation is never empty and never "undefined".
+- The form "افزودن / ویرایش نماینده" is a hand-over form now: the administrator types the id of
+  the customer once, the row of the customer is created when it does not exist yet, the access to
+  the panel is written (the password is only stored as a hash) and the login of the panel is shown
+  once, so it can be sent to the customer. The access can be revoked or deleted from the same page.
+- The panel never breaks on a database that does not know the newest tables yet: every query is
+  checked before it runs.
+
+**The agent panel of the bot (اجنت پنل)**
+- The buy form of the ready products asks for a NAME and not for a telegram id: a random suffix is
+  added to the name, so the account is created even when the name is already taken. The name is
+  shown in the user management of the panel and the connection is handed to the customer.
+
+**The questions of the customer**
+- The administrator of the bot buys the reseller panel like every other customer, so his answers to
+  the questions of the shop are handled too: every answer gets a reaction and the next question is
+  asked.
+
+**The panels of the bot**
+- The panel of the agent (the panel of the reseller) never shows up in the list of the panels a
+  customer can buy a service from.
+
 ## v1.22.80 (2026-11-13) — The reseller shop is a manual shop, every answer of the customer gets a reaction and the bot is faster
 
 **The reseller shop (فروشگاه نمایندگی)**

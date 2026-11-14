@@ -226,41 +226,153 @@ if (!function_exists('nx_agent_volume_text')) {
     }
 }
 
-if (!function_exists('nx_agent_create_customer')) {
+if (!function_exists('nx_agent_clean_username')) {
     /**
-     * The customer of a service of the agent.
+     * The name the agent writes down, cleaned up for the panel.
      *
-     * A customer that does not exist yet is created (with the id of telegram
-     * the agent writes down) and is bound to the agent, so the service shows
-     * up in the list of the panel.
+     * The panels know the latin letters, the digits and a few signs only, so
+     * everything else is dropped and the name is made small.
      */
-    function nx_agent_create_customer(string $userId, string $agentId): ?array
+    function nx_agent_clean_username(string $name): string
     {
-        global $pdo, $setting;
-        $userId = trim($userId);
-        if ($userId === '' || !preg_match('/^\d{1,32}$/', $userId)) {
+        $name = strtolower(trim($name));
+        $name = (string) preg_replace('/\s+/', '_', $name);
+        $name = (string) preg_replace('/[^a-z0-9._-]+/', '', $name);
+        $name = trim($name, "._-");
+        if (strlen($name) > 24) {
+            $name = rtrim(substr($name, 0, 24), "._-");
+        }
+        return $name;
+    }
+}
+
+if (!function_exists('nx_agent_username_taken')) {
+    /**
+     * Is the name already used on the panel?
+     *
+     * The panel is asked with the very same helper the rest of the bot uses,
+     * so a name that is taken on the panel is never used again.
+     */
+    function nx_agent_username_taken($ManagePanel, string $panelName, string $username): bool
+    {
+        try {
+            $info = $ManagePanel->DataUser($panelName, $username);
+        } catch (Throwable $e) {
+            error_log('nx_agent_username_taken: ' . $e->getMessage());
+            return false;
+        }
+        if (!is_array($info)) {
+            return false;
+        }
+        if (trim((string) ($info['status'] ?? '')) === 'Unsuccessful') {
+            // The panel does not know this name (or the panel did not answer).
+            return false;
+        }
+        return trim((string) ($info['username'] ?? '')) !== '';
+    }
+}
+
+if (!function_exists('nx_agent_panel_username')) {
+    /**
+     * The name of the account on the panel.
+     *
+     * The name of the customer is the base and a random suffix is added
+     * behind it: the account is always created, even when the name is used
+     * on the panel already. The suffix grows as long as the name is taken.
+     */
+    function nx_agent_panel_username($ManagePanel, string $panelName, string $base): string
+    {
+        $suffix = bin2hex(random_bytes(3));
+        $name = $base . '_' . $suffix;
+        $tries = 0;
+        while ($tries < 8 && nx_agent_username_taken($ManagePanel, $panelName, $name)) {
+            $suffix .= bin2hex(random_bytes(2));
+            $name = $base . '_' . $suffix;
+            $tries++;
+        }
+        return $name;
+    }
+}
+
+if (!function_exists('nx_agent_find_customer')) {
+    /**
+     * The customer of a service of the agent, found by the name.
+     *
+     * The agent writes a name and never a telegram id, so the customer of a
+     * service is the row of the bot that carries this name.
+     */
+    function nx_agent_find_customer(string $name, string $agentId): ?array
+    {
+        global $pdo;
+        $name = trim($name);
+        if ($name === '' || $agentId === '') {
             return null;
         }
         try {
-            $st = $pdo->prepare("SELECT * FROM `user` WHERE id = ? LIMIT 1");
-            $st->execute([$userId]);
+            $st = $pdo->prepare("SELECT * FROM `user` WHERE affiliates = ? AND LOWER(username) = ? LIMIT 1");
+            $st->execute([$agentId, strtolower($name)]);
             $row = $st->fetch(PDO::FETCH_ASSOC);
-            if ($row) {
-                if ((string) ($row['affiliates'] ?? '') !== $agentId) {
-                    $pdo->prepare("UPDATE `user` SET affiliates = ? WHERE id = ?")->execute([$agentId, $userId]);
-                    $row['affiliates'] = $agentId;
+            return is_array($row) && $row ? $row : null;
+        } catch (Throwable $e) {
+            error_log('nx_agent_find_customer: ' . $e->getMessage());
+            return null;
+        }
+    }
+}
+
+if (!function_exists('nx_agent_new_customer_id')) {
+    /**
+     * A new id for a customer of the agent.
+     *
+     * The agent does not write a telegram id any more, so the row of the
+     * customer gets an id of its own: it never clashes with a telegram id.
+     */
+    function nx_agent_new_customer_id(PDO $pdo): string
+    {
+        for ($i = 0; $i < 12; $i++) {
+            $id = 'ag' . bin2hex(random_bytes(8));
+            try {
+                $st = $pdo->prepare("SELECT id FROM `user` WHERE id = ? LIMIT 1");
+                $st->execute([$id]);
+                if ($st->fetchColumn() === false) {
+                    return $id;
                 }
-                return $row;
+            } catch (Throwable $e) {
+                return $id;
             }
+        }
+        return 'ag' . bin2hex(random_bytes(16));
+    }
+}
+
+if (!function_exists('nx_agent_save_customer')) {
+    /**
+     * The row of the customer in the table of the bot.
+     *
+     * The row is bound to the agent, so the service shows up in the list of
+     * the users of the agent panel.
+     */
+    function nx_agent_save_customer(string $id, string $name, string $agentId): ?array
+    {
+        global $pdo, $setting;
+        $id = trim($id);
+        $name = trim($name);
+        if ($id === '' || $name === '' || $agentId === '') {
+            return null;
+        }
+        try {
+            // The keys are small: the names of the columns of MySQL do not
+            // care about the case, so the row is always written the way the
+            // table of the bot knows it.
             $data = [
-                'id' => $userId,
+                'id' => $id,
                 'step' => 'none',
                 'limit_usertest' => (int) ($setting['limit_usertest_all'] ?? 0),
-                'User_Status' => 'Active',
+                'user_status' => 'Active',
                 'number' => 'none',
-                'Balance' => '0',
+                'balance' => '0',
                 'pagenumber' => '1',
-                'username' => 'user' . substr($userId, -6),
+                'username' => $name,
                 'agent' => 'f',
                 'message_count' => '0',
                 'last_message_time' => '0',
@@ -271,7 +383,7 @@ if (!function_exists('nx_agent_create_customer')) {
                 'namecustom' => 'none',
                 'register' => time(),
                 'verify' => 1,
-                'codeInvitation' => bin2hex(random_bytes(6)),
+                'codeinvitation' => bin2hex(random_bytes(6)),
                 'pricediscount' => '0',
                 'maxbuyagent' => '0',
                 'joinchannel' => '0',
@@ -290,11 +402,11 @@ if (!function_exists('nx_agent_create_customer')) {
             }
             $stmt->execute();
             $st = $pdo->prepare("SELECT * FROM `user` WHERE id = ? LIMIT 1");
-            $st->execute([$userId]);
+            $st->execute([$id]);
             $row = $st->fetch(PDO::FETCH_ASSOC);
-            return $row ?: null;
+            return is_array($row) && $row ? $row : null;
         } catch (Throwable $e) {
-            error_log('nx_agent_create_customer: ' . $e->getMessage());
+            error_log('nx_agent_save_customer: ' . $e->getMessage());
             return null;
         }
     }
@@ -366,16 +478,18 @@ if (!function_exists('nx_agent_panel_candidates')) {
 
 if (!function_exists('nx_agent_buy_product')) {
     /**
-     * Buys a product of the bot for one of the customers of the agent.
+     * Buys a product of the bot for a customer of the agent.
      *
-     * The wallet of the agent pays for it (with his discount), the account is
-     * created on the panel of the product and the invoice is written, so the
-     * service shows up in the list of the customer and in the operations of the
-     * panel.
+     * The agent writes the name of his customer (a name, never a telegram
+     * id): the account is created on the panel of the product with this name
+     * and a random suffix behind it, so the name is never in the way. The
+     * wallet of the agent pays for it (with his discount) and the invoice is
+     * written, so the service shows up in the list of the users of the panel
+     * and in the operations of the panel.
      *
      * @return array{ok:bool,msg:string,detail:array}
      */
-    function nx_agent_buy_product(array $agent, int $productId, string $customerId, string $customName, float $percent, string $newUserId = ''): array
+    function nx_agent_buy_product(array $agent, int $productId, string $username, float $percent): array
     {
         global $pdo, $ManagePanel;
         $agentId = (string) ($agent['id'] ?? '');
@@ -394,27 +508,18 @@ if (!function_exists('nx_agent_buy_product')) {
         if ((int) ($product['is_test'] ?? 0) === 1) {
             return ['ok' => false, 'msg' => 'سرویس‌های تست در این بخش نیستند.', 'detail' => []];
         }
-        $customerId = trim($customerId);
-        $newUserId = trim($newUserId);
-        if ($customerId === '' && $newUserId !== '') {
-            // A customer that does not exist yet is created and bound to the
-            // agent.
-            $created = nx_agent_create_customer($newUserId, $agentId);
-            if (!$created) {
-                return ['ok' => false, 'msg' => 'شناسه کاربر درست نیست.', 'detail' => []];
-            }
-            $customer = $created;
-            $customerId = (string) $created['id'];
-        } else {
-            if ($customerId === '') {
-                return ['ok' => false, 'msg' => 'کاربر را انتخاب کنید.', 'detail' => []];
-            }
-            $st = $pdo->prepare("SELECT * FROM `user` WHERE id = ? AND affiliates = ? LIMIT 1");
-            $st->execute([$customerId, $agentId]);
-            $customer = $st->fetch(PDO::FETCH_ASSOC);
-            if (!$customer) {
-                return ['ok' => false, 'msg' => 'این کاربر در پنل شما ثبت نشده است.', 'detail' => []];
-            }
+        // The customer: a name and nothing else. The name is cleaned up
+        // before it is used on the panel.
+        $rawName = trim($username);
+        if ($rawName === '') {
+            return ['ok' => false, 'msg' => 'نام کاربری مشتری را بنویسید.', 'detail' => []];
+        }
+        $cleanName = nx_agent_clean_username($rawName);
+        if ($cleanName === '') {
+            return ['ok' => false, 'msg' => 'نام کاربری باید انگلیسی باشد (حروف، عدد و _ . - ).', 'detail' => []];
+        }
+        if (strlen($cleanName) < 3) {
+            return ['ok' => false, 'msg' => 'نام کاربری باید حداقل ۳ حرف باشد.', 'detail' => []];
         }
         // The panels the account can be created on. The panel of the product
         // comes first, the other panels of the bot are the backup: a service
@@ -468,47 +573,59 @@ if (!function_exists('nx_agent_buy_product')) {
                 return ['ok' => false, 'msg' => 'موجودی کیف پول شما برای این محصول کافی نیست.', 'detail' => []];
             }
         }
+        // The customer of the service: the row of the bot that carries the
+        // name. A customer that does not exist yet gets a row of his own, so
+        // the service shows up in the list of the users of the panel.
+        $customer = nx_agent_find_customer($cleanName, $agentId);
+        $customerExists = $customer !== null;
+        if (!$customerExists) {
+            $customer = [
+                'id' => nx_agent_new_customer_id($pdo),
+                'username' => $cleanName,
+                'affiliates' => $agentId,
+            ];
+        }
         $randomString = bin2hex(random_bytes(4));
         $username = '';
         $dataoutput = [];
         $lastError = '';
         $usedPanel = null;
         foreach ($allowed as $candidate) {
-            try {
-                $username = generateUsername(
-                    (string) $customer['id'],
-                    (string) ($candidate['MethodUsername'] ?? ''),
-                    (string) ($customer['username'] ?? ''),
-                    $randomString,
-                    $customName !== '' ? $customName : $randomString,
-                    (string) ($candidate['namecustom'] ?? ''),
-                    (string) ($customer['namecustom'] ?? '')
-                );
-                $username = strtolower(trim((string) $username));
-                if ($username === '') {
-                    throw new RuntimeException('نام کاربری ساخته نشد.');
+            $panelName = trim((string) ($candidate['name_panel'] ?? ''));
+            if ($panelName === '') {
+                continue;
+            }
+            // The name of the account: the name of the customer with a random
+            // suffix behind it. The suffix grows as long as the name is used
+            // on the panel, so the account is always created.
+            for ($attempt = 0; $attempt < 5; $attempt++) {
+                $username = nx_agent_panel_username($ManagePanel, $panelName, $cleanName);
+                try {
+                    $days = (int) ($product['Service_time'] ?? 0);
+                    $timestamp = $days > 0 ? strtotime(date("Y-m-d H:i:s", strtotime("+" . $days . "days"))) : 0;
+                    $datac = [
+                        'expire' => $timestamp,
+                        'data_limit' => (float) ($product['Volume_constraint'] ?? 0) * pow(1024, 3),
+                        'from_id' => (string) $customer['id'],
+                        'username' => $cleanName,
+                        'type' => 'buy',
+                    ];
+                    $dataoutput = $ManagePanel->createUser($panelName, (string) ($product['code_product'] ?? ''), $username, $datac);
+                    if (!is_array($dataoutput) || empty($dataoutput['username'])) {
+                        $lastError = trim((string) ($dataoutput['msg'] ?? 'اکانت روی پنل ساخته نشد.'));
+                        throw new RuntimeException($lastError !== '' ? $lastError : 'اکانت روی پنل ساخته نشد.');
+                    }
+                    $username = (string) $dataoutput['username'];
+                    $usedPanel = $candidate;
+                    break;
+                } catch (Throwable $e) {
+                    error_log('nx_agent_buy_product: ' . $e->getMessage());
+                    $lastError = $e->getMessage();
+                    $dataoutput = [];
                 }
-                $days = (int) ($product['Service_time'] ?? 0);
-                $timestamp = $days > 0 ? strtotime(date("Y-m-d H:i:s", strtotime("+" . $days . "days"))) : 0;
-                $datac = [
-                    'expire' => $timestamp,
-                    'data_limit' => (float) ($product['Volume_constraint'] ?? 0) * pow(1024, 3),
-                    'from_id' => (string) $customer['id'],
-                    'username' => (string) ($customer['username'] ?? ''),
-                    'type' => 'buy',
-                ];
-                $dataoutput = $ManagePanel->createUser((string) $candidate['name_panel'], (string) ($product['code_product'] ?? ''), $username, $datac);
-                if (!is_array($dataoutput) || empty($dataoutput['username'])) {
-                    $lastError = trim((string) ($dataoutput['msg'] ?? 'اکانت روی پنل ساخته نشد.'));
-                    throw new RuntimeException($lastError !== '' ? $lastError : 'اکانت روی پنل ساخته نشد.');
-                }
-                $username = (string) $dataoutput['username'];
-                $usedPanel = $candidate;
+            }
+            if ($usedPanel !== null) {
                 break;
-            } catch (Throwable $e) {
-                error_log('nx_agent_buy_product: ' . $e->getMessage());
-                $lastError = $e->getMessage();
-                $dataoutput = [];
             }
         }
         if ($usedPanel === null) {
@@ -524,6 +641,16 @@ if (!function_exists('nx_agent_buy_product')) {
             ];
         }
         $panel = $usedPanel;
+        // The customer of the service is written down now: the service has to
+        // show up in the list of the users of the panel.
+        if (!$customerExists) {
+            $saved = nx_agent_save_customer((string) $customer['id'], $cleanName, $agentId);
+            if ($saved) {
+                $customer = $saved;
+            } else {
+                error_log('nx_agent_buy_product: the row of the customer could not be written.');
+            }
+        }
         // The invoice: the service belongs to the customer, the agent paid for it.
         $notifctions = json_encode(['volume' => false, 'time' => false]);
         $st = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username, time_sell, Service_location, name_product, price_product, Volume, Service_time, Status, note, refral, notifctions) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -546,37 +673,46 @@ if (!function_exists('nx_agent_buy_product')) {
         if ((string) ($panel['sublink'] ?? '') === 'onsublink') {
             $link = (string) ($dataoutput['subscription_url'] ?? '');
         }
+        $subscriptionUrl = (string) ($dataoutput['subscription_url'] ?? '');
         $configs = [];
         if ((string) ($panel['config'] ?? '') === 'onconfig' && is_array($dataoutput['configs'] ?? null)) {
             $configs = $dataoutput['configs'];
         }
         // The customer gets his service in the bot, exactly like a normal buy.
-        try {
-            global $textbotlang;
-            $text = (string) ($textbotlang['textbot']['afterPay'] ?? '');
-            if ($text === '') {
-                $text = "✅ سرویس با موفقیت ایجاد شد\n\n👤 نام کاربری سرویس: {username}\n🌿 نام سرویس: {name_service}\n📍 لوکیشن: {location}\n⏳ مدت زمان: {day} روز\n🗜 حجم سرویس: {volume} گیگابایت\n\nلینک اتصال:\n{config}\n{links}";
+        // The customer of the agent has a name and not always a telegram id:
+        // the service is only sent when the id of the customer is a telegram id.
+        $customerId = (string) $customer['id'];
+        $telegramId = is_numeric($customerId) && (int) $customerId > 0 ? $customerId : '';
+        if ($telegramId !== '') {
+            try {
+                global $textbotlang;
+                $text = (string) ($textbotlang['textbot']['afterPay'] ?? '');
+                if ($text === '') {
+                    $text = "✅ سرویس با موفقیت ایجاد شد\n\n👤 نام کاربری سرویس: {username}\n🌿 نام سرویس: {name_service}\n📍 لوکیشن: {location}\n⏳ مدت زمان: {day} روز\n🗜 حجم سرویس: {volume} گیگابایت\n\nلینک اتصال:\n{config}\n{links}";
+                }
+                $text = str_replace('{username}', '<code>' . $username . '</code>', $text);
+                $text = str_replace('{name_service}', nx_agent_plain_name((string) $product['name_product']), $text);
+                $text = str_replace('{location}', (string) $panel['name_panel'], $text);
+                $text = str_replace('{day}', (string) ($product['Service_time'] ?? 0), $text);
+                $text = str_replace('{volume}', (string) ($product['Volume_constraint'] ?? 0), $text);
+                $text = str_replace('{config}', '<code>' . $link . '</code>', $text);
+                $text = str_replace('{links}', implode("\n", $configs), $text);
+                $text = str_replace('{links2}', $link, $text);
+                if (function_exists('sendmessage') && $text !== '') {
+                    sendmessage($telegramId, $text, null, 'HTML');
+                }
+            } catch (Throwable $e) {
+                error_log('nx_agent_buy_product (message): ' . $e->getMessage());
             }
-            $text = str_replace('{username}', '<code>' . $username . '</code>', $text);
-            $text = str_replace('{name_service}', nx_agent_plain_name((string) $product['name_product']), $text);
-            $text = str_replace('{location}', (string) $panel['name_panel'], $text);
-            $text = str_replace('{day}', (string) ($product['Service_time'] ?? 0), $text);
-            $text = str_replace('{volume}', (string) ($product['Volume_constraint'] ?? 0), $text);
-            $text = str_replace('{config}', '<code>' . $link . '</code>', $text);
-            $text = str_replace('{links}', implode("\n", $configs), $text);
-            $text = str_replace('{links2}', $link, $text);
-            if (function_exists('sendmessage') && $text !== '') {
-                sendmessage((string) $customer['id'], $text, null, 'HTML');
-            }
-        } catch (Throwable $e) {
-            error_log('nx_agent_buy_product (message): ' . $e->getMessage());
         }
         return [
             'ok' => true,
-            'msg' => 'سرویس ساخته شد و به کاربر تحویل داده شد.',
+            'msg' => 'سرویس ساخته شد؛ مشخصات اتصال را به مشتری بدهید.',
             'detail' => [
                 'username' => $username,
+                'customer' => $cleanName,
                 'link' => $link,
+                'subscription_url' => $subscriptionUrl,
                 'configs' => $configs,
                 'price' => $price,
                 'product' => nx_agent_plain_name((string) $product['name_product']),

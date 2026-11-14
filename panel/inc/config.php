@@ -259,3 +259,281 @@ function user_role_tag(string $agent): string
         default => 'tag-plain',
     };
 }
+
+// ---------------------------------------------------------------------------
+// The reseller panel (the panel of the agent) of the administration panel.
+// ---------------------------------------------------------------------------
+
+/**
+ * Does the database know the table? A table that is not there yet (a database
+ * that was never migrated) must never turn a page of the panel into a fatal
+ * error, so every query of the agent tables is guarded with this.
+ */
+function panel_table_exists(PDO $pdo, string $table): bool
+{
+    static $cache = [];
+    $key = strtolower($table);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+    $exists = false;
+    try {
+        $st = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+        $st->execute([$table]);
+        $exists = ((int) $st->fetchColumn()) > 0;
+    } catch (Throwable $e) {
+        $exists = false;
+    }
+    $cache[$key] = $exists;
+    return $exists;
+}
+
+/**
+ * The table of the access to the panels of the customers (agent_auth). It is
+ * created when it does not exist, so the manual hand over of a panel works on
+ * a database that was never migrated.
+ */
+function panel_agent_ensure_table(PDO $pdo): bool
+{
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS agent_auth (id_user VARCHAR(32) NOT NULL PRIMARY KEY, pass_hash VARCHAR(255) NOT NULL, created_at INT UNSIGNED NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        return true;
+    } catch (Throwable $e) {
+        error_log('panel_agent_ensure_table: ' . $e->getMessage());
+        return panel_table_exists($pdo, 'agent_auth');
+    }
+}
+
+/**
+ * The address of the reseller panel of the bot. The link is never empty and
+ * never the string "undefined": it is the link the administrator sends to the
+ * customer, so it has to be the real address of this installation.
+ */
+function panel_agent_link(): string
+{
+    global $domainhosts;
+    $host = trim((string) ($domainhosts ?? ''));
+    if ($host !== '' && strpos($host, '{') === false) {
+        if (preg_match('#^https?://#i', $host)) {
+            return rtrim($host, '/') . '/agent-panel/';
+        }
+        return 'https://' . trim($host, '/') . '/agent-panel/';
+    }
+    if (function_exists('nexora_agent_panel_link')) {
+        $link = trim((string) nexora_agent_panel_link());
+        if ($link !== '' && strpos($link, '{') === false) {
+            return $link;
+        }
+    }
+    return '/agent-panel/';
+}
+
+/**
+ * The representatives of the bot: the customers that got a reseller panel (the
+ * rows of the agent_auth) and the old style agents (the rows of the user with
+ * a code of agent).
+ *
+ * The join is a LEFT JOIN, so a customer whose row of the user is gone is
+ * still in the list, and the columns that the database does not know are left
+ * out of the query instead of breaking it.
+ */
+function panel_agent_representatives(PDO $pdo, int $limit = 500): array
+{
+    $limit = max(1, min(2000, $limit));
+    $userColumns = panel_table_columns($pdo, 'user');
+    if (!$userColumns) {
+        return [];
+    }
+    $authColumns = panel_table_exists($pdo, 'agent_auth') ? panel_table_columns($pdo, 'agent_auth') : [];
+    $list = [];
+    $seen = [];
+
+    // The customers that got a reseller panel (the rows of the agent_auth).
+    if ($authColumns && in_array('id_user', $authColumns, true)) {
+        $select = ['a.id_user'];
+        $order = 'a.id_user ASC';
+        if (in_array('created_at', $authColumns, true)) {
+            $select[] = 'a.created_at';
+            $order = 'a.created_at DESC, ' . $order;
+        }
+        foreach (['id', 'username', 'agent', 'pricediscount', 'maxbuyagent', 'Balance', 'register'] as $column) {
+            if (in_array($column, $userColumns, true)) {
+                $select[] = 'u.' . $column;
+            }
+        }
+        try {
+            $st = $pdo->query("SELECT " . implode(', ', $select) . " FROM agent_auth a LEFT JOIN `user` u ON u.id = a.id_user ORDER BY " . $order . " LIMIT " . $limit);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = trim((string) ($row['id_user'] ?? ''));
+                if ($id === '') {
+                    continue;
+                }
+                $row['id'] = $id;
+                $row['has_panel'] = true;
+                $row['access_created_at'] = (int) ($row['created_at'] ?? 0);
+                unset($row['created_at']);
+                $list[] = $row;
+                $seen[$id] = true;
+            }
+        } catch (Throwable $e) {
+            error_log('panel_agent_representatives (panels): ' . $e->getMessage());
+        }
+    }
+
+    // The old style agents (the rows of the user with a code of agent).
+    if (in_array('agent', $userColumns, true)) {
+        $select = ['id'];
+        foreach (['username', 'agent', 'pricediscount', 'maxbuyagent', 'Balance', 'register'] as $column) {
+            if (in_array($column, $userColumns, true)) {
+                $select[] = $column;
+            }
+        }
+        try {
+            $st = $pdo->query("SELECT " . implode(', ', $select) . " FROM `user` WHERE agent IS NOT NULL AND agent <> 'f' AND agent <> '' ORDER BY id LIMIT " . $limit);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $id = trim((string) ($row['id'] ?? ''));
+                if ($id === '' || isset($seen[$id])) {
+                    continue;
+                }
+                $row['has_panel'] = false;
+                $row['access_created_at'] = 0;
+                $list[] = $row;
+                $seen[$id] = true;
+            }
+        } catch (Throwable $e) {
+            error_log('panel_agent_representatives (agents): ' . $e->getMessage());
+        }
+    }
+
+    return $list;
+}
+
+/**
+ * The panels that were delivered to the customers. It is the backup of the
+ * list of the tab, so the tab still shows something when the helper of the bot
+ * is not there or fails.
+ */
+function panel_agent_delivered_accounts(PDO $pdo, int $limit = 500): array
+{
+    $limit = max(1, min(2000, $limit));
+    if (!panel_table_exists($pdo, 'agent_auth')) {
+        return [];
+    }
+    $authColumns = panel_table_columns($pdo, 'agent_auth');
+    $userColumns = panel_table_columns($pdo, 'user');
+    if (!$authColumns || !in_array('id_user', $authColumns, true)) {
+        return [];
+    }
+    $select = ['a.id_user'];
+    if (in_array('created_at', $authColumns, true)) {
+        $select[] = 'a.created_at';
+    }
+    foreach (['username', 'Balance'] as $column) {
+        if (in_array($column, $userColumns, true)) {
+            $select[] = 'u.' . $column;
+        }
+    }
+    try {
+        $st = $pdo->query("SELECT " . implode(', ', $select) . " FROM agent_auth a LEFT JOIN `user` u ON u.id = a.id_user ORDER BY a.created_at DESC, a.id_user ASC LIMIT " . $limit);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('panel_agent_delivered_accounts: ' . $e->getMessage());
+        return [];
+    }
+    $ids = [];
+    foreach ($rows as $row) {
+        $ids[] = (string) ($row['id_user'] ?? '');
+    }
+    $products = function_exists('nexora_agent_panel_last_products') ? nexora_agent_panel_last_products($ids) : [];
+    $out = [];
+    foreach ($rows as $row) {
+        $id = trim((string) ($row['id_user'] ?? ''));
+        if ($id === '') {
+            continue;
+        }
+        $out[] = [
+            'id_user' => $id,
+            'username' => (string) ($row['username'] ?? ''),
+            'credit' => floatval($row['Balance'] ?? 0),
+            'created_at' => (int) ($row['created_at'] ?? 0),
+            'product' => (string) ($products[$id] ?? ''),
+            'link' => panel_agent_link(),
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Makes sure that the row of the customer exists. The administrator types the
+ * telegram id of the customer, so the row is created when it is not there yet
+ * (the panel of the agent needs the row of the user to log in).
+ */
+function panel_agent_ensure_user(PDO $pdo, string $userId, string $username = ''): bool
+{
+    $userId = trim($userId);
+    if ($userId === '') {
+        return false;
+    }
+    $columns = panel_table_columns($pdo, 'user');
+    if (!$columns) {
+        return false;
+    }
+    try {
+        $st = $pdo->prepare("SELECT id FROM `user` WHERE id = ? LIMIT 1");
+        $st->execute([$userId]);
+        if ($st->fetchColumn() !== false) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('panel_agent_ensure_user (select): ' . $e->getMessage());
+        return false;
+    }
+    $defaults = [
+        'id' => $userId,
+        'step' => 'none',
+        'limit_usertest' => '0',
+        'roll_Status' => '0',
+        'username' => $username !== '' ? $username : 'none',
+        'Processing_value' => '',
+        'Processing_value_one' => '',
+        'Processing_value_tow' => '',
+        'Processing_value_four' => '',
+        'number' => 'none',
+        'Balance' => '0',
+        'User_Status' => 'Active',
+        'pagenumber' => '1',
+        'message_count' => '0',
+        'last_message_time' => '0',
+        'agent' => 'f',
+        'affiliatescount' => '0',
+        'affiliates' => '0',
+        'namecustom' => 'none',
+        'number_username' => '100',
+        'register' => (string) time(),
+        'verify' => '1',
+        'cardpayment' => '1',
+        'codeInvitation' => bin2hex(random_bytes(6)),
+        'pricediscount' => '0',
+        'maxbuyagent' => '0',
+        'joinchannel' => '0',
+        'score' => '0',
+        'status_cron' => '1',
+    ];
+    $use = [];
+    foreach ($defaults as $column => $value) {
+        if (in_array($column, $columns, true)) {
+            $use[$column] = $value;
+        }
+    }
+    if (!isset($use['id'])) {
+        return false;
+    }
+    try {
+        $st = $pdo->prepare("INSERT IGNORE INTO `user` (" . implode(', ', array_keys($use)) . ") VALUES (" . implode(', ', array_fill(0, count($use), '?')) . ")");
+        $st->execute(array_values($use));
+        return true;
+    } catch (Throwable $e) {
+        error_log('panel_agent_ensure_user (insert): ' . $e->getMessage());
+        return false;
+    }
+}
