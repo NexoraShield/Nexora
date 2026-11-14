@@ -1,5 +1,13 @@
 # Nexora Bot — Release Notes
 
+## v1.22.85 (2026-11-14) — A broken keyboard never takes the answer of the bot away from the customer any more
+
+- Telegram wants the rows of a keyboard (an array of arrays of buttons). When a button is built without a row or a row is empty, Telegram refuses the whole message with the error 400 and the customer never gets an answer from the bot.
+- The keyboard is repaired before it is sent now: a button without a row gets a row of its own, an empty row is removed, a button without a text is removed and a keyboard without a single button is not sent at all.
+- The result: one small mistake in one page never takes a message away from a customer.
+
+---
+
 ## v1.22.84 (2026-11-14) — The premium emoji of the shops and the pie charts of the reports are fixed
 
 **The premium emoji (every panel)**

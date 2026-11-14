@@ -86,6 +86,73 @@ function payloadHasCustomEmoji(array $datas)
     }
     return false;
 }
+
+/**
+ * Repairs a keyboard that Telegram would refuse.
+ *
+ * Telegram wants the rows of a keyboard: an array of arrays of buttons. When
+ * a button is put straight into the keyboard (without a row) or when a row is
+ * empty, the whole message is refused with the error 400 ("expected an Array
+ * of InlineKeyboardButton") and the customer never sees the answer of the bot.
+ * The keyboard is repaired here, so one small mistake never costs a message.
+ */
+function repairReplyMarkup($replyMarkup)
+{
+    if (!is_string($replyMarkup) || $replyMarkup === '') {
+        return $replyMarkup;
+    }
+    $markup = json_decode($replyMarkup, true);
+    if (!is_array($markup)) {
+        return $replyMarkup;
+    }
+    $changed = false;
+    foreach (['keyboard', 'inline_keyboard'] as $markupKey) {
+        if (!isset($markup[$markupKey]) || !is_array($markup[$markupKey])) {
+            continue;
+        }
+        $rows = [];
+        foreach ($markup[$markupKey] as $row) {
+            if (!is_array($row)) {
+                $changed = true;
+                continue;
+            }
+            // A button without a row around it becomes a row of its own.
+            if (isset($row['text']) || isset($row['callback_data']) || isset($row['url'])) {
+                $rows[] = [$row];
+                $changed = true;
+                continue;
+            }
+            $buttons = [];
+            foreach ($row as $button) {
+                if (!is_array($button)) {
+                    $changed = true;
+                    continue;
+                }
+                if (!isset($button['text']) || trim((string) $button['text']) === '') {
+                    $changed = true;
+                    continue;
+                }
+                $buttons[] = $button;
+            }
+            if ($buttons) {
+                $rows[] = $buttons;
+            } else {
+                $changed = true;
+            }
+        }
+        if ($rows) {
+            $markup[$markupKey] = $rows;
+        } else {
+            unset($markup[$markupKey]);
+            $changed = true;
+        }
+    }
+    if (!$changed) {
+        return $replyMarkup;
+    }
+    $encoded = json_encode($markup, JSON_UNESCAPED_UNICODE);
+    return $encoded === false ? $replyMarkup : $encoded;
+}
 function applyCustomEmojiPayload(array $datas)
 {
     if (!payloadRendersHtml($datas)) {
@@ -185,6 +252,18 @@ function telegram($method, $datas = [], $token = null, $allowEmojiFallback = tru
     // the back button is always the last row of the keyboard
     if (function_exists('nexora_move_back_buttons_last') && isset($datas['reply_markup']) && is_string($datas['reply_markup'])) {
         $datas['reply_markup'] = nexora_move_back_buttons_last($datas['reply_markup']);
+    }
+
+    // A keyboard that Telegram would refuse is repaired here, so the message
+    // of the bot always reaches the customer.
+    if (isset($datas['reply_markup']) && is_string($datas['reply_markup'])) {
+        $datas['reply_markup'] = repairReplyMarkup($datas['reply_markup']);
+        // A keyboard without a single button is not sent at all: Telegram
+        // would refuse the whole message for it.
+        $repairedMarkup = json_decode((string) $datas['reply_markup'], true);
+        if (!is_array($repairedMarkup) || count($repairedMarkup) === 0) {
+            unset($datas['reply_markup']);
+        }
     }
 
     $premiumEmojiPayload = null;
