@@ -405,6 +405,21 @@ function panel_agent_representatives(PDO $pdo, int $limit = 500): array
         }
     }
 
+    // The package that every customer bought: it tells the administrator if the
+    // access to the panel was made by the customer himself (the purchase of a
+    // panel) or by hand (the handover of the administrator).
+    if ($seen && function_exists('nexora_agent_panel_last_products')) {
+        try {
+            $products = nexora_agent_panel_last_products(array_keys($seen));
+            foreach ($list as $index => $row) {
+                $id = trim((string) ($row['id'] ?? ''));
+                $list[$index]['product'] = (string) ($products[$id] ?? '');
+            }
+        } catch (Throwable $e) {
+            error_log('panel_agent_representatives (products): ' . $e->getMessage());
+        }
+    }
+
     return $list;
 }
 

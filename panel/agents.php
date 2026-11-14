@@ -249,7 +249,7 @@ else: ?>
 <div class="card fade-up d1" style="margin-bottom:20px">
     <div class="card-head"><div>
         <div class="card-title">🤝 تحویل دستی پنل نمایندگی به مشتری</div>
-        <div class="card-subtitle">پنل نمایندگی را خودتان باز می‌کنید و اطلاعات ورود را برای مشتری می‌فرستید. آیدی عددی تلگرام مشتری را وارد کنید؛ اگر مشتری در ربات عضو نشده باشد، ردیف او همین‌جا ساخته می‌شود.</div>
+        <div class="card-subtitle">پنل نمایندگی را خودتان باز می‌کنید و اطلاعات ورودش را برای مشتری می‌فرستید. آیدی عددی تلگرام مشتری را بنویسید (این عدد نام کاربری پنل او هم هست)؛ اگر مشتری تا حالا با ربات حرف نزده باشد، ردیفش همین‌جا ساخته می‌شود. این بخش برای وقتی است که می‌خواهید پنل را دستی بدهید — اگر مشتری خودش پنل را خریده، دسترسی او خودکار ساخته شده و در «لیست نمایندگان» پایین همین صفحه می‌بینیدش.</div>
     </div></div>
     <div class="card-body">
         <form method="POST">
@@ -270,6 +270,7 @@ else: ?>
                 </label>
                 <label class="field"><span>تخفیف قیمت (درصد)</span>
                     <input class="input" type="number" name="pricediscount" value="0">
+                    <small class="field-hint">درصدی که از قیمت محصولات کم می‌شود.</small>
                 </label>
                 <label class="field"><span>حداکثر خرید / سقف کیف پول</span>
                     <input class="input" type="number" name="maxbuyagent" value="0">
@@ -281,7 +282,7 @@ else: ?>
                 </label>
                 <label class="field"><span>رمز عبور پنل نمایندگی</span>
                     <input class="input" type="password" name="panel_pass" placeholder="اگر خالی بماند، رمز تازه ساخته می‌شود">
-                    <small class="field-hint">رمز فقط به صورت هش ذخیره می‌شود و همین‌جا برای مشتری فرستاده می‌شود.</small>
+                    <small class="field-hint">رمز فقط به صورت هش ذخیره می‌شود و همین‌جا یک‌بار برای مشتری نمایش داده می‌شود.</small>
                 </label>
             </div>
             <div class="field" style="margin-top:12px">
@@ -292,7 +293,7 @@ else: ?>
                 </label>
             </div>
             <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <button type="submit" class="btn btn-primary">💾 ذخیره و ساخت دسترسی پنل</button>
+                <button type="submit" class="btn btn-primary">🔓 ساخت دسترسی و نمایش اطلاعات ورود</button>
                 <span style="font-size:.78rem;color:var(--mute)">لینک ورود پنل نمایندگی: <a href="<?= htmlspecialchars($agentPanelLink) ?>" target="_blank" rel="noopener" dir="ltr"><?= htmlspecialchars($agentPanelLink) ?></a></span>
             </div>
         </form>
@@ -302,7 +303,7 @@ else: ?>
 <div class="card fade-up d2">
     <div class="card-head"><div>
         <div class="card-title">📋 لیست نمایندگان (<?= count($agents) ?>)</div>
-        <div class="card-subtitle">همهٔ مشتری‌هایی که پنل نمایندگی دارند و نمایندگان قدیمی. اگر مشتری پنل نمایندگی خریده باشد، حتی وقتی کد نمایندگی ندارد، اینجا دیده می‌شود.</div>
+        <div class="card-subtitle">همهٔ مشتری‌هایی که پنل نمایندگی دارند و نمایندگان قدیمی. هر کسی که پنل نمایندگی را خریده باشد — حتی وقتی کد نمایندگی ندارد — اینجا دیده می‌شود؛ ستون «دسترسی» می‌گوید پنل را خودش خریده یا شما دستی به او داده‌اید.</div>
     </div></div>
     <div class="card-body">
         <div class="tbl-wrap">
@@ -316,6 +317,7 @@ else: ?>
                         <th>حداکثر خرید</th>
                         <th>موجودی</th>
                         <th>دسترسی پنل</th>
+                        <th>پنلِ خریداری‌شده</th>
                         <th>تاریخ ساخت دسترسی</th>
                         <th>لینک پنل</th>
                         <th>عملیات</th>
@@ -323,10 +325,11 @@ else: ?>
                 </thead>
                 <tbody>
                     <?php if (empty($agents)): ?>
-                        <tr><td colspan="10" style="text-align:center">هیچ نماینده‌ای یافت نشد.</td></tr>
+                        <tr><td colspan="11" style="text-align:center">هیچ نماینده‌ای یافت نشد.</td></tr>
                     <?php else: foreach ($agents as $a):
                         $aId = trim((string) ($a['id'] ?? ''));
                         $hasPanel = !empty($a['has_panel']);
+                        $aProduct = trim((string) ($a['product'] ?? ''));
                     ?>
                         <tr>
                             <td dir="ltr"><?= htmlspecialchars($aId) ?></td>
@@ -336,6 +339,7 @@ else: ?>
                             <td><?= htmlspecialchars((string) ($a['maxbuyagent'] ?? '0')) ?></td>
                             <td><?= number_format((float) ($a['Balance'] ?? 0)) ?></td>
                             <td><?= $hasPanel ? '✅ دارد' : '❌ ندارد' ?></td>
+                            <td><?= $aProduct !== '' ? htmlspecialchars($aProduct) : '<span style="color:var(--mute)">—</span>' ?></td>
                             <td><?= $hasPanel ? safe_date($a['access_created_at'] ?? 0) : '—' ?></td>
                             <td style="font-size:.72rem"><a href="<?= htmlspecialchars($agentPanelLink) ?>" target="_blank" rel="noopener" dir="ltr"><?= htmlspecialchars($agentPanelLink) ?></a></td>
                             <td style="white-space:nowrap">

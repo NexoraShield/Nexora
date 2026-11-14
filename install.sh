@@ -477,7 +477,13 @@ nexora_tune_php() {
 nexora_tune_php || echo "    WARNING: the PHP performance settings could not be written" >&3
 
 echo "==> Ensuring the cron dispatcher is installed"
-if [[ -f "$TARGET/cronbot/migrate-crontab.php" ]]; then
+if [[ "${NX_SKIP_HOST_CRON:-0}" == "1" ]]; then
+  # The bot runs in a container (the hub): the cron of the bot lives in the
+  # cron container of the bot, not in the crontab of the host. A crontab of the
+  # host would run the code of the bot outside of its network, so the database
+  # of the bot would never be reached.
+  echo "    the cron runs in the container of the bot - the crontab of the host is left alone"
+elif [[ -f "$TARGET/cronbot/migrate-crontab.php" ]]; then
   _cron_user="$(stat -c '%U' "$TARGET" 2>/dev/null || echo root)"
   if ! id -u "$_cron_user" >/dev/null 2>&1; then
     _cron_user="root"

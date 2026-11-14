@@ -1138,6 +1138,97 @@ function StatusPayment($paymentid)
     $response = json_decode($response, true);
     return $response;
 }
+// ---------------------------------------------------------------------------
+// The account of a test service
+// ---------------------------------------------------------------------------
+if (!function_exists('nexora_test_account_name')) {
+    /**
+     * The name of the account of a test service with a random suffix.
+     *
+     * The suffix makes the name unique. A name that is used on the panel
+     * already can not be created: the panel refuses it and the customer gets
+     * an error instead of his test service. With a suffix behind the name
+     * every try is a new name.
+     */
+    function nexora_test_account_name(string $base): string
+    {
+        $base = strtolower(trim((string) $base));
+        $base = (string) preg_replace('/[^a-z0-9._-]+/', '', $base);
+        $base = trim($base, "._-");
+        if ($base === '') {
+            $base = 'test';
+        }
+        $suffix = bin2hex(random_bytes(3));
+        $name = $base . '_' . $suffix;
+        // The panels accept at most 32 characters.
+        if (strlen($name) > 32) {
+            $name = rtrim(substr($base, 0, 32 - strlen($suffix) - 1), "._-") . '_' . $suffix;
+        }
+        return $name;
+    }
+}
+
+if (!function_exists('nexora_create_test_account')) {
+    /**
+     * Creates the account of a test service on the panel.
+     *
+     * The name of the account comes from the panel of the bot (the method of
+     * the name of the panel). When the panel refuses the name - because it is
+     * used already or because a broken account with that name is still on the
+     * panel - a new name with a random suffix is tried. The customer always
+     * gets his test service and a broken account never stops the bot.
+     *
+     * The account of a refused try is removed here: the panel can make the
+     * account and answer with an error at the same time, and such an account
+     * would stay on the panel as a ghost that nobody can delete any more.
+     *
+     * @param callable $nameBuilder A function that returns the name of the account.
+     * @return array{ok:bool,username:string,output:array,msg:string}
+     */
+    function nexora_create_test_account($ManagePanel, string $panelName, string $codeProduct, array $datac, callable $nameBuilder, int $attempts = 4): array
+    {
+        $lastOutput = [];
+        $lastName = '';
+        $lastError = '';
+        $attempts = max(1, min(6, $attempts));
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            $name = trim((string) call_user_func($nameBuilder, $attempt));
+            if ($name === '') {
+                continue;
+            }
+            $lastName = $name;
+            $output = [];
+            try {
+                $output = $ManagePanel->createUser($panelName, $codeProduct, $name, $datac);
+            } catch (Throwable $e) {
+                $output = ['status' => 'Unsuccessful', 'msg' => $e->getMessage()];
+            }
+            if (is_array($output) && !empty($output['username'])) {
+                return [
+                    'ok' => true,
+                    'username' => (string) $output['username'],
+                    'output' => $output,
+                    'msg' => '',
+                ];
+            }
+            $lastOutput = is_array($output) ? $output : [];
+            $lastError = trim((string) ($lastOutput['msg'] ?? ''));
+            error_log('nexora_create_test_account: the panel refused the name "' . $name . '": ' . $lastError);
+            try {
+                $ManagePanel->RemoveUser($panelName, $name);
+            } catch (Throwable $e) {
+                error_log('nexora_create_test_account: the account could not be removed: ' . $e->getMessage());
+            }
+        }
+        return [
+            'ok' => false,
+            'username' => $lastName,
+            'output' => $lastOutput,
+            'msg' => $lastError,
+        ];
+    }
+}
+
 function nexora_channel_chat_id($value): string
 {
     // The chat id that Telegram understands. The administrator writes the link

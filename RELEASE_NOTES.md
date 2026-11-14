@@ -1,4 +1,26 @@
 # Nexora Bot — Release Notes
+## v1.22.83 (2026-11-14) — The test service never gets stuck on a broken account, the list of the representatives is complete and the Knockout bot is cleaned up
+
+**The test service (every bot)**
+- When the panel refuses a name that it knows already, the bot tries a new name with a random suffix and it tries up to four times. Until now the bot stopped with the error "Failed to delete user … 404" and the customer never got his test service.
+- The invoice of a test service is now written **after** the account really exists. Before the invoice was written first, so a failed creation left an invoice without an account (the very thing that created the orphan accounts on the panel).
+- The job of the test services also removes the accounts whose invoice was closed already; before it only saw the invoices with the state "active", so the test accounts piled up on the panel.
+- The job reads the time of the sale correctly. The column "time_sell" is sometimes the text of a date ("2026/11/13 14:53:58") and it was read as the year 2026, so the account of a test that was still running was removed from the panel too early.
+- The button of a test service does not write the volume and the duration behind the name any more: only the name of the test is written and the volume and the duration are shown when the test is opened.
+
+**The representatives (the web panel)**
+- The list of the representatives has a new column: "پنلِ خریداری‌شده" (the panel that was bought). Now the administrator sees if the customer bought the panel himself or if the panel was handed over by hand.
+- The form at the top of the page is rewritten for the "hand over of the agent panel": a clear explanation, the fields in order and the button "ساخت دسترسی و نمایش اطلاعات ورود".
+- In the agent panel the table of the users starts with the username and the internal id is written under it; the buy of a service is still done with the name of the customer only.
+
+**The Knockout bot (kovpn)**
+- The database of the Knockout bot was converted from another bot and still carried eleven tables and twenty-one settings of the old bot (the table of the texts of the bot, the table of the wallet and …). All of them were backed up first and then dropped; the structure of the database is now the same as the one of the other bots of the hub.
+
+**The cron of the hub**
+- The cron of the bots on the hub itself (the crontab of root and of www-data) is removed: the cron of every bot runs in its own container and the crontab of the hub only wrote a "no database connection" error every minute.
+
+---
+
 ## v1.22.82 (2026-11-14) — The tab "Reports and stats" in the web panel, the mandatory channel works again and the test accounts of the PasarGuard panel are cleaned up
 
 **The reports and the stats (the web panel)**

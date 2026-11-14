@@ -293,7 +293,7 @@ function nx_num($v)
     <section id="v-users">
       <div class="rs-head"><div><h1>مدیریت کاربران</h1><p>کاربرانی که با پنل شما سرویس گرفته‌اند</p></div><div class="grow"></div></div>
       <div class="card">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>شناسه</th><th>نام کاربری</th><th>سرویس‌ها</th><th>موجودی</th><th>تعداد سرویس</th><th>ثبت</th></tr></thead><tbody>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>نام کاربری</th><th>سرویس‌ها</th><th>موجودی</th><th>تعداد سرویس</th><th>ثبت</th></tr></thead><tbody>
         <?php
         $subServiceCount = [];
         $subServiceNames = [];
@@ -306,8 +306,10 @@ function nx_num($v)
             $subId = (string) $sub['id'];
             $subNames = array_values(array_unique(array_filter($subServiceNames[$subId] ?? []))); ?>
           <tr>
-            <td class="mono"><?= htmlspecialchars($subId) ?></td>
-            <td><?= htmlspecialchars((string) ($sub['username'] ?? '')) ?></td>
+            <td>
+              <b><?= htmlspecialchars((string) ($sub['username'] ?? '')) ?></b>
+              <div style="font-size:.7rem;color:var(--mute)" dir="ltr"><?= htmlspecialchars($subId) ?></div>
+            </td>
             <td class="mono">
               <?php if ($subNames): ?>
                 <?php foreach ($subNames as $subName): ?>
@@ -322,7 +324,7 @@ function nx_num($v)
             <td class="mono"><?= htmlspecialchars((string) ($sub['register'] ?? '')) ?></td>
           </tr>
         <?php endforeach; ?>
-        <?php if (!$subs): ?><tr><td colspan="6" style="color:var(--muted)">هنوز کاربری با پنل شما ثبت نشده است.</td></tr><?php endif; ?>
+        <?php if (!$subs): ?><tr><td colspan="5" style="color:var(--muted)">هنوز کاربری با پنل شما ثبت نشده است.</td></tr><?php endif; ?>
         </tbody></table></div>
       </div>
     </section>

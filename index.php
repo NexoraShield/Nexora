@@ -3188,23 +3188,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
         $testRows = [];
         foreach ($testProducts as $testProduct) {
+            // The button carries the name of the test only: the volume and the
+            // duration are shown when the test is opened, so the button stays
+            // short and readable.
             $testLabel = (string) $testProduct['name_product'];
-            $testVolume = nexora_format_volume($testProduct['Volume_constraint'] ?? 0);
-            if ($testVolume !== '') {
-                $testLabel .= ' - ' . $testVolume;
-            }
             $testRows[] = [nexora_style_btn($testLabel, "testproduct_" . $testProduct['code_product'], $testProduct)];
         }
         foreach ($testPanels as $testPanel) {
             $testLabel = (string) $testPanel['name_panel'];
-            $testPanelVolume = (int) ($testPanel['val_usertest'] ?? 0);
-            $testPanelTime = (int) ($testPanel['time_usertest'] ?? 0);
-            if ($testPanelVolume > 0 || $testPanelTime > 0) {
-                $testLabel .= ' - ' . ($testPanelVolume > 0 ? nexora_format_volume($testPanelVolume / 1024) : '');
-                $testLabel .= ($testPanelVolume > 0 && $testPanelTime > 0) ? ' / ' : '';
-                $testLabel .= ($testPanelTime > 0 ? $testPanelTime . ' ساعت' : '');
-                $testLabel = trim($testLabel, ' /');
-            }
             $testRows[] = [nexora_style_btn($testLabel, "locationtest_" . $testPanel['code_panel'], $testPanel)];
         }
         $testRows[] = [['text' => $textbotlang['users']['backbtn'], 'callback_data' => "backuser"]];
@@ -3297,13 +3288,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $text = strtolower($text);
     $marzban_list_get = select("marzban_panel", "*", "code_panel", $name_panel, "select");
     $text = strtolower($text);
-    $username_ac = generateUsername($from_id, $marzban_list_get['MethodUsername'], $user['username'], $randomString, $text, $marzban_list_get['namecustom'], $user['namecustom']);
-    $username_ac = strtolower($username_ac);
-    $DataUserOut = $ManagePanel->DataUser($marzban_list_get['name_panel'], $username_ac);
-    $random_number = rand(1000000, 9999999);
-    if (isset($DataUserOut['username']) || rowExists("invoice", "username", $username_ac)) {
-        $username_ac = $random_number . "_" . $username_ac;
-    }
+    $baseUsername = strtolower((string) generateUsername($from_id, $marzban_list_get['MethodUsername'], $user['username'], $randomString, $text, $marzban_list_get['namecustom'], $user['namecustom']));
     $datac = array(
         'expire' => strtotime(date("Y-m-d H:i:s", strtotime("+" . $marzban_list_get['time_usertest'] . "hours"))),
         'data_limit' => $marzban_list_get['val_usertest'] * 1048576,
@@ -3316,23 +3301,30 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         'volume' => false,
         'time' => false,
     ));
-    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username,time_sell, Service_location, name_product, price_product, Volume, Service_time,Status,notifctions) VALUES (?, ?,  ?, ?, ?, ?, ?,?,?,?,?)");
     $Status = "active";
-    $info_product['name_product'] = $textbotlang['common']['labels']['testService5'];
-    $info_product['price_product'] = "0";
-    $Status = "active";
-    $stmt->execute([$from_id, $randomString, $username_ac, $date, $marzban_list_get['name_panel'], $info_product['name_product'], $info_product['price_product'], $marzban_list_get['val_usertest'], $marzban_list_get['time_usertest'], $Status, $notifctions]);
-    $dataoutput = $ManagePanel->createUser($marzban_list_get['name_panel'], "usertest", $username_ac, $datac);
-    if (!is_array($dataoutput) || empty($dataoutput['username'])) {
-        $dataoutput['msg'] = json_encode($dataoutput['msg'] ?? $dataoutput ?? 'unknown error');
-        // The panel can answer with an error and still have made the account
-        // (the answer was lost on the way back). The account is removed here,
-        // so it does not stay on the panel as a ghost that nobody can delete.
-        try {
-            $ManagePanel->RemoveUser($marzban_list_get['name_panel'], $username_ac);
-        } catch (Throwable $e) {
-            error_log('the account of the test could not be removed: ' . $e->getMessage());
+    // The account of the test: the panel refuses a name that it knows already,
+    // so a new name is tried when the first one does not work. The customer
+    // always gets his test service and a broken account never stops the bot.
+    $testAccount = nexora_create_test_account(
+        $ManagePanel,
+        $marzban_list_get['name_panel'],
+        "usertest",
+        $datac,
+        function (int $attempt) use ($ManagePanel, $baseUsername, $marzban_list_get) {
+            if ($attempt > 0) {
+                return nexora_test_account_name($baseUsername);
+            }
+            $dataUser = $ManagePanel->DataUser($marzban_list_get['name_panel'], $baseUsername);
+            if (isset($dataUser['username']) || rowExists("invoice", "username", $baseUsername)) {
+                return rand(1000000, 9999999) . "_" . $baseUsername;
+            }
+            return $baseUsername;
         }
+    );
+    $username_ac = (string) $testAccount['username'];
+    $dataoutput = is_array($testAccount['output']) ? $testAccount['output'] : [];
+    if (!$testAccount['ok']) {
+        $dataoutput['msg'] = json_encode($testAccount['msg'] !== '' ? $testAccount['msg'] : ($dataoutput['msg'] ?? 'unknown error'));
         sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $keyboard, 'html');
         $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel']);
         if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
@@ -3344,10 +3336,17 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             ]);
         }
         step('home', $from_id);
-        update("invoice", "Status", "Unsuccessful", "id_invoice", $randomString);
         update("user", "limit_usertest", $userlimit['limit_usertest'], "id", $from_id);
         return;
     }
+    $username_ac = (string) $dataoutput['username'];
+    // The invoice of the test: it is written when the account really exists,
+    // so the account of a test is never lost on the panel (the invoice is the
+    // only trace of it).
+    $info_product['name_product'] = $textbotlang['common']['labels']['testService5'];
+    $info_product['price_product'] = "0";
+    $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username,time_sell, Service_location, name_product, price_product, Volume, Service_time,Status,notifctions) VALUES (?, ?,  ?, ?, ?, ?, ?,?,?,?,?)");
+    $stmt->execute([$from_id, $randomString, $username_ac, $date, $marzban_list_get['name_panel'], $info_product['name_product'], $info_product['price_product'], $marzban_list_get['val_usertest'], $marzban_list_get['time_usertest'], $Status, $notifctions]);
     $output_config_link = "";
     $config = "";
     $output_config_link = $marzban_list_get['sublink'] == "onsublink" ? $dataoutput['subscription_url'] : "";
@@ -6937,12 +6936,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         return;
     }
     $testRandom = bin2hex(random_bytes(4));
-    $testUsername = generateUsername($from_id, $testPanel['MethodUsername'], $user['username'], $testRandom, '', $testPanel['namecustom'], $user['namecustom']);
-    $testUsername = strtolower((string) $testUsername);
-    $testDataOut = $ManagePanel->DataUser($testPanel['name_panel'], $testUsername);
-    if (isset($testDataOut['username']) || rowExists("invoice", "username", $testUsername)) {
-        $testUsername = rand(1000000, 9999999) . "_" . $testUsername;
-    }
+    $testBaseUsername = strtolower((string) generateUsername($from_id, $testPanel['MethodUsername'], $user['username'], $testRandom, '', $testPanel['namecustom'], $user['namecustom']));
     $testVolumeGb = (float) $testProduct['Volume_constraint'];
     $testHours = intval($testProduct['Service_time']);
     $testDatac = [
@@ -6953,17 +6947,29 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         'type' => 'usertest'
     ];
     update("user", "limit_usertest", intval($testUserLimit['limit_usertest']) - 1, "id", $from_id);
-    $testOutput = $ManagePanel->createUser($testPanel['name_panel'], (string) $testProduct['code_product'], $testUsername, $testDatac);
-    if (!is_array($testOutput) || empty($testOutput['username'])) {
-        $testOutput['msg'] = json_encode($testOutput['msg'] ?? $testOutput ?? 'unknown error');
-        // The panel can answer with an error and still have made the account
-        // (the answer was lost on the way back). The account is removed here,
-        // so it does not stay on the panel as a ghost that nobody can delete.
-        try {
-            $ManagePanel->RemoveUser($testPanel['name_panel'], $testUsername);
-        } catch (Throwable $e) {
-            error_log('the account of the test could not be removed: ' . $e->getMessage());
+    // The account of the test: the panel refuses a name that it knows already,
+    // so a new name is tried when the first one does not work. The customer
+    // always gets his test service and a broken account never stops the bot.
+    $testAccount = nexora_create_test_account(
+        $ManagePanel,
+        $testPanel['name_panel'],
+        (string) $testProduct['code_product'],
+        $testDatac,
+        function (int $attempt) use ($ManagePanel, $testBaseUsername, $testPanel) {
+            if ($attempt > 0) {
+                return nexora_test_account_name($testBaseUsername);
+            }
+            $dataUser = $ManagePanel->DataUser($testPanel['name_panel'], $testBaseUsername);
+            if (isset($dataUser['username']) || rowExists("invoice", "username", $testBaseUsername)) {
+                return rand(1000000, 9999999) . "_" . $testBaseUsername;
+            }
+            return $testBaseUsername;
         }
+    );
+    $testUsername = (string) $testAccount['username'];
+    $testOutput = is_array($testAccount['output']) ? $testAccount['output'] : [];
+    if (!$testAccount['ok']) {
+        $testOutput['msg'] = json_encode($testAccount['msg'] !== '' ? $testAccount['msg'] : ($testOutput['msg'] ?? 'unknown error'));
         sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $backuser, 'html');
         $testError = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $testOutput['msg'], $from_id, $username, $testPanel['name_panel']);
         if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {
@@ -6978,6 +6984,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         update("user", "limit_usertest", intval($testUserLimit['limit_usertest']), "id", $from_id);
         return;
     }
+    $testUsername = (string) $testOutput['username'];
     $testInvoice = bin2hex(random_bytes(4));
     $testNotif = json_encode(['volume' => false, 'time' => false]);
     $stmt = $pdo->prepare("INSERT IGNORE INTO invoice (id_user, id_invoice, username,time_sell, Service_location, name_product, price_product, Volume, Service_time,Status,notifctions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

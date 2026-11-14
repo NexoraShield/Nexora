@@ -19,6 +19,29 @@ require_once __DIR__ . '/../function.php';
 $ManagePanel = new ManagePanel();
 $textbotlang = languagechange();
 
+/**
+ * The time of a sale as the number of the seconds.
+ *
+ * The column "time_sell" carries two kinds of values: the number of the
+ * seconds ("1794641959") and the text of the date ("2026/11/13 14:53:58").
+ * The second kind is read as the year 2026 when it is cast to a number, so the
+ * account of a test that is still running would be removed from the panel.
+ */
+if (!function_exists('nexora_test_sale_time')) {
+    function nexora_test_sale_time($value): int
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return 0;
+        }
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+        $timestamp = strtotime(str_replace('-', '/', $value));
+        return $timestamp ? (int) $timestamp : 0;
+    }
+}
+
 // The test service is only a few hours long: everything that is older than
 // that is removed from the panel.
 $testHours = 0;
@@ -45,7 +68,7 @@ try {
 } catch (Throwable $e) {
     $hasTestColumn = false;
 }
-$sql = "SELECT * FROM invoice WHERE status NOT IN ('disabled','removebyadmin','removebyuser','removeTime','removevolume') AND (name_product = :mp1";
+$sql = "SELECT * FROM invoice WHERE status NOT IN ('removebyadmin','removebyuser','removeTime','removevolume','Unsuccessful') AND (name_product = :mp1";
 $params = [':mp1' => $testLabel];
 if ($testLabel5 !== '' && $testLabel5 !== $testLabel) {
     $sql .= " OR name_product = :mp2";
@@ -74,7 +97,7 @@ foreach ($rows as $result) {
     if (!$panel) {
         continue;
     }
-    $soldAt = (int) ($result['time_sell'] ?? 0);
+    $soldAt = nexora_test_sale_time($result['time_sell'] ?? 0);
     $hours = (int) ($result['Service_time'] ?? 0);
     // The account of the test is only removed when the test is really over:
     // the invoice knows how long the test was.
@@ -86,32 +109,43 @@ foreach ($rows as $result) {
     }
     $dataUser = $ManagePanel->DataUser($result['Service_location'], $username);
     $status = (string) ($dataUser['status'] ?? '');
+    $invoiceStatus = (string) ($result['Status'] ?? '');
     if ($status === 'Unsuccessful') {
         // The account is not on the panel (any more): the invoice of the test
-        // is closed, so it does not come back.
-        update("invoice", "status", "disabled", "username", $username);
+        // is closed, so it does not come back. The invoice is never deleted:
+        // it is the only trace of the account of the test.
+        if ($invoiceStatus !== 'disabled') {
+            update("invoice", "status", "disabled", "username", $username);
+        }
         $closed++;
         continue;
     }
-    if (!$isOver) {
+    if (!$isOver && $invoiceStatus !== 'disabled') {
         // The test is still running: the account stays.
         continue;
     }
+    // The test is over (or the invoice was closed by another job): the account
+    // is removed from the panel, so it does not stay there as a ghost that
+    // nobody can delete any more.
     $ManagePanel->RemoveUser($result['Service_location'], $username);
-    update("invoice", "status", "disabled", "username", $username);
+    if ($invoiceStatus !== 'disabled') {
+        update("invoice", "status", "disabled", "username", $username);
+    }
     $removed++;
-    $closed++;
-    $user = select("user", "*", "id", $result['id_user'], "select");
-    if ($user && intval($user['status_cron']) != 0) {
-        $response = json_encode([
-            'inline_keyboard' => [
-                [
-                    ['text' => $textbotlang['keyboard']['buyService'], 'callback_data' => 'buy'],
-                ],
-            ]
-        ]);
-        $textExpire = str_replace('{username}', $username, $textbotlang['textbot']['testExpired']);
-        sendmessage($result['id_user'], $textExpire, $response, 'HTML');
+    if ($invoiceStatus !== 'disabled') {
+        $closed++;
+        $user = select("user", "*", "id", $result['id_user'], "select");
+        if ($user && intval($user['status_cron']) != 0) {
+            $response = json_encode([
+                'inline_keyboard' => [
+                    [
+                        ['text' => $textbotlang['keyboard']['buyService'], 'callback_data' => 'buy'],
+                    ],
+                ]
+            ]);
+            $textExpire = str_replace('{username}', $username, $textbotlang['textbot']['testExpired']);
+            sendmessage($result['id_user'], $textExpire, $response, 'HTML');
+        }
     }
 }
 echo "The test services are closed: " . $closed . " (" . $removed . " accounts removed from the panel)\n";
