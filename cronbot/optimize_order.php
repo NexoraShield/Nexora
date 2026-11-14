@@ -8,8 +8,15 @@ require_once __DIR__ . '/../function.php';
 $setting = select("setting", "*");
 $textbotlang = languagechange();
 
-$stmt = $pdo->prepare("DELETE FROM invoice WHERE Status IN ('unpaid', 'Unsuccessful') AND CAST(time_sell AS UNSIGNED) < :olderThan AND NOT EXISTS (SELECT 1 FROM Payment_report pr WHERE pr.id_order = invoice.id_payment AND pr.payment_Status IN ('Unpaid', 'waiting'))");
-$stmt->execute([':olderThan' => time() - 86400]);
+// The invoices of the test services are never deleted here: they are the only
+// trace of the test accounts that live on a panel. When such an invoice was
+// thrown away, the account of the test stayed on the panel forever and nobody
+// could remove it any more (the panel answered "not found" when the
+// administrator tried to delete it).
+$testLabel = (string) ($textbotlang['common']['labels']['testServiceName'] ?? 'سرویس تست');
+
+$stmt = $pdo->prepare("DELETE FROM invoice WHERE Status IN ('unpaid', 'Unsuccessful') AND CAST(time_sell AS UNSIGNED) < :olderThan AND (name_product IS NULL OR name_product <> :testName) AND NOT EXISTS (SELECT 1 FROM Payment_report pr WHERE pr.id_order = invoice.id_payment AND pr.payment_Status IN ('Unpaid', 'waiting'))");
+$stmt->execute([':olderThan' => time() - 86400, ':testName' => $testLabel]);
 $deletedInvoices = $stmt->rowCount();
 
 $stmt = $pdo->prepare("DELETE FROM service_other WHERE status = 'unpaid' AND time < :olderThan AND NOT EXISTS (SELECT 1 FROM Payment_report pr WHERE pr.id_order = service_other.id_payment AND pr.payment_Status IN ('Unpaid', 'waiting'))");

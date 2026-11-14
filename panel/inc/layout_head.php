@@ -20,6 +20,7 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/themes-extra.css?v=1">
   <link rel="stylesheet" href="css/nexora-glass.css?v=1">
+  <link rel="stylesheet" href="css/reports.css?v=1">
   <script>
     (function () {
       var t = localStorage.getItem('panel-theme') || 'navy';
@@ -99,6 +100,11 @@ $initials = mb_strtoupper(mb_substr($currentUser, 0, 1, 'UTF-8'), 'UTF-8');
             title="<?= $textbotlang['panel']['layoutPageTitleDashboard'] ?>">
             <span class="nav-icon"><?= icon('dashboard') ?></span><span
               class="nav-label"><?= $textbotlang['panel']['layoutNavSettings'] ?></span>
+          </a>
+          <a href="reports.php" class="nav-item <?= $activeNav === 'reports' ? 'active' : '' ?>"
+            title="گزارش‌ها و آمار">
+            <span class="nav-icon"><?= icon('chart') ?></span><span
+              class="nav-label">گزارش‌ها و آمار</span>
           </a>
         </div>
         <div class="nav-section">

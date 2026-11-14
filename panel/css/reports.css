@@ -1,0 +1,413 @@
+/* The page "گزارش‌ها و آمار" of the web panel.
+ *
+ * The colours are the ones of the panel (the css variables of the theme), so
+ * the page looks the same in every theme of the panel.
+ */
+
+.rp {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* ------------------------------------------------------------- the cards */
+.rp-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.rp-kpi {
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s, border-color .18s;
+}
+
+.rp-kpi::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--ac);
+    opacity: .55;
+}
+
+.rp-kpi:hover {
+    transform: translateY(-2px);
+    border-color: var(--bds);
+}
+
+.rp-kpi small {
+    display: block;
+    font-size: .74rem;
+    color: var(--mute);
+    font-weight: 600;
+}
+
+.rp-kpi b {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 6px 0 2px;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-kpi b em {
+    font-style: normal;
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--mute);
+    margin-right: 4px;
+}
+
+.rp-kpi .rp-cap {
+    font-size: .72rem;
+    color: var(--dim);
+}
+
+.rp-kpi .rp-cap.up {
+    color: var(--ok);
+}
+
+.rp-kpi.is-ok::after {
+    background: var(--ok);
+}
+
+.rp-kpi.is-warn::after {
+    background: var(--warn);
+}
+
+.rp-kpi.is-no::after {
+    background: var(--no);
+}
+
+/* ------------------------------------------------- the four highlight cards */
+.rp-highlights {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.rp-hl {
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rp-hl .ic {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: var(--acs);
+    color: var(--ach);
+    font-size: 18px;
+}
+
+.rp-hl small {
+    display: block;
+    font-size: .72rem;
+    color: var(--mute);
+    font-weight: 600;
+}
+
+.rp-hl b {
+    display: block;
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 3px;
+    line-height: 1.45;
+}
+
+.rp-hl b span {
+    display: block;
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--mute);
+}
+
+/* ------------------------------------------------------- the section titles */
+.rp-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 -6px;
+}
+
+.rp-section h2 {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0;
+}
+
+.rp-section .rp-pill {
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--ac);
+    background: var(--acs);
+    border-radius: 99px;
+    padding: 4px 12px;
+}
+
+/* --------------------------------------------------------------- the charts */
+.rp-cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.rp-cols-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.rp-chart {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
+.rp-chart.tall {
+    height: 300px;
+}
+
+.rp-chart.short {
+    height: 190px;
+}
+
+.rp-chart svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+}
+
+.rp-grid {
+    stroke: var(--bd);
+    stroke-width: 1;
+    opacity: .55;
+}
+
+.rp-axis {
+    fill: var(--dim);
+    font-size: 10px;
+    font-family: var(--font);
+}
+
+.rp-bar {
+    fill: var(--ac);
+    opacity: .88;
+    transition: opacity .15s;
+}
+
+.rp-bar:hover,
+.rp-bar-hot {
+    opacity: 1;
+}
+
+.rp-bar-soft {
+    fill: var(--ac);
+    opacity: .14;
+}
+
+.rp-line {
+    fill: none;
+    stroke: var(--ac);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.rp-line-dash {
+    fill: none;
+    stroke: var(--ac);
+    stroke-width: 1.6;
+    stroke-dasharray: 5 5;
+    opacity: .75;
+}
+
+.rp-line-green {
+    stroke: var(--ok);
+}
+
+.rp-dot {
+    fill: var(--ac);
+    stroke: var(--sf);
+    stroke-width: 2;
+}
+
+.rp-dot-green {
+    fill: var(--ok);
+}
+
+.rp-cross {
+    stroke: var(--bds);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+}
+
+.rp-tip {
+    display: none;
+    position: absolute;
+    z-index: 20;
+    background: var(--sf);
+    border: 1px solid var(--bds);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: .74rem;
+    line-height: 1.7;
+    color: var(--text2);
+    box-shadow: var(--shlg);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.rp-tip b {
+    color: var(--text);
+}
+
+/* --------------------------------------------------------------- the legend */
+.rp-donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.rp-donut-box {
+    position: relative;
+    width: 170px;
+    height: 170px;
+    flex: 0 0 auto;
+}
+
+.rp-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: .76rem;
+    color: var(--text2);
+    min-width: 140px;
+    flex: 1;
+}
+
+.rp-legend div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.rp-legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+}
+
+.rp-legend b {
+    margin-right: auto;
+    font-weight: 600;
+    color: var(--mute);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- the the table */
+.rp-share {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+}
+
+.rp-share .bar {
+    flex: 1;
+}
+
+.rp-share span {
+    font-size: .74rem;
+    color: var(--mute);
+    font-variant-numeric: tabular-nums;
+    min-width: 42px;
+    text-align: left;
+}
+
+.rp-rank {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--sf3);
+    color: var(--mute);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------- the messages */
+.rp-note {
+    font-size: .76rem;
+    color: var(--dim);
+    padding: 10px 14px;
+    border: 1px dashed var(--bd);
+    border-radius: 10px;
+}
+
+@media (max-width: 1100px) {
+    .rp-kpis,
+    .rp-highlights {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .rp-cols-3 {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .rp-cols-2,
+    .rp-cols-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .rp-kpis,
+    .rp-highlights {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .rp-kpi {
+        padding: 12px 14px;
+    }
+
+    .rp-kpi b {
+        font-size: 1.05rem;
+    }
+
+    .rp-chart {
+        height: 210px;
+    }
+}
+
+@media (max-width: 430px) {
+    .rp-kpis,
+    .rp-highlights {
+        grid-template-columns: 1fr;
+    }
+}

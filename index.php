@@ -447,6 +447,12 @@ if ($user['step'] == "agentshop_questions" && function_exists('nexora_agent_shop
 #-----------/start------------#
 if ($user['joinchannel'] != "active") {
     if (count($channels_id) != 0) {
+        if ($datain == "confirmchannel" && function_exists('nexora_channel_cache_clear')) {
+            // The customer pressed the button of the join: the answer of
+            // Telegram about his membership is thrown away, so the check is
+            // made again at once instead of waiting for the cache.
+            nexora_channel_cache_clear($from_id);
+        }
         $channels = channel($channels_id);
         if ($datain == "confirmchannel") {
             if (count($channels) == 0) {
@@ -3319,6 +3325,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $dataoutput = $ManagePanel->createUser($marzban_list_get['name_panel'], "usertest", $username_ac, $datac);
     if (!is_array($dataoutput) || empty($dataoutput['username'])) {
         $dataoutput['msg'] = json_encode($dataoutput['msg'] ?? $dataoutput ?? 'unknown error');
+        // The panel can answer with an error and still have made the account
+        // (the answer was lost on the way back). The account is removed here,
+        // so it does not stay on the panel as a ghost that nobody can delete.
+        try {
+            $ManagePanel->RemoveUser($marzban_list_get['name_panel'], $username_ac);
+        } catch (Throwable $e) {
+            error_log('the account of the test could not be removed: ' . $e->getMessage());
+        }
         sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $keyboard, 'html');
         $texterros = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $dataoutput['msg'], $from_id, $username, $marzban_list_get['name_panel']);
         if (strlen((string)($setting['Channel_Report'] ?? '')) > 0) {
@@ -6942,6 +6956,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     $testOutput = $ManagePanel->createUser($testPanel['name_panel'], (string) $testProduct['code_product'], $testUsername, $testDatac);
     if (!is_array($testOutput) || empty($testOutput['username'])) {
         $testOutput['msg'] = json_encode($testOutput['msg'] ?? $testOutput ?? 'unknown error');
+        // The panel can answer with an error and still have made the account
+        // (the answer was lost on the way back). The account is removed here,
+        // so it does not stay on the panel as a ghost that nobody can delete.
+        try {
+            $ManagePanel->RemoveUser($testPanel['name_panel'], $testUsername);
+        } catch (Throwable $e) {
+            error_log('the account of the test could not be removed: ' . $e->getMessage());
+        }
         sendmessage($from_id, $textbotlang['users']['usertest']['errorcreat'], $backuser, 'html');
         $testError = sprintf($textbotlang['Admin']['reportgroup']['errorTestAccountCreate'], $testOutput['msg'], $from_id, $username, $testPanel['name_panel']);
         if (strlen((string) ($setting['Channel_Report'] ?? '')) > 0) {

@@ -1,4 +1,21 @@
 # Nexora Bot — Release Notes
+## v1.22.82 (2026-11-14) — The tab "Reports and stats" in the web panel, the mandatory channel works again and the test accounts of the PasarGuard panel are cleaned up
+
+**The reports and the stats (the web panel)**
+- A new tab "گزارش‌ها و آمار" (reports and stats) is in the menu of the web panel: the total income, the income of the subscriptions, the income of the expiries of the locations, the number of the services, the time that is left, the number of the buys and the income of every buyer.
+- Four important cards: the best selling product, the busiest day, the peak hour of the buys and the best gateway.
+- The sections: "درآمد و فروش" (the mix of the time and the trend of the sales and the income), "محصولات پرفروش" (the table), "پرداخت‌ها" (the rate of the paid orders, the state of the payments and the ways of the payment), "سرویس‌ها و لوکیشن‌ها" (the sales of every day of the week, the type of the services of every location and the sales of every kind of service) and "کاربران و زمان‌بندی" (the growth of the users and the peak hour of the buys).
+- Every number comes from the database of the bot and the period (7, 14, 30, 90 days and a year) can be picked. A number the database does not have is shown as a dash and never as a wrong zero.
+- The column "time_sell" carries two kinds of values: the number of the seconds and the text of the date ("2026/11/13 14:53:58"). The queries of the page understand both of them, so the sales of the days that passed are never lost.
+
+**The mandatory channel**
+- The column "link" of the table of the channels is the full link of the channel ("https://t.me/Name"), but the api of Telegram only knows the name of the channel ("@Name") or the number of the chat. Every bot with a mandatory channel therefore told the customer that he had not joined. The right name is now taken out of the link.
+- When the bot can not read the membership of the channel at all, the customer is not blocked any more; the answer of Telegram is kept for a minute and the check is made again at once when the customer presses the button of the join.
+
+**The test accounts of the PasarGuard panel**
+- When the test service could not be made on the panel but the panel had made the account anyway (the answer was lost on the way back), the account stayed on the panel for ever and nobody could remove it (the panel answered "not found"). The account is removed now when the creation fails.
+- The invoice of a test service is never deleted any more: it is the only trace of the test account on the panel. The job of the test services also sees the invoices of every test product (not only one fixed name) and removes the account of a test that is over and closes its invoice.
+
 ## v1.22.81 (2026-11-14) — The agent panel of the web panel works, the list of the representatives is there and the agent panel is never in the list of the panels
 
 **The agent panel of the web panel (پنل نمایندگی)**

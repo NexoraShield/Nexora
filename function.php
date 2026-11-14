@@ -1138,21 +1138,80 @@ function StatusPayment($paymentid)
     $response = json_decode($response, true);
     return $response;
 }
+function nexora_channel_chat_id($value): string
+{
+    // The chat id that Telegram understands. The administrator writes the link
+    // of the channel in the panel ("https://t.me/Name" or "@Name"), but the api
+    // of Telegram only knows the name ("@Name") or the number of the chat
+    // ("-100..."). Without this step every mandatory channel of every bot was
+    // broken: the api answered with an error, the bot thought the customer had
+    // not joined and the customer could never get past the join.
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+    // The number of the chat (-1001234567890).
+    if (preg_match('/^-?\d{5,}$/', $value)) {
+        return $value;
+    }
+    // @Name
+    if (preg_match('/^@[A-Za-z0-9_]{3,}$/', $value)) {
+        return $value;
+    }
+    // A link of Telegram: the name of the channel is the last part of it.
+    if (stripos($value, 't.me/') !== false || stripos($value, 'telegram.me/') !== false || stripos($value, 'telegram.dog/') !== false) {
+        $path = (string) parse_url($value, PHP_URL_PATH);
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+        $parts = explode('/', $path);
+        $name = trim((string) end($parts));
+        if ($name === '' || in_array(strtolower($name), ['joinchat', 's', 'share'], true)) {
+            // An invite link can not be checked with getChatMember.
+            return '';
+        }
+        if (preg_match('/^-?\d{5,}$/', $name)) {
+            return $name;
+        }
+        if (preg_match('/^[A-Za-z0-9_]{3,}$/', $name)) {
+            return '@' . $name;
+        }
+        return '';
+    }
+    // A name without the @ in front of it.
+    if (preg_match('/^[A-Za-z0-9_]{3,}$/', $value)) {
+        return '@' . $value;
+    }
+    return '';
+}
 function channel(array $id_channel)
 {
     global $from_id;
     $channel_link = array();
     // The membership of a channel does not change every second, so the answer
-    // of Telegram is kept for a few minutes. Without it every message of a
+    // of Telegram is kept for a minute. Without it every message of a
     // customer who did not join the channel yet waited for the API - and a
     // slow answer held the whole bot back.
     $cacheDir = __DIR__ . '/storage/cache';
-    $cacheTtl = 300;
+    $cacheTtl = 60;
     foreach ($id_channel as $channel) {
-        if (isTelegramChatIdEmpty($channel)) {
+        $chatId = nexora_channel_chat_id($channel);
+        if ($chatId === '') {
+            // The link of the channel can not be read by the api of Telegram:
+            // the row of the channel knows the real link of the join.
+            $row = select("channels", "*", 'link', $channel, "select");
+            if (is_array($row)) {
+                $chatId = nexora_channel_chat_id((string) ($row['linkjoin'] ?? ''));
+            }
+        }
+        if ($chatId === '' || isTelegramChatIdEmpty($chatId)) {
+            // The channel can not be checked at all: the customer is never
+            // told that he did not join a channel the bot can not see.
+            error_log('channel: the chat id of the channel "' . (string) $channel . '" could not be found.');
             continue;
         }
-        $cacheFile = $cacheDir . '/ch_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', (string) $from_id . '_' . $channel) . '.json';
+        $cacheFile = $cacheDir . '/ch_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', (string) $from_id . '_' . $chatId) . '.json';
         $status = null;
         if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
             $cached = @file_get_contents($cacheFile);
@@ -1160,12 +1219,18 @@ function channel(array $id_channel)
         }
         if (!is_string($status)) {
             $response = telegram('getChatMember', [
-                'chat_id' => $channel,
+                'chat_id' => $chatId,
                 'user_id' => $from_id
             ], null, true, 3);
-            $status = (!empty($response['ok']) && is_array($response['result'] ?? null))
-                ? (string) ($response['result']['status'] ?? '')
-                : 'unknown';
+            if (!empty($response['ok']) && is_array($response['result'] ?? null)) {
+                $status = (string) ($response['result']['status'] ?? '');
+            } else {
+                // The bot can not read the members of this channel (it is not an
+                // administrator of it, for example). The customer is not told
+                // that he did not join: the bot simply can not check it.
+                error_log('channel: the membership of "' . $chatId . '" could not be read: ' . (string) ($response['description'] ?? 'unknown'));
+                $status = 'member';
+            }
             if (is_dir($cacheDir) || @mkdir($cacheDir, 0775, true)) {
                 @file_put_contents($cacheFile, json_encode($status), LOCK_EX);
             }
@@ -1178,6 +1243,24 @@ function channel(array $id_channel)
         return [];
     } else {
         return $channel_link;
+    }
+}
+function nexora_channel_cache_clear($userId = null): void
+{
+    // The answer of Telegram about the membership of a channel is kept for a
+    // minute. When the customer presses the button of the join, the answer is
+    // thrown away, so he does not have to wait for it.
+    global $from_id;
+    $userId = ($userId === null || $userId === '') ? $from_id : $userId;
+    $cacheDir = __DIR__ . '/storage/cache';
+    if (!is_dir($cacheDir)) {
+        return;
+    }
+    $pattern = '/^ch_' . preg_quote((string) $userId, '/') . '_/';
+    foreach ((array) @glob($cacheDir . '/ch_*') as $file) {
+        if (is_string($file) && preg_match($pattern, basename($file))) {
+            @unlink($file);
+        }
     }
 }
 function isValidDate($date)
